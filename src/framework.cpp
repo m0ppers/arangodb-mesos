@@ -89,7 +89,7 @@ int main (int argc, char** argv) {
 
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.
-  framework.set_name("Test Framework (C++)");
+  framework.set_name("ArangoDB Framework");
   framework.set_role(role);
 
   if (os::hasenv("MESOS_CHECKPOINT")) {
@@ -124,7 +124,7 @@ int main (int argc, char** argv) {
         &scheduler, framework, master.get());
   }
 
-  HttpServer http;
+  HttpServer http(scheduler.manager());
   http.start(8181);
 
   int status = driver->run() == DRIVER_STOPPED ? 0 : 1;

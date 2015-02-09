@@ -59,6 +59,7 @@ ArangoScheduler::ArangoScheduler (const ExecutorInfo& executor,
                                   const string& role)
   : _executor(executor),
     _role(role) {
+  _manager = new ArangoManager();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,6 +67,19 @@ ArangoScheduler::ArangoScheduler (const ExecutorInfo& executor,
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoScheduler::~ArangoScheduler () {
+  delete _manager;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the manager
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager* ArangoScheduler::manager () {
+  return _manager;
 }
 
 // -----------------------------------------------------------------------------
@@ -154,12 +168,12 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback when new resources become unavailable
+/// @brief callback when new resources becomes unavailable
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
                                       const OfferID& offerId) {
-  cout << "Offer Rescinded! " << offerId << "\n";
+  _manager->removeOffer(offerId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

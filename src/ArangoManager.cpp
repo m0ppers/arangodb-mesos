@@ -28,6 +28,7 @@
 #include "ArangoManager.h"
 
 #include <iostream>
+#include <unordered_map>
 
 #include <mesos/resources.hpp>
 
@@ -35,6 +36,35 @@
 
 using namespace mesos;
 using namespace arangodb;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           class ArangoManagerImpl
+// -----------------------------------------------------------------------------
+
+class arangodb::ArangoManagerImpl {
+  public:
+    unordered_map<string, Offer> _offers;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class ArangoManager
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager::ArangoManager () {
+  _impl = new ArangoManagerImpl();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager::~ArangoManager () {
+  delete _impl;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -49,21 +79,60 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::addOffer (const Offer& offer) {
-  OfferID id = offer.id();
+  string const& id = offer.id().value();
 
-  cout << "OFFER " << id << ": " << offer.resources() << "\n";
+  cout << "OFFER received: " << id << ": " << offer.resources() << "\n";
 
-  if (checkOfferDBServer(offer)) {
-    cout << "usable as DB server\n";
+  bool dbServer = checkOfferDBServer(offer);
+  bool coordinator = checkOfferCoordinator(offer);
+  bool agency = checkOfferCoordinator(offer);
+
+  if (! dbServer && ! coordinator && ! agency) {
+    cout << "OFFER ignored: " << id << ": " << offer.resources() << "\n";
+    return;
   }
 
-  if (checkOfferCoordinator(offer)) {
-    cout << "usable as coordinator\n";
+  cout << "OFFER stored: " << id << ": " << offer.resources() << "\n";
+
+  {
+    lock_guard<mutex> lock(_lock);
+
+    _impl->_offers.insert({ id, offer });
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an offer
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManager::removeOffer (const OfferID& offerId) {
+  string const& id = offerId.value();
+
+  cout << "OFFER removed: " << id << "\n";
+
+  {
+    lock_guard<mutex> lock(_lock);
+
+    _impl->_offers.erase(id);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current offers
+////////////////////////////////////////////////////////////////////////////////
+
+vector<Offer> ArangoManager::currentOffers () {
+  vector<Offer> result;
+
+  {
+    lock_guard<mutex> lock(_lock);
+
+    for (auto offer : _impl->_offers) {
+      result.push_back(offer.second);
+    }
   }
 
-  if (checkOfferAgency(offer)) {
-    cout << "usable as agency\n";
-  }
+  return result;
 }
 
 // -----------------------------------------------------------------------------

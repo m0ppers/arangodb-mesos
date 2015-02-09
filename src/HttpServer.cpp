@@ -1,85 +1,198 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief http server
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
 #include "HttpServer.h"
 
 #include <string.h>
-
 #include <picojson.h>
+
 #include <string>
 
+#include "ArangoManager.h"
+
 using namespace std;
+using namespace mesos;
+using namespace arangodb;
 
-#define PAGE "<html><head><title>libmicrohttpd demo</title></head><body>libmicrohttpd demo</body></html>"
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class HttpServerImpl
+// -----------------------------------------------------------------------------
 
-static const string get_json () {
-  picojson::object v;
-  picojson::object inner;
-  string val = "tt";
- 
-  v["aa"] = picojson::value(val);
-  v["bb"] = picojson::value(1.66);
-  inner["test"] =  picojson::value(true);
-  inner["integer"] =  picojson::value(1.0);
-  v["inner"] =  picojson::value(inner);
- 
-  return picojson::value(v).serialize();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief http server implementation class
+////////////////////////////////////////////////////////////////////////////////
+
+class arangodb::HttpServerImpl {
+  public:
+    HttpServerImpl (ArangoManager* manager) 
+      : _manager(manager) {
+    }
+
+  public:
+    string GET_DEBUG_OFFERS ();
+
+  private:
+    ArangoManager* _manager;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/offers
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_OFFERS () {
+  vector<Offer> offers = _manager->currentOffers();
+
+  picojson::object result;
+  picojson::array list;
+
+  for (auto& offer : offers) {
+    string id = offer.id().value();
+
+    list.push_back(picojson::value(id));
+  }
+
+  result["offers"] = picojson::value(list);
+
+  return picojson::value(result).serialize();
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class HttpServer
+// -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback for daemon
+////////////////////////////////////////////////////////////////////////////////
 
-static int
-ahc_echo (void *cls,
-          struct MHD_Connection *connection,
-          const char *url,
-          const char *method,
-          const char *version,
-          const char *upload_data,
-          size_t *upload_data_size,
-          void **ptr) {
+static int answerRequest (
+  void* cls,
+  struct MHD_Connection* connection,
+  const char* url,
+  const char* method,
+  const char* version,
+  const char* upload_data,
+  size_t* upload_data_size,
+  void** ptr) {
+  HttpServerImpl* me = reinterpret_cast<HttpServerImpl*>(cls);
+
+  cout << "HTTP REQUEST: " << method << " " << url << "\n";
+
+  // find correct collback
+  string (HttpServerImpl::*getMethod)() = nullptr;
+
+  if (0 == strcmp(method, "GET")) {
+    if (0 == strcmp(url, "/debug/offers")) {
+      getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
+    }
+  }
+
+  if (getMethod == nullptr) {
+    return MHD_NO;
+  }
+
+  // do never respond on first call
   static int aptr;
-  const char *me = (const char*) cls;
-  struct MHD_Response *response;
-  int ret;
-
-  if (0 != strcmp (method, "GET"))
-    return MHD_NO;              /* unexpected method */
 
   if (&aptr != *ptr) {
-    /* do never respond on first call */
     *ptr = &aptr;
     return MHD_YES;
   }
 
-  *ptr = NULL;                  /* reset when done */
+  // generate response
+  struct MHD_Response *response;
+  int ret;
 
-  const string r = get_json();
+  /* reset when done */
+  *ptr = NULL;
 
-  response = MHD_create_response_from_buffer (r.length(),
-                                              (void *) r.c_str(),
-                                              MHD_RESPMEM_MUST_COPY);
+  const string r = (me->*getMethod)();
 
-  ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
-  MHD_destroy_response (response);
+  response = MHD_create_response_from_buffer(
+    r.length(), (void *) r.c_str(),
+    MHD_RESPMEM_MUST_COPY);
+
+  MHD_add_response_header(
+    response, 
+    "Content-Type", 
+    "application/json; charset=utf-8");
+
+  ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+  MHD_destroy_response(response);
 
   return ret;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
-HttpServer::HttpServer () 
-  : _daemon(nullptr) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+HttpServer::HttpServer (ArangoManager* manager) 
+  : _daemon(nullptr),
+    _manager(manager) {
+  _impl = new HttpServerImpl(manager);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::~HttpServer () {
+  delete _impl;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the server on a given port
+////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::start (int port) {
   _daemon = MHD_start_daemon (
     MHD_USE_SELECT_INTERNALLY /* | MHD_USE_DEBUG */,
     port,
     nullptr, nullptr,
-    &ahc_echo, (void*) PAGE,
+    &answerRequest, (void*) _impl,
     MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 120,
     MHD_OPTION_END);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the server
+////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::stop () {
   if (_daemon != nullptr) {
@@ -87,3 +200,12 @@ void HttpServer::stop () {
     _daemon = nullptr;
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:
