@@ -25,7 +25,12 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGO_MANAGER_H
+#define ARANGO_MANAGER_H
+
 #include <string>
+
+#include <mesos/scheduler.hpp>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager
@@ -33,6 +38,8 @@
 
 namespace arangodb {
   using namespace std;
+
+  class ArangoState;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief manager class
@@ -50,11 +57,21 @@ namespace arangodb {
 /// @brief roles
 ////////////////////////////////////////////////////////////////////////////////
 
-    enum class RoleTypes {
+    enum class RoleType {
       NONE,
       AGENCY,
       COORDINATOR,
       DB_SERVER
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief task states
+////////////////////////////////////////////////////////////////////////////////
+
+    enum class TaskState {
+      RUNNING,
+      FAILING,
+      FAILED
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,12 +97,18 @@ namespace arangodb {
     class SlavesSummary {
     };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief task
+////////////////////////////////////////////////////////////////////////////////
+
+    class Task {
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-  public:
+    public:
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -94,10 +117,10 @@ namespace arangodb {
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks an offers and returns a possible role
+/// @brief checks and adds an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      const RoleType checkOffer (size_t cpu, size_t mem, size_t disk);
+      void addOffer (const mesos::Offer&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a task
@@ -145,7 +168,29 @@ namespace arangodb {
 /// @brief returns the slaves
 ////////////////////////////////////////////////////////////////////////////////
 
-      const Slaves slaves ();
+      const SlavesSummary slaves ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an offer is usable for a DB server
+////////////////////////////////////////////////////////////////////////////////
+
+      bool checkOfferDBServer (const mesos::Offer& offer);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an offer is usable for a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+      bool checkOfferCoordinator (const mesos::Offer& offer);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an offer is usable for an agency
+////////////////////////////////////////////////////////////////////////////////
+
+      bool checkOfferAgency (const mesos::Offer& offer);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -160,6 +205,8 @@ namespace arangodb {
       ArangoState* _state;
   };
 }
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

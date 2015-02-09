@@ -33,9 +33,10 @@
 #include <string>
 
 #include <mesos/resources.hpp>
-#include <mesos/scheduler.hpp>
 
 #include "common/type_utils.hpp"
+
+#include "ArangoManager.h"
 
 using namespace std;
 using namespace boost;
@@ -109,6 +110,9 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
   cout << "Resource Offers!" << endl;
 
   for (auto& offer : offers) {
+    _manager->addOffer(offer);
+
+#if 0
     cout << "Received offer " << offer.id() << " with " << offer.resources() << "\n";
 
     static const Resources TASK_RESOURCES = Resources::parse(
@@ -145,6 +149,7 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
     }
 
     driver->launchTasks(offer.id(), tasks);
+#endif
   }
 }
 

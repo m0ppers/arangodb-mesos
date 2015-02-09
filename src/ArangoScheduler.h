@@ -25,6 +25,9 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGO_SCHEDULER_H
+#define ARANGO_SCHEDULER_H
+
 #include <mesos/scheduler.hpp>
 
 // -----------------------------------------------------------------------------
@@ -34,6 +37,8 @@
 namespace arangodb {
   using namespace mesos;
   using namespace std;
+
+  class ArangoManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler class
@@ -157,8 +162,16 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       string _role;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoDB manager
+////////////////////////////////////////////////////////////////////////////////
+
+      ArangoManager* _manager;
   };
 }
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
