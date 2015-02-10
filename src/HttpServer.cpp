@@ -39,6 +39,26 @@ using namespace mesos;
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+
+string JsonConfig (size_t instances,
+                   const ArangoManager::Resources& resources) {
+  picojson::object r1;
+
+  r1["cpus"] = picojson::value(resources._cpus);
+  r1["mem"] = picojson::value((double) resources._mem);
+  r1["disk"] = picojson::value((double) resources._disk);
+
+  picojson::object result;
+
+  result["instances"] = picojson::value((double) instances);
+  result["resources"] = picojson::value(r1);
+
+  return picojson::value(result).serialize();
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              class HttpServerImpl
 // -----------------------------------------------------------------------------
 
@@ -53,11 +73,47 @@ class arangodb::HttpServerImpl {
     }
 
   public:
+    string GET_V1_CONFIG_AGENCY ();
+    string GET_V1_CONFIG_COORDINATOR ();
+    string GET_V1_CONFIG_DBSERVER ();
     string GET_DEBUG_OFFERS ();
 
   private:
     ArangoManager* _manager;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/config/agency
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CONFIG_AGENCY () {
+  size_t instances = _manager->agencyInstances();
+  ArangoManager::Resources resources = _manager->agencyResources();
+
+  return JsonConfig(instances, resources);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/config/coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CONFIG_COORDINATOR () {
+  size_t instances = _manager->coordinatorInstances();
+  ArangoManager::Resources resources = _manager->coordinatorResources();
+
+  return JsonConfig(instances, resources);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/config/dbserver
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CONFIG_DBSERVER () {
+  size_t instances = _manager->dbserverInstances();
+  ArangoManager::Resources resources = _manager->dbserverResources();
+
+  return JsonConfig(instances, resources);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET /debug/offers
@@ -109,7 +165,16 @@ static int answerRequest (
   string (HttpServerImpl::*getMethod)() = nullptr;
 
   if (0 == strcmp(method, "GET")) {
-    if (0 == strcmp(url, "/debug/offers")) {
+    if (0 == strcmp(url, "/v1/config/agency")) {
+      getMethod = &HttpServerImpl::GET_V1_CONFIG_AGENCY;
+    }
+    else if (0 == strcmp(url, "/v1/config/coordinator")) {
+      getMethod = &HttpServerImpl::GET_V1_CONFIG_COORDINATOR;
+    }
+    else if (0 == strcmp(url, "/v1/config/dbserver")) {
+      getMethod = &HttpServerImpl::GET_V1_CONFIG_DBSERVER;
+    }
+    else if (0 == strcmp(url, "/debug/offers")) {
       getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
     }
   }

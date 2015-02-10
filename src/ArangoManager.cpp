@@ -43,11 +43,52 @@ using namespace arangodb;
 
 class arangodb::ArangoManagerImpl {
   public:
+    ArangoManagerImpl ();
+
+  public:
+    bool checkOfferAgency (const Offer& offer);
+    bool checkOfferCoordinator (const Offer& offer);
+    bool checkOfferDBServer (const Offer& offer);
+
+  public:
     unordered_map<string, Offer> _offers;
+
+    size_t _agencyPlannedInstances;
+    size_t _coordinatorPlannedInstances;
+    size_t _dbserverPlannedInstances;
+
+    ArangoManager::Resources _agencyResources;
+    ArangoManager::Resources _coordinatorResources;
+    ArangoManager::Resources _dbserverResources;
 };
+
+ArangoManagerImpl::ArangoManagerImpl ()
+  : _agencyPlannedInstances(3),
+    _coordinatorPlannedInstances(3),
+    _dbserverPlannedInstances(3),
+    _agencyResources(0.2, 10, 10),
+    _coordinatorResources(4, 2048, 1024),
+    _dbserverResources(2, 1024, 4096) {
+}
+
+bool ArangoManagerImpl::checkOfferAgency (const Offer& offer) {
+  return true;
+}
+
+bool ArangoManagerImpl::checkOfferCoordinator (const Offer& offer) {
+  return true;
+}
+
+bool ArangoManagerImpl::checkOfferDBServer (const Offer& offer) {
+  return true;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,12 +108,56 @@ ArangoManager::~ArangoManager () {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns planned number of agency instances
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ArangoManager::agencyInstances () {
+  return _impl->_agencyPlannedInstances;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns planned number of coordinator instances
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ArangoManager::coordinatorInstances () {
+  return _impl->_coordinatorPlannedInstances;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns planned number of dbserver instances
+////////////////////////////////////////////////////////////////////////////////
+
+size_t ArangoManager::dbserverInstances () {
+  return _impl->_dbserverPlannedInstances;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns minimum resources for agency
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager::Resources ArangoManager::agencyResources () {
+  return _impl->_agencyResources;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns minimum resources for coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager::Resources ArangoManager::coordinatorResources () {
+  return _impl->_coordinatorResources;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns minimum resources for DBserver
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager::Resources ArangoManager::dbserverResources () {
+  return _impl->_dbserverResources;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks and adds an offer
@@ -83,9 +168,9 @@ void ArangoManager::addOffer (const Offer& offer) {
 
   cout << "OFFER received: " << id << ": " << offer.resources() << "\n";
 
-  bool dbServer = checkOfferDBServer(offer);
-  bool coordinator = checkOfferCoordinator(offer);
-  bool agency = checkOfferCoordinator(offer);
+  bool dbServer = _impl->checkOfferDBServer(offer);
+  bool coordinator = _impl->checkOfferCoordinator(offer);
+  bool agency = _impl->checkOfferCoordinator(offer);
 
   if (! dbServer && ! coordinator && ! agency) {
     cout << "OFFER ignored: " << id << ": " << offer.resources() << "\n";
@@ -133,34 +218,6 @@ vector<Offer> ArangoManager::currentOffers () {
   }
 
   return result;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an offer is usable for a DB server
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManager::checkOfferDBServer (const Offer& offer) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an offer is usable for a coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManager::checkOfferCoordinator (const Offer& offer) {
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an offer is usable for an agency
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManager::checkOfferAgency (const Offer& offer) {
-  return true;
 }
 
 // -----------------------------------------------------------------------------

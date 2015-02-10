@@ -1,3 +1,30 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoDB Mesos Framework
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
 #include <libgen.h>
 
 #include <iostream>
@@ -5,8 +32,6 @@
 
 #include "ArangoScheduler.h"
 #include "HttpServer.h"
-
-#include <boost/lexical_cast.hpp>
 
 #include <stout/check.hpp>
 #include <stout/exit.hpp>
@@ -20,22 +45,28 @@
 #include "logging/flags.hpp"
 #include "logging/logging.hpp"
 
-using boost::lexical_cast;
-
 using namespace std;
 using namespace mesos;
 using namespace arangodb;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
-void usage (const char* argv0, const flags::FlagsBase& flags) {
+static void usage (const char* argv0, const flags::FlagsBase& flags) {
   cerr << "Usage: " << os::basename(argv0).get() << " [...]" << "\n"
        << "\n"
        << "Supported options:" << "\n"
        << flags.usage();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB framework
@@ -46,6 +77,7 @@ int main (int argc, char** argv) {
   // Find this executable's directory to locate executor.
   string path = os::realpath(dirname(argv[0])).get();
   string uri = path + "/arangodb-executor";
+
   if (getenv("ARANGODB_MESOS_DIR")) {
     uri = string(getenv("ARANGODB_MESOS_DIR")) + "/arangodb-executor";
   }
