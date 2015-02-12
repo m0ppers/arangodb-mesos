@@ -29,6 +29,7 @@
 
 #include <boost/lexical_cast.hpp>
 
+#include <atomic>
 #include <iostream>
 #include <string>
 
@@ -55,11 +56,13 @@ using namespace arangodb;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoScheduler::ArangoScheduler (const ExecutorInfo& executor,
-                                  const string& role)
-  : _executor(executor),
-    _role(role) {
-  _manager = new ArangoManager();
+ArangoScheduler::ArangoScheduler (const string& role,
+                                  const ExecutorInfo& executor)
+  : _role(role),
+    _driver(nullptr),
+    _executor(executor),
+    _manager(nullptr) {
+  _manager = new ArangoManager(_role, this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +85,41 @@ ArangoManager* ArangoScheduler::manager () {
   return _manager;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the driver
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::setDriver (SchedulerDriver* driver) {
+  _driver = driver;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts an agency with a given offer
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::startAgencyInstance (const Offer& offer,
+                                           const Resources& resources) {
+  static atomic<unsigned int> next(1);
+
+  unsigned int taskID = next.fetch_add(1);
+  const string offerID = offer.id().value();
+
+  cout << "AGENCY launching task " << taskID << " using offer " << offerID << "\n";
+
+  TaskInfo task;
+
+  task.set_name("Agency " + lexical_cast<string>(taskID));
+  task.mutable_task_id()->set_value(lexical_cast<string>(taskID));
+  task.mutable_slave_id()->MergeFrom(offer.slave_id());
+  task.mutable_executor()->MergeFrom(_executor);
+  task.mutable_resources()->MergeFrom(resources);
+
+  vector<TaskInfo> tasks;
+  tasks.push_back(task);
+
+  _driver->launchTasks(offer.id(), tasks);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods
 // -----------------------------------------------------------------------------
@@ -93,6 +131,7 @@ ArangoManager* ArangoScheduler::manager () {
 void ArangoScheduler::registered (SchedulerDriver*,
                                   const FrameworkID&,
                                   const MasterInfo&) {
+  // TODO(fc) what to do?
   cout << "Registered!" << endl;
 }
 
@@ -102,6 +141,7 @@ void ArangoScheduler::registered (SchedulerDriver*,
 
 void ArangoScheduler::reregistered (SchedulerDriver*,
                                     const MasterInfo& masterInfo) {
+  // TODO(fc) what to do?
   cout << "Re-Registered!" << endl;
 }
 
@@ -110,6 +150,7 @@ void ArangoScheduler::reregistered (SchedulerDriver*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::disconnected (SchedulerDriver* driver) {
+  // TODO(fc) what to do?
   cout << "Disconnected!" << endl;
 }
 
@@ -125,45 +166,6 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
 
   for (auto& offer : offers) {
     _manager->addOffer(offer);
-
-#if 0
-    cout << "Received offer " << offer.id() << " with " << offer.resources() << "\n";
-
-    static const Resources TASK_RESOURCES = Resources::parse(
-      "cpus:" + stringify(1) +
-      ";mem:" + stringify(1)).get();
-
-    Resources remaining = offer.resources();
-
-    // Launch tasks.
-    vector<TaskInfo> tasks;
-
-    while (remaining.flatten().contains(TASK_RESOURCES)) {
-      int taskId = tasksLaunched++;
-
-      cout << "Launching task " << taskId << " using offer "
-           << offer.id() << endl;
-
-      TaskInfo task;
-      task.set_name("Task " + lexical_cast<string>(taskId));
-      task.mutable_task_id()->set_value(lexical_cast<string>(taskId));
-      task.mutable_slave_id()->MergeFrom(offer.slave_id());
-      task.mutable_executor()->MergeFrom(_executor);
-
-      Option<Resources> resources =
-      remaining.find(TASK_RESOURCES.flatten(_role));
-
-      CHECK_SOME(resources);
-      task.mutable_resources()->MergeFrom(resources.get());
-      remaining -= resources.get();
-
-      tasks.push_back(task);
-
-      break;
-    }
-
-    driver->launchTasks(offer.id(), tasks);
-#endif
   }
 }
 
@@ -190,7 +192,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
   if (status.state() == TASK_LOST ||
       status.state() == TASK_KILLED ||
       status.state() == TASK_FAILED) {
-    cout << "Task diead: " << status.task_id()
+    cout << "Task died: " << status.task_id()
          << " is in unexpected state " << status.state()
          << " with reason " << status.reason()
          << " from source " << status.source()
@@ -213,6 +215,7 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
                                         const ExecutorID& executorId,
                                         const SlaveID& slaveId,
                                         const string& data) {
+  // TODO(fc) what to do?
   cout << "Framework Message!" << endl;
 }
 
@@ -222,6 +225,7 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
 
 void ArangoScheduler::slaveLost (SchedulerDriver* driver,
                                  const SlaveID& sid) {
+  // TODO(fc) what to do?
   cout << "Slave Lost!" << endl;
 }
 
@@ -233,6 +237,7 @@ void ArangoScheduler::executorLost (SchedulerDriver* driver,
                                     const ExecutorID& executorID,
                                     const SlaveID& slaveID,
                                     int status) {
+  // TODO(fc) what to do?
   cout << "Executor Lost!" << endl;
 }
 

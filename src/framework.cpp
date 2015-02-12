@@ -117,8 +117,6 @@ int main (int argc, char** argv) {
   executor.set_name("Test Executor (C++)");
   executor.set_source("cpp_test");
 
-  ArangoScheduler scheduler(executor, role);
-
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.
   framework.set_name("ArangoDB Framework");
@@ -129,7 +127,10 @@ int main (int argc, char** argv) {
         numify<bool>(os::getenv("MESOS_CHECKPOINT")).get());
   }
 
+  ArangoScheduler scheduler(role, executor);
+
   MesosSchedulerDriver* driver;
+
   if (os::hasenv("MESOS_AUTHENTICATE")) {
     cout << "Enabling authentication for the framework" << endl;
 
@@ -155,6 +156,8 @@ int main (int argc, char** argv) {
     driver = new MesosSchedulerDriver(
         &scheduler, framework, master.get());
   }
+
+  scheduler.setDriver(driver);
 
   HttpServer http(scheduler.manager());
   http.start(8181);

@@ -49,6 +49,7 @@ string JsonConfig (size_t instances,
   r1["cpus"] = picojson::value(resources._cpus);
   r1["mem"] = picojson::value((double) resources._mem);
   r1["disk"] = picojson::value((double) resources._disk);
+  r1["ports"] = picojson::value((double) resources._ports);
 
   picojson::object result;
 
