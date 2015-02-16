@@ -45,6 +45,14 @@ using namespace mesos;
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   local variables
+// -----------------------------------------------------------------------------
+
+namespace {
+  atomic<uint64_t> NEXT_TASK_ID(1);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             class ArangoScheduler
 // -----------------------------------------------------------------------------
 
@@ -97,19 +105,17 @@ void ArangoScheduler::setDriver (SchedulerDriver* driver) {
 /// @brief starts an agency with a given offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::startAgencyInstance (const Offer& offer,
-                                           const Resources& resources) {
-  static atomic<unsigned int> next(1);
+uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
+                                          const Resources& resources) {
+  uint64_t taskId = NEXT_TASK_ID.fetch_add(1);
+  const string offerId = offer.id().value();
 
-  unsigned int taskID = next.fetch_add(1);
-  const string offerID = offer.id().value();
-
-  cout << "AGENCY launching task " << taskID << " using offer " << offerID << "\n";
+  cout << "AGENCY launching task " << taskId << " using offer " << offerId << "\n";
 
   TaskInfo task;
 
-  task.set_name("Agency " + lexical_cast<string>(taskID));
-  task.mutable_task_id()->set_value(lexical_cast<string>(taskID));
+  task.set_name("Agency " + lexical_cast<string>(taskId));
+  task.mutable_task_id()->set_value(lexical_cast<string>(taskId));
   task.mutable_slave_id()->MergeFrom(offer.slave_id());
   task.mutable_executor()->MergeFrom(_executor);
   task.mutable_resources()->MergeFrom(resources);
@@ -118,6 +124,8 @@ void ArangoScheduler::startAgencyInstance (const Offer& offer,
   tasks.push_back(task);
 
   _driver->launchTasks(offer.id(), tasks);
+
+  return taskId;
 }
 
 // -----------------------------------------------------------------------------
@@ -184,27 +192,29 @@ void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
 
 void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
                                     const TaskStatus& status) {
-  cout << "Status Update!" << endl;
+  uint64_t taskId = lexical_cast<uint64_t>(status.task_id().value());
+  auto state = status.state();
 
-  // int taskId = lexical_cast<int>(status.task_id().value());
-  cout << "Task '" << status.task_id() << "' is in state " << status.state() << endl;
+  cout << "TASK '" << status.task_id() << "' is in state " << state << endl;
 
-  if (status.state() == TASK_LOST ||
-      status.state() == TASK_KILLED ||
-      status.state() == TASK_FAILED) {
-    cout << "Task died: " << status.task_id()
-         << " is in unexpected state " << status.state()
-         << " with reason " << status.reason()
-         << " from source " << status.source()
-         << " with message '" << status.message() << "'"
-         << endl;
-    //driver->abort();
+  if (state == TASK_RUNNING) {
+    _manager->statusUpdate(taskId, ArangoManager::InstanceState::RUNNING);
+  }
+  else if (state == TASK_STARTING) {
+    // do nothing
+  }
+  else if (state == TASK_FINISHED) {
+    _manager->statusUpdate(taskId, ArangoManager::InstanceState::FINISHED);
   }
 
-#if 0
-    if (tasksFinished == totalTasks)
-      driver->stop();
-#endif
+  // TODO(fc) handle other cases
+
+  cout << "Task info: " << status.task_id()
+       << " is in unexpected state " << status.state()
+       << " with reason " << status.reason()
+       << " from source " << status.source()
+       << " with message '" << status.message() << "'"
+       << endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

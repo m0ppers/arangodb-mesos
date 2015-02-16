@@ -9,13 +9,13 @@ the data for your agencies.
 The same is true for the inital resource configuration: Where to store these
 values?
 
-## How to distribute ArangoDB
+## How to distribute ArangoDB?
 
 Using docker containers is the simplest way to distribute ArangoDB to the
 slave. Is this always a good idea? I. e. better to provide a tar for the
 architecture?
 
-## How to get the real resource usage
+## How to get the real resource usage?
 
 There are message with the "real" resource usage? How to receive these?  Or is
 DCOS handling the case, that a task reaches its limit?  If so, how is it
@@ -23,5 +23,5 @@ handled?
 
 ## How to shutdown a slave for maintenance?
 
-How to I know that a slave is shutdown for maintenance? No failover
+How do I know that a slave is shutting down for maintenance? No failover
 necessary in this case.

@@ -88,7 +88,7 @@ namespace arangodb {
 /// @brief starts an agency with a given offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      void startAgencyInstance (const Offer&, const Resources&);
+      uint64_t startAgencyInstance (const Offer&, const Resources&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods

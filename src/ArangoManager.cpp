@@ -43,6 +43,9 @@ using namespace mesos;
 using namespace arangodb;
 
 using std::chrono::system_clock;
+using InstanceState = ArangoManager::InstanceState;
+using InstanceType = ArangoManager::InstanceType;
+using UsedResources = ArangoManager::UsedResources;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -93,65 +96,155 @@ namespace {
     double cpus = scalarResource(offer, "cpus");
 
     if (cpus < resources._cpus) {
-      cout << "OFFER declined for " << name << ": not enough CPU power "
-           << "(got " << cpus << ", need " << resources._cpus << ")\n";
+      LOG(INFO)
+      << "OFFER declined for " << name << ": not enough CPU power "
+      << "(got " << cpus << ", need " << resources._cpus << ")\n";
       return false;
     }
 
     double mem = scalarResource(offer, "mem");
 
     if (mem < resources._mem) {
-      cout << "OFFER declined for " << name << ": not enough memory "
-           << "(got " << mem << ", need " << resources._mem << ")\n";
+      LOG(INFO)
+      << "OFFER declined for " << name << ": not enough memory "
+      << "(got " << mem << ", need " << resources._mem << ")\n";
       return false;
     }
 
     double disk = scalarResource(offer, "disk");
 
     if (disk < resources._disk) {
-      cout << "OFFER declined for " << name << ": not enough disk "
-           << "(got " << disk << ", need " << resources._disk << ")\n";
+      LOG(INFO)
+      << "OFFER declined for " << name << ": not enough disk "
+      << "(got " << disk << ", need " << resources._disk << ")\n";
       return false;
     }
 
     size_t ports = rangeResource(offer, "ports");
 
     if (ports < resources._ports) {
-      cout << "OFFER declined for " << name << ": not enough ports "
-           << "(got " << ports << ", need " << resources._ports << ")\n";
+      LOG(INFO)
+      << "OFFER declined for " << name << ": not enough ports "
+      << "(got " << ports << ", need " << resources._ports << ")\n";
       return false;
     }
 
-    cout << "OFFER suitable for " << name << ": "
-         << "cpus:" << cpus << ", "
-         << "mem:" << mem << ", "
-         << "disk:" << disk << ", "
-         << "ports:" << ports << "\n";
+    LOG(INFO)
+    << "OFFER suitable for " << name << ": "
+    << "cpus:" << cpus << ", "
+    << "mem:" << mem << ", "
+    << "disk:" << disk << ", "
+    << "ports:" << ports << "\n";
 
     return true;
   }
+
+
+
+  vector<uint32_t> findFreePorts (const Offer& offer, size_t len) {
+    static const size_t MAX_ITERATIONS = 1000;
+
+    vector<uint32_t> result;
+
+    vector<Value::Range> resources;
+
+    for (size_t i = 0; i < offer.resources_size(); ++i) {
+      const auto& resource = offer.resources(i);
+
+      if (resource.name() == "ports" &&
+          resource.type() == Value::RANGES) {
+        const auto& ranges = resource.ranges();
+
+        for (size_t j = 0; j < ranges.range_size(); ++j) {
+          const auto& range = ranges.range(j);
+
+          resources.push_back(range);
+        }
+      }
+    }
+
+    default_random_engine generator;
+    uniform_int_distribution<int> d1(0, resources.size() - 1);
+
+    for (size_t i = 0;  i < MAX_ITERATIONS;  ++i) {
+      if (result.size() == len) {
+        return result;
+      }
+
+      const auto& resource = resources.at(d1(generator));
+
+      uniform_int_distribution<uint32_t> d2(resource.begin(), resource.end());
+
+      result.push_back(d2(generator));
+    }
+  }
+
+
+  Resources convertUsedResources (
+      const UsedResources& taskResources,
+      const string& role) {
+
+    // set MESOS resources
+    Resources resources;
+
+    Resource cpu;
+    cpu.set_name("cpus");
+    cpu.set_role(role);
+    cpu.set_type(Value::SCALAR);
+    cpu.mutable_scalar()->set_value(taskResources._cpus);
+
+    resources += cpu;
+
+    Resource mem;
+    mem.set_name("mem");
+    mem.set_role(role);
+    mem.set_type(Value::SCALAR);
+    mem.mutable_scalar()->set_value(taskResources._mem);
+
+    resources += mem;
+
+    Resource disk;
+    disk.set_name("disk");
+    disk.set_role(role);
+    disk.set_type(Value::SCALAR);
+    disk.mutable_scalar()->set_value(taskResources._disk);
+
+    resources += disk;
+
+    Resource ports;
+    ports.set_name("ports");
+    ports.set_role(role);
+    ports.set_type(Value::RANGES);
+
+    Value_Range* range;
+
+    range = ports.mutable_ranges()->add_range();
+    range->set_begin(taskResources._usedPorts.at(0));
+    range->set_end(taskResources._usedPorts.at(0));
+
+    range = ports.mutable_ranges()->add_range();
+    range->set_begin(taskResources._usedPorts.at(1));
+    range->set_end(taskResources._usedPorts.at(1));
+
+    resources += ports;
+
+    return resources;
+  }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          enum class InstanceState
-// -----------------------------------------------------------------------------
-
-enum class InstanceState {
-  STARTED,
-  RUNNING,
-  TERMINATED,
-  LOST
-};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    class Instance
 // -----------------------------------------------------------------------------
 
-class Instance {
+struct Instance {
   public:
+    uint64_t _taskId;
     InstanceState _state;
-    system_clock::time_point _start;
-    system_clock::time_point _stop;
+    InstanceType _type;
+    UsedResources _resources;
+    string _slaveId;
+    system_clock::time_point _started;
+    system_clock::time_point _lastUpdate;
 };
 
 // -----------------------------------------------------------------------------
@@ -162,11 +255,13 @@ class Aspects {
   public:
     size_t _plannedInstances;
     size_t _minimumInstances;
+
     size_t _startedInstances;
     size_t _runningInstances;
 
     set<string> _offers;
-    unordered_map<string, Instance> _instances;
+    set<uint64_t> _instances;
+    unordered_map<string, set<uint64_t>> _slaves;
 
     ArangoManager::Resources _minimumResources;
 };
@@ -183,17 +278,23 @@ class arangodb::ArangoManagerImpl {
     void dispatch ();
     void addOffer (const Offer& offer);
     void removeOffer (const OfferID& offerId);
+    void statusUpdate (uint64_t, InstanceState);
     vector<Offer> currentOffers ();
 
   private:
     void removeOffer (const string& offerId);
     void checkAgencyInstances ();
     Offer findAgencyOffer (bool&);
-    void startAgencyInstance (const Offer&, const Resources&);
+    void startAgencyInstance (const Offer&, const UsedResources&);
+
+    void taskRunning (uint64_t);
+    void taskFinished (uint64_t);
 
     bool checkOfferAgency (const Offer& offer);
     bool checkOfferCoordinator (const Offer& offer);
     bool checkOfferDBServer (const Offer& offer);
+
+    Aspects* aspectsByType (InstanceType);
 
   public:
     const string _role;
@@ -207,6 +308,7 @@ class arangodb::ArangoManagerImpl {
 
   private:
     unordered_map<string, Offer> _offers;
+    unordered_map<uint64_t, Instance> _instances;
 };
 
 // -----------------------------------------------------------------------------
@@ -257,7 +359,7 @@ void ArangoManagerImpl::dispatch () {
   static const int SLEEP_SEC = 10;
 
   while (! _stopDispatcher) {
-    cout << "DISPATCHER checking state\n";
+    LOG(INFO) << "DISPATCHER checking state\n";
 
     {
       lock_guard<mutex> lock(_lock);
@@ -278,14 +380,16 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
 
   string const& id = offer.id().value();
 
-  cout << "OFFER received: " << id << ": " << offer.resources() << "\n";
+  LOG(INFO)
+  << "OFFER received: " << id << ": " << offer.resources() << "\n";
 
   bool agency = checkOfferAgency(offer);
   bool coordinator = checkOfferCoordinator(offer);
   bool dbserver = checkOfferDBServer(offer);
 
   if (! dbserver && ! coordinator && ! agency) {
-    cout << "OFFER ignored: " << id << ": " << offer.resources() << "\n";
+    LOG(INFO)
+    << "OFFER ignored: " << id << ": " << offer.resources() << "\n";
     return;
   }
 
@@ -302,8 +406,6 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   if (dbserver) {
     _dbserver._offers.insert(id);
   }
-
-  cout << "OFFER stored: " << id << ": " << offer.resources() << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,6 +416,22 @@ void ArangoManagerImpl::removeOffer (const OfferID& offerId) {
   lock_guard<mutex> lock(_lock);
 
   removeOffer(offerId.value());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status update
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::statusUpdate (uint64_t taskId,
+                                      InstanceState state) {
+  lock_guard<mutex> lock(_lock);
+
+  if (state == InstanceState::RUNNING) {
+    taskRunning(taskId);
+  }
+  else if (state == InstanceState::FINISHED) {
+    taskFinished(taskId);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,7 +466,8 @@ void ArangoManagerImpl::removeOffer (const string& id) {
   _coordinator._offers.erase(id);
   _dbserver._offers.erase(id);
 
-  cout << "OFFER removed: " << id << "\n";
+  LOG(INFO)
+  << "OFFER removed: " << id << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,10 +477,11 @@ void ArangoManagerImpl::removeOffer (const string& id) {
 void ArangoManagerImpl::checkAgencyInstances () {
   size_t planned = _agency._plannedInstances;
 
-  cout << "AGENCY "
-       << _agency._runningInstances << " running instances, "
-       << _agency._startedInstances << " started instances, "
-       << planned << " planned instances\n";
+  LOG(INFO)
+  << "AGENCY "
+  << _agency._runningInstances << " running instances, "
+  << _agency._startedInstances << " started instances, "
+  << planned << " planned instances\n";
 
   if (planned <= _agency._runningInstances) {
     return;
@@ -380,58 +500,28 @@ void ArangoManagerImpl::checkAgencyInstances () {
   const Offer offer = findAgencyOffer(found);
 
   if (! found) {
-    cout << "AGENCY cannot find a suitable resource for missing agency\n";
+    LOG(INFO) << "AGENCY cannot find a suitable resource for missing agency\n";
     return;
   }
 
   // TODO(fc) do we need prefered resources in addition in minimum?
 
   // set resources
-  Resources resources;
+  UsedResources taskResources;
 
-  Resource cpu;
-  cpu.set_name("cpus");
-  cpu.set_role(_role);
-  cpu.set_type(Value::SCALAR);
-  cpu.mutable_scalar()->set_value(_agency._minimumResources._cpus);
+  taskResources._cpus = _agency._minimumResources._cpus;
+  taskResources._mem = _agency._minimumResources._mem;
+  taskResources._disk = _agency._minimumResources._disk;
+  taskResources._ports = 2;
+  taskResources._usedPorts = findFreePorts(offer, taskResources._ports);
 
-  resources += cpu;
-
-  Resource mem;
-  mem.set_name("mem");
-  mem.set_role(_role);
-  mem.set_type(Value::SCALAR);
-  mem.mutable_scalar()->set_value(_agency._minimumResources._mem);
-
-  resources += mem;
-
-  Resource disk;
-  disk.set_name("disk");
-  disk.set_role(_role);
-  disk.set_type(Value::SCALAR);
-  disk.mutable_scalar()->set_value(_agency._minimumResources._disk);
-
-  resources += disk;
-
-  Resource ports;
-  ports.set_name("ports");
-  ports.set_role(_role);
-  ports.set_type(Value::RANGES);
-
-  Value_Range* range;
-
-  range = ports.mutable_ranges()->add_range();
-  range->set_begin(31000);
-  range->set_end(31000);
-
-  range = ports.mutable_ranges()->add_range();
-  range->set_begin(31010);
-  range->set_end(31010);
-
-  resources += ports;
+  if (taskResources._usedPorts.size() != 2) {
+    LOG(WARNING) << "AGENCY found corrupt offer, this should not happen\n";
+    return;
+  }
 
   // try to start a new instance
-  startAgencyInstance(offer, resources);
+  startAgencyInstance(offer, taskResources);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -441,22 +531,44 @@ void ArangoManagerImpl::checkAgencyInstances () {
 Offer ArangoManagerImpl::findAgencyOffer (bool& found) {
   Offer result;
 
+  found = false;
+
   if (_agency._offers.empty()) {
-    found = false;
     return result;
   }
 
   // TODO(fc) need a better selection algorithm
+  string offerId;
 
-  string id = *_agency._offers.begin();
-  auto iter = _offers.find(id);
+  for (const auto& id : _agency._offers) {
+    auto iter = _offers.find(id);
+    
+    if (iter == _offers.end()) {
+      continue;
+    }
 
-  if (iter != _offers.end()) {
+    const Offer& offer = iter->second;
+    string slaveId = offer.slave_id().value();
+
+    LOG(INFO)
+    << "testing offer " << id << " on slave " << slaveId << "\n";
+
+    auto jter = _agency._slaves.find(slaveId);
+
+    if (jter != _agency._slaves.end() && ! jter->second.empty()) {
+      continue;
+    }
+
     found = true;
     result = iter->second;
+    offerId = id;
+
+    break;
   }
 
-  removeOffer(id);
+  if (found) {
+    removeOffer(offerId);
+  }
 
   return result;
 }
@@ -465,14 +577,109 @@ Offer ArangoManagerImpl::findAgencyOffer (bool& found) {
 /// @brief starts a new agency
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::startAgencyInstance (const Offer& offer,
-                                             const Resources& resources) {
+void ArangoManagerImpl::startAgencyInstance (
+    const Offer& offer,
+    const UsedResources& taskResources) {
+
   string const& id = offer.id().value();
+  Resources resources = convertUsedResources(taskResources, _role);
 
-  cout << "AGENCY about to start agency using offer " << id 
-       << " with resources " << resources << "\n";
+  LOG(INFO)
+  << "AGENCY about to start agency using offer " << id 
+  << " with resources " << resources << "\n";
 
-  _scheduler->startAgencyInstance(offer, resources);
+  uint64_t taskId = _scheduler->startAgencyInstance(offer, resources);
+
+  Instance desc;
+
+  desc._taskId = taskId;
+  desc._type = InstanceType::AGENCY;
+  desc._state = InstanceState::STARTED;
+  desc._resources = taskResources;
+  desc._slaveId = offer.slave_id().value();
+  desc._started = system_clock::now();
+  desc._lastUpdate = system_clock::time_point();
+
+  _instances.insert({ taskId, desc });
+  _agency._instances.insert(taskId);
+  _agency._slaves[desc._slaveId].insert(taskId);
+
+  ++(_agency._startedInstances);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status update (runing)
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::taskRunning (uint64_t taskId) {
+  auto iter = _instances.find(taskId);
+
+  if (iter == _instances.end()) {
+    return;
+  }
+
+  Instance& instance = iter->second;
+
+  if (instance._state == InstanceState::RUNNING) {
+    return;
+  }
+
+  if (instance._state != InstanceState::STARTED) {
+    LOG(WARNING) << "INSTANCE is not STARTED, but got RUNNING (for "
+                 << taskId << "), ignoring\n";
+    return;
+  }
+
+  Aspects* aspects = aspectsByType(instance._type);
+
+  LOG(INFO)
+  << "INSTANCE changing state from " << int(instance._state)
+  << " to RUNNING for " << taskId << "\n";
+
+  instance._state = InstanceState::RUNNING;
+
+  --(aspects->_startedInstances);
+  ++(aspects->_runningInstances);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status update (finished)
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::taskFinished (uint64_t taskId) {
+  auto iter = _instances.find(taskId);
+
+  if (iter == _instances.end()) {
+    return;
+  }
+
+  Instance& instance = iter->second;
+  InstanceState state = instance._state;
+
+  if (state != InstanceState::STARTED && state != InstanceState::RUNNING) {
+    return;
+  }
+
+  Aspects* aspects = aspectsByType(instance._type);
+
+  LOG(INFO)
+  << "INSTANCE changing state from " << int(instance._state)
+  << " to RUNNING for " << taskId << "\n";
+
+  if (state == InstanceState::STARTED && 0 < aspects->_startedInstances) {
+    --(aspects->_startedInstances);
+  }
+  else if (state == InstanceState::RUNNING && 0 < aspects->_runningInstances) {
+    --(aspects->_runningInstances);
+  }
+
+  instance._state = InstanceState::FINISHED;
+
+  auto& iter = agency->_slaves.find(instance._slaveId);
+
+  if (iter != agency->end()) {
+    iter.erase(taskId);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,6 +707,20 @@ bool ArangoManagerImpl::checkOfferCoordinator (const Offer& offer) {
 bool ArangoManagerImpl::checkOfferDBServer (const Offer& offer) {
   return checkOfferAgainstResources(
     offer, _dbserver._minimumResources, "DBserver");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the aspects for the type
+////////////////////////////////////////////////////////////////////////////////
+
+Aspects* ArangoManagerImpl::aspectsByType (InstanceType type) {
+  Aspects* aspects = nullptr;
+
+  switch (type) {
+    case InstanceType::AGENCY: return &_agency;
+    case InstanceType::COORDINATOR: return &_coordinator;
+    case InstanceType::DBSERVER: return &_dbserver;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -534,6 +755,30 @@ ArangoManager::~ArangoManager () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks and adds an offer
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManager::addOffer (const Offer& offer) {
+  _impl->addOffer(offer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an offer
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManager::removeOffer (const OfferID& offerId) {
+  _impl->removeOffer(offerId);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief status update
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManager::statusUpdate (uint64_t taskId, InstanceState state) {
+  _impl->statusUpdate(taskId, state);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns planned number of agency instances
@@ -587,22 +832,6 @@ ArangoManager::Resources ArangoManager::coordinatorResources () {
 ArangoManager::Resources ArangoManager::dbserverResources () {
   lock_guard<mutex> lock(_impl->_lock);
   return _impl->_dbserver._minimumResources;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks and adds an offer
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManager::addOffer (const Offer& offer) {
-  _impl->addOffer(offer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an offer
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManager::removeOffer (const OfferID& offerId) {
-  _impl->removeOffer(offerId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
