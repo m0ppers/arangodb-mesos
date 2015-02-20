@@ -114,6 +114,7 @@ int main (int argc, char** argv) {
   executor.mutable_command()->set_value(uri);
   executor.set_name("Test Executor (C++)");
   executor.set_source("cpp_test");
+  *executor.mutable_resources() = Resources::parse("cpus:1;mem:128;disk:32").get();
 
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.

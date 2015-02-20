@@ -54,14 +54,14 @@ namespace {
   size_t numberPorts (const Offer& offer) {
     size_t value = 0;
 
-    for (size_t i = 0; i < offer.resources_size(); ++i) {
+    for (int i = 0; i < offer.resources_size(); ++i) {
       const auto& resource = offer.resources(i);
 
       if (resource.name() == "ports" &&
           resource.type() == Value::RANGES) {
         const auto& ranges = resource.ranges();
 
-        for (size_t j = 0; j < ranges.range_size(); ++j) {
+        for (int j = 0; j < ranges.range_size(); ++j) {
           const auto& range = ranges.range(j);
 
           value += range.end() - range.begin() + 1;
@@ -80,14 +80,14 @@ namespace {
 
     vector<Value::Range> resources;
 
-    for (size_t i = 0; i < offer.resources_size(); ++i) {
+    for (int i = 0; i < offer.resources_size(); ++i) {
       const auto& resource = offer.resources(i);
 
       if (resource.name() == "ports" &&
           resource.type() == Value::RANGES) {
         const auto& ranges = resource.ranges();
 
-        for (size_t j = 0; j < ranges.range_size(); ++j) {
+        for (int j = 0; j < ranges.range_size(); ++j) {
           const auto& range = ranges.range(j);
 
           resources.push_back(range);
@@ -538,6 +538,7 @@ StartOffer ArangoManagerImpl::findOffer (Aspects& aspect) {
   StartOffer result = findReservedOffer(aspect);
 
   if (result._usable) {
+    _reservedOffers.erase(result._offer.id().value());
     return result;
   }
 

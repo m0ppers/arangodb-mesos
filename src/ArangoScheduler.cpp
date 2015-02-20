@@ -117,6 +117,9 @@ void ArangoScheduler::reserveDynamically (const Offer& offer,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::declineOffer (const OfferID& offerId) {
+  LOG(INFO)
+  << "DEBUG declining offer " << offerId.value();
+
   _driver->declineOffer(offerId);
 }
 
@@ -132,15 +135,16 @@ uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
   cout << "AGENCY launching task " << taskId 
        << " using offer " << offerId 
        << ": " << offer.resources()
+       << " and using resources " << resources
        << "\n";
 
   TaskInfo task;
 
   task.set_name("Agency " + lexical_cast<string>(taskId));
   task.mutable_task_id()->set_value(lexical_cast<string>(taskId));
-  task.mutable_slave_id()->MergeFrom(offer.slave_id());
-  task.mutable_executor()->MergeFrom(_executor);
-  task.mutable_resources()->MergeFrom(resources);
+  task.mutable_slave_id()->CopyFrom(offer.slave_id());
+  task.mutable_executor()->CopyFrom(_executor);
+  task.mutable_resources()->CopyFrom(resources);
 
   vector<TaskInfo> tasks;
   tasks.push_back(task);
@@ -148,22 +152,6 @@ uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
   _driver->launchTasks(offer.id(), tasks);
 
   return taskId;
-
-/*
-  Resources reserved = filter(
-    static_cast<bool (*)(const Resource&)>(Resources::isReserved),
-    offer.resources());
-
-  cout << "################ " << reserved << "\n";
-
-  Offer::Operation reserve;
-  reserve.set_type(Offer::Operation::RESERVE);
-  reserve.mutable_reserve()->mutable_resources()->CopyFrom(reserved);
-
-  _driver->acceptOffers({offer.id()}, {reserve});
-*/
-
-  return 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -207,6 +195,9 @@ void ArangoScheduler::disconnected (SchedulerDriver* driver) {
 void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
                                       const vector<Offer>& offers) {
   for (auto& offer : offers) {
+    LOG(INFO)
+    << "DEBUG offer received " << offer.id().value();
+
     _manager->addOffer(offer);
   }
 }
@@ -217,6 +208,9 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
 
 void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
                                       const OfferID& offerId) {
+  LOG(INFO)
+  << "DEBUG offer rescinded " << offerId.value();
+
   _manager->removeOffer(offerId);
 }
 

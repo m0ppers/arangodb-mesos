@@ -48,6 +48,13 @@ AC_PROG_RANLIB
 
 AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 
+if test x$GCC == xyes;  then
+  WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
+fi
+
+CFLAGS="${CFLAGS} ${WALL}"
+CXXFLAGS="${CXXFLAGS} ${WALL}"
+
 dnl ============================================================================
 dnl --SECTION--                                               external libraries
 dnl ============================================================================
