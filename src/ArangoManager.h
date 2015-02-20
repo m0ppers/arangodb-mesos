@@ -28,11 +28,13 @@
 #ifndef ARANGO_MANAGER_H
 #define ARANGO_MANAGER_H 1
 
+#include <chrono>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include <mesos/resources.hpp>
 #include <mesos/scheduler.hpp>
 
 // -----------------------------------------------------------------------------
@@ -58,7 +60,7 @@ namespace arangodb {
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief roles
+/// @brief instance types
 ////////////////////////////////////////////////////////////////////////////////
 
       enum class InstanceType {
@@ -67,8 +69,20 @@ namespace arangodb {
         DBSERVER
       };
 
+      static const string& stringInstanceType (const InstanceType& type) {
+        static string agency = "AGENCY";
+        static string coordinator = "COORDINATOR";
+        static string dbserver = "DBSERVER";
+
+        switch (type) {
+          case InstanceType::AGENCY: return agency; break;
+          case InstanceType::COORDINATOR: return coordinator; break;
+          case InstanceType::DBSERVER: return dbserver; break;
+        }
+      }
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task states
+/// @brief instance states
 ////////////////////////////////////////////////////////////////////////////////
 
       enum class InstanceState {
@@ -78,31 +92,33 @@ namespace arangodb {
         FAILED
       };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resource
-////////////////////////////////////////////////////////////////////////////////
+      static const string& stringInstanceState (const InstanceState& state) {
+        static string started = "STARTED";
+        static string running = "RUNNING";
+        static string finished = "FINISHED";
+        static string failed = "FAILED";
 
-      struct Resources {
-        Resources () 
-          : _cpus(0.0), _mem(0), _disk(0), _ports(0) {
+        switch (state) {
+          case InstanceState::STARTED: return started; break;
+          case InstanceState::RUNNING: return running; break;
+          case InstanceState::FINISHED: return finished; break;
+          case InstanceState::FAILED: return failed; break;
         }
-
-        Resources (double cpus, size_t mem, size_t disk, size_t ports)
-          : _cpus(cpus), _mem(mem), _disk(disk), _ports(ports) {
-        }
-
-        double _cpus;
-        size_t _mem;      // in MByte
-        size_t _disk;     // in MBbyte
-        size_t _ports;    // number of ports
-      };
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resource including selected ports
+/// @brief instance
 ////////////////////////////////////////////////////////////////////////////////
 
-      struct UsedResources : Resources {
-        vector<uint32_t> _usedPorts;
+      struct Instance {
+        public:
+          uint64_t _taskId;
+          InstanceState _state;
+          InstanceType _type;
+          mesos::Resources _resources;
+          string _slaveId;
+          chrono::system_clock::time_point _started;
+          chrono::system_clock::time_point _lastUpdate;
       };
 
 // -----------------------------------------------------------------------------
@@ -169,25 +185,31 @@ namespace arangodb {
 /// @brief returns minimum resources for agency
 ////////////////////////////////////////////////////////////////////////////////
 
-      Resources agencyResources ();
+      //      BasicResources agencyResources ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns minimum resources for coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-      Resources coordinatorResources ();
+      //      BasicResources coordinatorResources ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns minimum resources for DBserver
 ////////////////////////////////////////////////////////////////////////////////
 
-      Resources dbserverResources ();
+      //  BasicResources dbserverResources ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current offers
+/// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
       vector<mesos::Offer> currentOffers ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current instances for debugging
+////////////////////////////////////////////////////////////////////////////////
+
+      vector<Instance> currentInstances ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -28,14 +28,9 @@
 #include "ArangoManager.h"
 
 #include <atomic>
-#include <chrono>
 #include <iostream>
 #include <set>
 #include <unordered_map>
-
-#include <mesos/resources.hpp>
-
-#include "common/type_utils.hpp"
 
 #include "ArangoScheduler.h"
 
@@ -45,36 +40,24 @@ using namespace arangodb;
 using std::chrono::system_clock;
 using InstanceState = ArangoManager::InstanceState;
 using InstanceType = ArangoManager::InstanceType;
-using UsedResources = ArangoManager::UsedResources;
+using Instance = ArangoManager::Instance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
 namespace {
-  double scalarResource (const Offer& offer, const std::string& name) {
-    double value = 0.0;
-
-    for (size_t i = 0; i < offer.resources_size(); ++i) {
-      const auto& resource = offer.resources(i);
-
-      if (resource.name() == name &&
-          resource.type() == Value::SCALAR) {
-        value = resource.scalar().value();
-      }
-    }
-
-    return value;
+  bool notIsPorts (const Resource& resource) {
+    return resource.name() != "ports";
   }
 
-
-  size_t rangeResource (const Offer& offer, const std::string& name) {
+  size_t numberPorts (const Offer& offer) {
     size_t value = 0;
 
     for (size_t i = 0; i < offer.resources_size(); ++i) {
       const auto& resource = offer.resources(i);
 
-      if (resource.name() == name &&
+      if (resource.name() == "ports" &&
           resource.type() == Value::RANGES) {
         const auto& ranges = resource.ranges();
 
@@ -88,57 +71,6 @@ namespace {
 
     return value;
   }
-
-
-  bool checkOfferAgainstResources (const Offer& offer,
-                                   const ArangoManager::Resources& resources,
-                                   const string& name) {
-    double cpus = scalarResource(offer, "cpus");
-
-    if (cpus < resources._cpus) {
-      LOG(INFO)
-      << "OFFER declined for " << name << ": not enough CPU power "
-      << "(got " << cpus << ", need " << resources._cpus << ")\n";
-      return false;
-    }
-
-    double mem = scalarResource(offer, "mem");
-
-    if (mem < resources._mem) {
-      LOG(INFO)
-      << "OFFER declined for " << name << ": not enough memory "
-      << "(got " << mem << ", need " << resources._mem << ")\n";
-      return false;
-    }
-
-    double disk = scalarResource(offer, "disk");
-
-    if (disk < resources._disk) {
-      LOG(INFO)
-      << "OFFER declined for " << name << ": not enough disk "
-      << "(got " << disk << ", need " << resources._disk << ")\n";
-      return false;
-    }
-
-    size_t ports = rangeResource(offer, "ports");
-
-    if (ports < resources._ports) {
-      LOG(INFO)
-      << "OFFER declined for " << name << ": not enough ports "
-      << "(got " << ports << ", need " << resources._ports << ")\n";
-      return false;
-    }
-
-    LOG(INFO)
-    << "OFFER suitable for " << name << ": "
-    << "cpus:" << cpus << ", "
-    << "mem:" << mem << ", "
-    << "disk:" << disk << ", "
-    << "ports:" << ports << "\n";
-
-    return true;
-  }
-
 
 
   vector<uint32_t> findFreePorts (const Offer& offer, size_t len) {
@@ -180,72 +112,38 @@ namespace {
   }
 
 
-  Resources convertUsedResources (
-      const UsedResources& taskResources,
-      const string& role) {
-
-    // set MESOS resources
+  Resources resourcesPorts (const vector<uint32_t>& ports) {
     Resources resources;
 
-    Resource cpu;
-    cpu.set_name("cpus");
-    cpu.set_role(role);
-    cpu.set_type(Value::SCALAR);
-    cpu.mutable_scalar()->set_value(taskResources._cpus);
+    Resource res;
+    res.set_name("ports");
+    res.set_type(Value::RANGES);
 
-    resources += cpu;
+    for (uint32_t p : ports) {
+      Value_Range* range = res.mutable_ranges()->add_range();
 
-    Resource mem;
-    mem.set_name("mem");
-    mem.set_role(role);
-    mem.set_type(Value::SCALAR);
-    mem.mutable_scalar()->set_value(taskResources._mem);
+      range->set_begin(p);
+      range->set_end(p);
+    }
 
-    resources += mem;
-
-    Resource disk;
-    disk.set_name("disk");
-    disk.set_role(role);
-    disk.set_type(Value::SCALAR);
-    disk.mutable_scalar()->set_value(taskResources._disk);
-
-    resources += disk;
-
-    Resource ports;
-    ports.set_name("ports");
-    ports.set_role(role);
-    ports.set_type(Value::RANGES);
-
-    Value_Range* range;
-
-    range = ports.mutable_ranges()->add_range();
-    range->set_begin(taskResources._usedPorts.at(0));
-    range->set_end(taskResources._usedPorts.at(0));
-
-    range = ports.mutable_ranges()->add_range();
-    range->set_begin(taskResources._usedPorts.at(1));
-    range->set_end(taskResources._usedPorts.at(1));
-
-    resources += ports;
+    resources += res;
 
     return resources;
   }
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    class Instance
+// --SECTION--                                                 struct StartOffer
 // -----------------------------------------------------------------------------
 
-struct Instance {
-  public:
-    uint64_t _taskId;
-    InstanceState _state;
-    InstanceType _type;
-    UsedResources _resources;
-    string _slaveId;
-    system_clock::time_point _started;
-    system_clock::time_point _lastUpdate;
-};
+namespace {
+  struct StartOffer {
+    bool _usable;
+    Offer _offer;
+    Resources _resources;
+    vector<uint32_t> _ports;
+  };
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     class Aspects
@@ -253,17 +151,128 @@ struct Instance {
 
 class Aspects {
   public:
+    Aspects (const string& name, const string& role)
+      : _name(name), _role(role) {
+    }
+
+  public:
+    Resources minimumResources () {
+      return _minimumResources;
+    }
+
+    Resources minimumResourcesRole () {
+      return _minimumResources.flatten(_role, Resource::FRAMEWORK);
+    }
+
+    bool checkMinimum (const Offer& offer) {
+      Resources resources = offer.resources();
+
+      if (numberPorts(offer) < _requiredPorts) {
+        LOG(INFO) 
+        << "DEBUG " << resources << " does not have " 
+        << _requiredPorts << " ports";
+
+        return false;
+      }
+
+      Resources mr = minimumResourcesRole();
+
+      if (resources.contains(mr)) {
+        LOG(INFO) << "DEBUG " << resources << " contains " << mr;
+        return true;
+      }
+
+      Resources m = minimumResources();
+
+      if (resources.contains(m)) {
+        LOG(INFO) << "DEBUG " << resources << " contains " << m;
+        return true;
+      }
+
+      LOG(INFO)
+      << "DEBUG minimum " << m << " or " << mr << " not contained in "
+      << resources;
+
+      return false;
+    }
+
+  public:
+    const string _name;
+
     size_t _plannedInstances;
     size_t _minimumInstances;
 
     size_t _startedInstances;
     size_t _runningInstances;
 
+    Resources _minimumResources;
+    Resources _additionalResources;
+
+    size_t _requiredPorts;
+
     set<string> _offers;
     set<uint64_t> _instances;
     unordered_map<string, set<uint64_t>> _slaves;
 
-    ArangoManager::Resources _minimumResources;
+  private:
+    const string _role;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class AgencyAspects
+// -----------------------------------------------------------------------------
+
+class AgencyAspects : public Aspects {
+  public:
+    AgencyAspects (const string& role) 
+      : Aspects("AGENCY", role) {
+      _minimumInstances = 1;
+      _plannedInstances = 3;
+
+      _startedInstances = 0;
+      _runningInstances = 0;
+
+      _minimumResources = Resources::parse("cpus:1;mem:100;disk:100").get();
+      _requiredPorts = 2;
+    }
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          class CoordinatorAspects
+// -----------------------------------------------------------------------------
+
+class CoordinatorAspects : public Aspects {
+  public:
+    CoordinatorAspects (const string& role) 
+      : Aspects("COORDINATOR", role) {
+      _minimumInstances = 1;
+      _plannedInstances = 4;
+
+      _startedInstances = 0;
+      _runningInstances = 0;
+
+      _minimumResources = Resources::parse("cpus:4;mem:1024;disk:1024").get();
+      _requiredPorts = 1;
+    }
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class DBServersAspects
+// -----------------------------------------------------------------------------
+
+class DBServerAspects : public Aspects {
+  public:
+    DBServerAspects (const string& role) 
+      : Aspects("DBSERVER", role) {
+      _minimumInstances = 2;
+      _plannedInstances = 2;
+
+      _startedInstances = 0;
+      _runningInstances = 0;
+
+      _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
+      _requiredPorts = 1;
+    }
 };
 
 // -----------------------------------------------------------------------------
@@ -280,12 +289,17 @@ class arangodb::ArangoManagerImpl {
     void removeOffer (const OfferID& offerId);
     void statusUpdate (uint64_t, InstanceState);
     vector<Offer> currentOffers ();
+    vector<Instance> currentInstances ();
 
   private:
     void removeOffer (const string& offerId);
-    void checkAgencyInstances ();
-    Offer findAgencyOffer (bool&);
-    void startAgencyInstance (const Offer&, const UsedResources&);
+
+    void checkInstances (Aspects&);
+    StartOffer findOffer (Aspects&);
+    StartOffer findReservedOffer (Aspects&);
+    void findUnreservedOffer (Aspects&);
+
+    void startInstance (Aspects&, StartOffer&);
 
     void taskRunning (uint64_t);
     void taskFinished (uint64_t);
@@ -302,11 +316,14 @@ class arangodb::ArangoManagerImpl {
     mutex _lock;
     atomic<bool> _stopDispatcher;
 
-    Aspects _agency;
-    Aspects _coordinator;
-    Aspects _dbserver;
+    AgencyAspects _agency;
+    CoordinatorAspects _coordinator;
+    DBServerAspects _dbserver;
 
   private:
+    unordered_map<string, Offer> _reservedOffers;
+    unordered_map<string, Offer> _unreservedOffers;
+
     unordered_map<string, Offer> _offers;
     unordered_map<uint64_t, Instance> _instances;
 };
@@ -322,29 +339,12 @@ class arangodb::ArangoManagerImpl {
 ArangoManagerImpl::ArangoManagerImpl (const string& role, ArangoScheduler* scheduler)
   : _role(role),
     _scheduler(scheduler),
-    _lock(),
     _stopDispatcher(false),
-    _agency(),
-    _coordinator(),
-    _dbserver(),
-    _offers() {
+    _agency(role),
+    _coordinator(role),
+    _dbserver(role) {
 
   // TODO(fc) how to persist & change these values
-
-  // fill the defaults for an agency
-  _agency._plannedInstances = 3;
-  _agency._minimumInstances = 1;
-  _agency._minimumResources = ArangoManager::Resources(0.2, 10, 10, 2);
-
-  // fill the defaults for a coordinator
-  _coordinator._plannedInstances = 4;
-  _coordinator._minimumInstances = 1;
-  _coordinator._minimumResources = ArangoManager::Resources(4, 2048, 1024, 1);
-
-  // fill the defaults for a DBserver
-  _coordinator._plannedInstances = 2;
-  _coordinator._minimumInstances = 2;
-  _coordinator._minimumResources = ArangoManager::Resources(2, 1024, 4096, 1);
 }
 
 // -----------------------------------------------------------------------------
@@ -364,7 +364,7 @@ void ArangoManagerImpl::dispatch () {
     {
       lock_guard<mutex> lock(_lock);
 
-      checkAgencyInstances();
+      checkInstances(_agency);
     }
 
     this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
@@ -383,28 +383,31 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   LOG(INFO)
   << "OFFER received: " << id << ": " << offer.resources() << "\n";
 
-  bool agency = checkOfferAgency(offer);
-  bool coordinator = checkOfferCoordinator(offer);
-  bool dbserver = checkOfferDBServer(offer);
+  // basic check if offer is suitable
+  vector<Aspects> aspects = { _agency };
 
-  if (! dbserver && ! coordinator && ! agency) {
+  if (none_of(aspects.begin(), aspects.end(),
+              [&] (Aspects& a) -> bool {return a.checkMinimum(offer);})) {
+
     LOG(INFO)
-    << "OFFER ignored: " << id << ": " << offer.resources() << "\n";
+    << "OFFER declined, because minimum resource not satisfied";
+
+    _scheduler->declineOffer(offer.id());
+
     return;
   }
 
-  _offers.insert({ id, offer });
+  Resources reserved = filter(
+    static_cast<bool (*)(const Resource&)>(Resources::isReserved),
+    offer.resources());
 
-  if (agency) {
-    _agency._offers.insert(id);
+  reserved = filter(notIsPorts, reserved);
+
+  if (reserved.empty()) {
+    _unreservedOffers.insert({ id, offer });
   }
-
-  if (coordinator) {
-    _coordinator._offers.insert(id);
-  }
-
-  if (dbserver) {
-    _dbserver._offers.insert(id);
+  else {
+    _reservedOffers.insert({ id, offer });
   }
 }
 
@@ -435,7 +438,7 @@ void ArangoManagerImpl::statusUpdate (uint64_t taskId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current offers
+/// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
 vector<Offer> ArangoManagerImpl::currentOffers () {
@@ -444,8 +447,26 @@ vector<Offer> ArangoManagerImpl::currentOffers () {
   {
     lock_guard<mutex> lock(_lock);
 
-    for (auto offer : _offers) {
+    for (const auto& offer : _offers) {
       result.push_back(offer.second);
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current offers for debugging
+////////////////////////////////////////////////////////////////////////////////
+
+vector<Instance> ArangoManagerImpl::currentInstances () {
+  vector<Instance> result;
+
+  {
+    lock_guard<mutex> lock(_lock);
+
+    for (const auto& instance : _instances) {
+      result.push_back(instance.second);
     }
   }
 
@@ -474,20 +495,20 @@ void ArangoManagerImpl::removeOffer (const string& id) {
 /// @brief checks if need to start a new agency instance
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::checkAgencyInstances () {
-  size_t planned = _agency._plannedInstances;
+void ArangoManagerImpl::checkInstances (Aspects& aspect) {
+  size_t planned = aspect._plannedInstances;
 
   LOG(INFO)
-  << "AGENCY "
-  << _agency._runningInstances << " running instances, "
-  << _agency._startedInstances << " started instances, "
+  << aspect._name << " "
+  << aspect._runningInstances << " running instances, "
+  << aspect._startedInstances << " started instances, "
   << planned << " planned instances\n";
 
-  if (planned <= _agency._runningInstances) {
+  if (planned <= aspect._runningInstances) {
     return;
   }
 
-  if (planned <= _agency._runningInstances + _agency._startedInstances) {
+  if (planned <= aspect._runningInstances + aspect._startedInstances) {
     // TODO(fc) do we need to add a timeout?
     return;
   }
@@ -496,107 +517,107 @@ void ArangoManagerImpl::checkAgencyInstances () {
   // which knows the master plan. If all instances fail, we need to restart at
   // least an instance which has access to the persistent volume!
 
-  bool found;
-  const Offer offer = findAgencyOffer(found);
+  StartOffer offer = findOffer(aspect);
 
-  if (! found) {
+  if (! offer._usable) {
     LOG(INFO) << "AGENCY cannot find a suitable resource for missing agency\n";
     return;
   }
 
-  // TODO(fc) do we need prefered resources in addition in minimum?
-
-  // set resources
-  UsedResources taskResources;
-
-  taskResources._cpus = _agency._minimumResources._cpus;
-  taskResources._mem = _agency._minimumResources._mem;
-  taskResources._disk = _agency._minimumResources._disk;
-  taskResources._ports = 2;
-  taskResources._usedPorts = findFreePorts(offer, taskResources._ports);
-
-  if (taskResources._usedPorts.size() != 2) {
-    LOG(WARNING) << "AGENCY found corrupt offer, this should not happen\n";
-    return;
-  }
-
   // try to start a new instance
-  startAgencyInstance(offer, taskResources);
+  startInstance(aspect, offer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a suitable offer for an agency
 ////////////////////////////////////////////////////////////////////////////////
 
-Offer ArangoManagerImpl::findAgencyOffer (bool& found) {
-  Offer result;
+StartOffer ArangoManagerImpl::findOffer (Aspects& aspect) {
 
-  found = false;
+  // first check the reserved offers
+  StartOffer result = findReservedOffer(aspect);
 
-  if (_agency._offers.empty()) {
+  if (result._usable) {
     return result;
   }
 
-  // TODO(fc) need a better selection algorithm
-  string offerId;
+  // found no reserved offer, check the unreserved one and try to reserve one
+  findUnreservedOffer(aspect);
 
-  for (const auto& id : _agency._offers) {
-    auto iter = _offers.find(id);
-    
-    if (iter == _offers.end()) {
-      continue;
+  return { false };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a suitable reserved offer for an agency
+////////////////////////////////////////////////////////////////////////////////
+
+StartOffer ArangoManagerImpl::findReservedOffer (Aspects& aspect) {
+  Resources resources = aspect.minimumResourcesRole();
+
+  for (auto& id_offer : _reservedOffers) {
+    Resources r = id_offer.second.resources();
+
+    if (r.contains(resources)) {
+      auto ports = findFreePorts(id_offer.second, aspect._requiredPorts);
+
+      if (ports.size() == aspect._requiredPorts) {
+        return { true, id_offer.second, resources, ports };
+      }
     }
-
-    const Offer& offer = iter->second;
-    string slaveId = offer.slave_id().value();
-
-    LOG(INFO)
-    << "testing offer " << id << " on slave " << slaveId << "\n";
-
-    auto jter = _agency._slaves.find(slaveId);
-
-    if (jter != _agency._slaves.end() && ! jter->second.empty()) {
-      continue;
-    }
-
-    found = true;
-    result = iter->second;
-    offerId = id;
-
-    break;
   }
 
-  if (found) {
-    removeOffer(offerId);
-  }
+  return { false };
+}
 
-  return result;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds a suitable unreserved offer for an agency
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::findUnreservedOffer (Aspects& aspect) {
+  Resources resources = aspect.minimumResources();
+
+  for (auto& id_offer : _unreservedOffers) {
+    Offer& offer = id_offer.second;
+    Resources r = offer.resources();
+
+    if (r.contains(resources) && numberPorts(offer) >= aspect._requiredPorts) {
+      resources = resources.flatten(_role, Resource::FRAMEWORK);
+
+      LOG(INFO)
+      << aspect._name << " "
+      << "trying to reserve " << r 
+      << " with " << resources;
+
+      _scheduler->reserveDynamically(id_offer.second, resources);
+      _unreservedOffers.erase(id_offer.first);
+      return;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new agency
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::startAgencyInstance (
-    const Offer& offer,
-    const UsedResources& taskResources) {
+void ArangoManagerImpl::startInstance (Aspects& aspects, StartOffer& offer) {
+  string const& id = offer._offer.id().value();
 
-  string const& id = offer.id().value();
-  Resources resources = convertUsedResources(taskResources, _role);
+  Resources resources = offer._resources;
+  resources += resourcesPorts(offer._ports);
 
   LOG(INFO)
   << "AGENCY about to start agency using offer " << id 
   << " with resources " << resources << "\n";
 
-  uint64_t taskId = _scheduler->startAgencyInstance(offer, resources);
+  uint64_t taskId = _scheduler->startAgencyInstance(offer._offer, resources);
 
   Instance desc;
 
   desc._taskId = taskId;
   desc._type = InstanceType::AGENCY;
   desc._state = InstanceState::STARTED;
-  desc._resources = taskResources;
-  desc._slaveId = offer.slave_id().value();
+  desc._resources = resources;
+  desc._slaveId = offer._offer.slave_id().value();
   desc._started = system_clock::now();
   desc._lastUpdate = system_clock::time_point();
 
@@ -612,7 +633,7 @@ void ArangoManagerImpl::startAgencyInstance (
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::taskRunning (uint64_t taskId) {
-  auto iter = _instances.find(taskId);
+  const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
     return;
@@ -633,7 +654,7 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
   Aspects* aspects = aspectsByType(instance._type);
 
   LOG(INFO)
-  << "INSTANCE changing state from " << int(instance._state)
+  << "INSTANCE changing state from " << ArangoManager::stringInstanceState(instance._state)
   << " to RUNNING for " << taskId << "\n";
 
   instance._state = InstanceState::RUNNING;
@@ -647,7 +668,7 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::taskFinished (uint64_t taskId) {
-  auto iter = _instances.find(taskId);
+  const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
     return;
@@ -663,8 +684,8 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
   Aspects* aspects = aspectsByType(instance._type);
 
   LOG(INFO)
-  << "INSTANCE changing state from " << int(instance._state)
-  << " to RUNNING for " << taskId << "\n";
+  << "INSTANCE changing state from " << ArangoManager::stringInstanceState(instance._state)
+  << " to FINISHED for " << taskId << "\n";
 
   if (state == InstanceState::STARTED && 0 < aspects->_startedInstances) {
     --(aspects->_startedInstances);
@@ -675,10 +696,10 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
 
   instance._state = InstanceState::FINISHED;
 
-  auto& iter = agency->_slaves.find(instance._slaveId);
+  const auto& jter = aspects->_slaves.find(instance._slaveId);
 
-  if (iter != agency->end()) {
-    iter.erase(taskId);
+  if (jter != aspects->_slaves.end()) {
+    aspects->_slaves.erase(jter);
   }
 }
 
@@ -687,8 +708,11 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ArangoManagerImpl::checkOfferAgency (const Offer& offer) {
+  return false;
+/*
   return checkOfferAgainstResources(
     offer, _agency._minimumResources, "agency");
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,8 +720,11 @@ bool ArangoManagerImpl::checkOfferAgency (const Offer& offer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ArangoManagerImpl::checkOfferCoordinator (const Offer& offer) {
+  return false;
+/*
   return checkOfferAgainstResources(
     offer, _coordinator._minimumResources, "coordinator");
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -705,8 +732,11 @@ bool ArangoManagerImpl::checkOfferCoordinator (const Offer& offer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ArangoManagerImpl::checkOfferDBServer (const Offer& offer) {
+  return false;
+/*
   return checkOfferAgainstResources(
     offer, _dbserver._minimumResources, "DBserver");
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,35 +841,49 @@ size_t ArangoManager::dbserverInstances () {
 /// @brief returns minimum resources for agency
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager::Resources ArangoManager::agencyResources () {
+/*
+ArangoManager::BasicResources ArangoManager::agencyResources () {
   lock_guard<mutex> lock(_impl->_lock);
-  return _impl->_agency._minimumResources;
+//  return _impl->_agency._minimumResources;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns minimum resources for coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager::Resources ArangoManager::coordinatorResources () {
+/*
+ArangoManager::BasicResources ArangoManager::coordinatorResources () {
   lock_guard<mutex> lock(_impl->_lock);
-  return _impl->_coordinator._minimumResources;
+//  return _impl->_coordinator._minimumResources;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns minimum resources for DBserver
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager::Resources ArangoManager::dbserverResources () {
+/*
+ArangoManager::BasicResources ArangoManager::dbserverResources () {
   lock_guard<mutex> lock(_impl->_lock);
-  return _impl->_dbserver._minimumResources;
+//  return _impl->_dbserver._minimumResources;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current offers
+/// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
 vector<Offer> ArangoManager::currentOffers () {
   return _impl->currentOffers();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current instances for debugging
+////////////////////////////////////////////////////////////////////////////////
+
+vector<Instance> ArangoManager::currentInstances () {
+  return _impl->currentInstances();
 }
 
 // -----------------------------------------------------------------------------

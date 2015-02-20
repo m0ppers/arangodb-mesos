@@ -35,8 +35,6 @@
 
 #include <mesos/resources.hpp>
 
-#include "common/type_utils.hpp"
-
 #include "ArangoManager.h"
 
 using namespace std;
@@ -102,15 +100,39 @@ void ArangoScheduler::setDriver (SchedulerDriver* driver) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief makes a dynamic reservation
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::reserveDynamically (const Offer& offer,
+                                          const Resources& resources) {
+  Offer::Operation reserve;
+  reserve.set_type(Offer::Operation::RESERVE);
+  reserve.mutable_reserve()->mutable_resources()->CopyFrom(resources);
+
+  _driver->acceptOffers({offer.id()}, {reserve});
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief declines an offer
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::declineOffer (const OfferID& offerId) {
+  _driver->declineOffer(offerId);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an agency with a given offer
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
-                                          const Resources& resources) {
+                                               const Resources& resources) {
   uint64_t taskId = NEXT_TASK_ID.fetch_add(1);
   const string offerId = offer.id().value();
 
-  cout << "AGENCY launching task " << taskId << " using offer " << offerId << "\n";
+  cout << "AGENCY launching task " << taskId 
+       << " using offer " << offerId 
+       << ": " << offer.resources()
+       << "\n";
 
   TaskInfo task;
 
@@ -126,6 +148,22 @@ uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
   _driver->launchTasks(offer.id(), tasks);
 
   return taskId;
+
+/*
+  Resources reserved = filter(
+    static_cast<bool (*)(const Resource&)>(Resources::isReserved),
+    offer.resources());
+
+  cout << "################ " << reserved << "\n";
+
+  Offer::Operation reserve;
+  reserve.set_type(Offer::Operation::RESERVE);
+  reserve.mutable_reserve()->mutable_resources()->CopyFrom(reserved);
+
+  _driver->acceptOffers({offer.id()}, {reserve});
+*/
+
+  return 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -168,10 +206,6 @@ void ArangoScheduler::disconnected (SchedulerDriver* driver) {
 
 void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
                                       const vector<Offer>& offers) {
-  static int tasksLaunched = 1;
-
-  cout << "Resource Offers!" << endl;
-
   for (auto& offer : offers) {
     _manager->addOffer(offer);
   }
@@ -195,22 +229,28 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
   uint64_t taskId = lexical_cast<uint64_t>(status.task_id().value());
   auto state = status.state();
 
-  cout << "TASK '" << status.task_id() << "' is in state " << state << endl;
+  cout << "TASK '" << status.task_id().value() << "' is in state " << state << endl;
 
-  if (state == TASK_RUNNING) {
-    _manager->statusUpdate(taskId, ArangoManager::InstanceState::RUNNING);
-  }
-  else if (state == TASK_STARTING) {
-    // do nothing
-  }
-  else if (state == TASK_FINISHED) {
-    _manager->statusUpdate(taskId, ArangoManager::InstanceState::FINISHED);
+  switch (state) {
+    case TASK_RUNNING:
+      _manager->statusUpdate(taskId, ArangoManager::InstanceState::RUNNING);
+      break;
+
+    case TASK_STARTING:
+      // do nothing
+      break;
+
+    case TASK_FINISHED: // TERMINAL. The task finished successfully.
+    case TASK_FAILED:   // TERMINAL. The task failed to finish successfully.
+    case TASK_KILLED:   // TERMINAL. The task was killed by the executor.
+    case TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
+    case TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
+      _manager->statusUpdate(taskId, ArangoManager::InstanceState::FINISHED);
+      break;
   }
 
-  // TODO(fc) handle other cases
-
-  cout << "Task info: " << status.task_id()
-       << " is in unexpected state " << status.state()
+  cout << "Task info: " << status.task_id().value()
+       << " is in state " << status.state()
        << " with reason " << status.reason()
        << " from source " << status.source()
        << " with message '" << status.message() << "'"

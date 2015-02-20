@@ -32,18 +32,25 @@
 
 #include <string>
 
+#include <mesos/mesos.pb.h>
+
 #include "ArangoManager.h"
 
 using namespace std;
 using namespace mesos;
 using namespace arangodb;
 
+using InstanceState = ArangoManager::InstanceState;
+using InstanceType = ArangoManager::InstanceType;
+using Instance = ArangoManager::Instance;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
+/*
 string JsonConfig (size_t instances,
-                   const ArangoManager::Resources& resources) {
+                   const ArangoManager::BasicResources& resources) {
   picojson::object r1;
 
   r1["cpus"] = picojson::value(resources._cpus);
@@ -58,6 +65,7 @@ string JsonConfig (size_t instances,
 
   return picojson::value(result).serialize();
 }
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class HttpServerImpl
@@ -78,6 +86,7 @@ class arangodb::HttpServerImpl {
     string GET_V1_CONFIG_COORDINATOR ();
     string GET_V1_CONFIG_DBSERVER ();
     string GET_DEBUG_OFFERS ();
+    string GET_DEBUG_INSTANCES ();
 
   private:
     ArangoManager* _manager;
@@ -89,9 +98,9 @@ class arangodb::HttpServerImpl {
 
 string HttpServerImpl::GET_V1_CONFIG_AGENCY () {
   size_t instances = _manager->agencyInstances();
-  ArangoManager::Resources resources = _manager->agencyResources();
+//  ArangoManager::BasicResources resources = _manager->agencyResources();
 
-  return JsonConfig(instances, resources);
+//  return JsonConfig(instances, resources);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,9 +109,9 @@ string HttpServerImpl::GET_V1_CONFIG_AGENCY () {
 
 string HttpServerImpl::GET_V1_CONFIG_COORDINATOR () {
   size_t instances = _manager->coordinatorInstances();
-  ArangoManager::Resources resources = _manager->coordinatorResources();
+//  ArangoManager::BasicResources resources = _manager->coordinatorResources();
 
-  return JsonConfig(instances, resources);
+//  return JsonConfig(instances, resources);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,9 +120,9 @@ string HttpServerImpl::GET_V1_CONFIG_COORDINATOR () {
 
 string HttpServerImpl::GET_V1_CONFIG_DBSERVER () {
   size_t instances = _manager->dbserverInstances();
-  ArangoManager::Resources resources = _manager->dbserverResources();
+//  ArangoManager::BasicResources resources = _manager->dbserverResources();
 
-  return JsonConfig(instances, resources);
+//  return JsonConfig(instances, resources);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,13 +135,149 @@ string HttpServerImpl::GET_DEBUG_OFFERS () {
   picojson::object result;
   picojson::array list;
 
-  for (auto& offer : offers) {
-    string id = offer.id().value();
+  for (const auto& offer : offers) {
+    picojson::object o;
 
-    list.push_back(picojson::value(id));
+    o["id"] = picojson::value(offer.id().value());
+    o["slaveId"] = picojson::value(offer.slave_id().value());
+
+    picojson::array rs;
+
+    for (size_t i = 0; i < offer.resources_size(); ++i) {
+      picojson::object r;
+
+      const auto& resource = offer.resources(i);
+
+      r["type"] = picojson::value(resource.name());
+
+      if (resource.type() == Value::SCALAR) {
+        r["value"] = picojson::value(resource.scalar().value());
+      }
+      else if (resource.type() == Value::RANGES) {
+        picojson::array ras;
+
+        const auto& ranges = resource.ranges();
+
+        for (size_t j = 0; j < ranges.range_size(); ++j) {
+          picojson::object ra;
+
+          const auto& range = ranges.range(j);
+
+          ra["begin"] = picojson::value((double) range.begin());
+          ra["end"] = picojson::value((double) range.end());
+
+          ras.push_back(picojson::value(ra));
+        }
+
+        r["value"] = picojson::value(ras);
+      }
+
+      if (resource.has_role()) {
+        r["role"] = picojson::value(resource.role());
+      }
+
+      if (resource.has_reserver_type()) {
+        switch (resource.reserver_type()) {
+          case Resource::SLAVE:
+            r["reservationType"] = picojson::value("SLAVE");
+            break;
+
+          case Resource::FRAMEWORK:
+            r["reservationType"] = picojson::value("FRAMEWORK");
+            break;
+        }
+      }
+
+      if (resource.has_disk()) {
+        Resource_DiskInfo disk = resource.disk();
+        picojson::object di;
+
+        if (disk.has_persistence()) {
+          di["id"] = picojson::value(disk.persistence().id());
+        }
+
+        if (disk.has_volume()) {
+          Volume volume = disk.volume();
+          picojson::object vo;
+
+          vo["containerPath"] = picojson::value(volume.container_path());
+
+          if (volume.has_host_path()) {
+            vo["hostPath"] = picojson::value(volume.host_path());
+          }
+
+          switch (volume.mode()) {
+            case Volume::RW:
+              vo["mode"] = picojson::value("RW");
+              break;
+
+            case Volume::RO:
+              vo["mode"] = picojson::value("RO");
+              break;
+          }
+
+          di["volume"] = picojson::value(vo);
+        }
+
+        r["disk"] = picojson::value(di);
+      }
+
+      rs.push_back(picojson::value(r));
+    }
+      
+    o["resources"] = picojson::value(rs);
+
+    list.push_back(picojson::value(o));
   }
 
   result["offers"] = picojson::value(list);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/instances
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_INSTANCES () {
+  vector<Instance> instances = _manager->currentInstances();
+
+  picojson::object result;
+  picojson::array list;
+
+  for (const auto& instance : instances) {
+    picojson::object o;
+
+    o["taskId"] = picojson::value((double) instance._taskId);
+    o["slaveId"] = picojson::value(instance._slaveId);
+    o["type"] = picojson::value(ArangoManager::stringInstanceType(instance._type));
+    o["state"] = picojson::value(ArangoManager::stringInstanceState(instance._state));
+    o["started"] = picojson::value((double) instance._started.time_since_epoch().count());
+    o["lastUpdate"] = picojson::value((double) instance._lastUpdate.time_since_epoch().count());
+
+    picojson::object rs;
+
+/*
+    rs["_cpus"] = picojson::value((double) instance._resources._cpus);
+    rs["_mem"] = picojson::value((double) instance._resources._mem);
+    rs["_disk"] = picojson::value((double) instance._resources._disk);
+    rs["_numberPorts"] = picojson::value((double) instance._resources._ports);
+
+    picojson::array rl;
+
+    for (const auto& port : instance._resources._usedPorts) {
+      rl.push_back(picojson::value((double) port));
+    }
+
+    rs["ports"] = picojson::value(rl);
+*/
+
+    o["resources"] = picojson::value(rs);
+
+    list.push_back(picojson::value(o));
+  }
+
+  result["instances"] = picojson::value(list);
 
   return picojson::value(result).serialize();
 }
@@ -177,6 +322,9 @@ static int answerRequest (
     }
     else if (0 == strcmp(url, "/debug/offers")) {
       getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
+    }
+    else if (0 == strcmp(url, "/debug/instances")) {
+      getMethod = &HttpServerImpl::GET_DEBUG_INSTANCES;
     }
   }
 

@@ -25,3 +25,10 @@ handled?
 
 How do I know that a slave is shutting down for maintenance? No failover
 necessary in this case.
+
+## Do not try to reserve ports
+
+Reserving ports will result in disaster: All resources for a framework are
+merged. Port 12345 from slave A and slave B will be considered the same
+"resource". Reserving port 12345 will result in a wrong total crashing
+the master.
