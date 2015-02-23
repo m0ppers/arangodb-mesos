@@ -51,6 +51,26 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+
+namespace {
+  std::vector<std::string> split (const std::string& value, char separator) {
+    vector<std::string> result;
+    string::size_type p = 0;
+    string::size_type q;
+
+    while ((q = value.find(separator, p)) != std::string::npos) {
+      result.emplace_back(value, p, q - p);
+      p = q + 1;
+    }
+
+    result.emplace_back(value, p);
+    return result;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             class ArangoScheduler
 // -----------------------------------------------------------------------------
 
@@ -234,7 +254,16 @@ void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
 
 void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
                                     const TaskStatus& status) {
-  uint64_t taskId = lexical_cast<uint64_t>(status.task_id().value());
+  vector<string> taskId = split(status.task_id().value(), ':');
+
+  if (taskId.size() != 3) {
+    LOG(ERROR)
+    << "corrupt task id '"
+    << status.task_id().value() << "' received";
+    return;
+  }
+
+  uint64_t task = lexical_cast<uint64_t>(taskId[2]);
   auto state = status.state();
 
   LOG(INFO)
@@ -249,7 +278,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
       break;
 
     case TASK_RUNNING:
-      _manager->statusUpdate(taskId, ArangoManager::InstanceState::RUNNING);
+      _manager->statusUpdate(task, InstanceState::RUNNING);
       break;
 
     case TASK_STARTING:
@@ -261,7 +290,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
     case TASK_KILLED:   // TERMINAL. The task was killed by the executor.
     case TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
     case TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-      _manager->statusUpdate(taskId, ArangoManager::InstanceState::FINISHED);
+      _manager->statusUpdate(task, InstanceState::FINISHED);
       break;
   }
 }

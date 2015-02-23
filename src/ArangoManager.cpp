@@ -31,6 +31,7 @@
 #include <iostream>
 #include <set>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "ArangoScheduler.h"
 
@@ -38,9 +39,6 @@ using namespace mesos;
 using namespace arangodb;
 
 using std::chrono::system_clock;
-using InstanceState = ArangoManager::InstanceState;
-using InstanceType = ArangoManager::InstanceType;
-using Instance = ArangoManager::Instance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -112,7 +110,6 @@ namespace {
     static const size_t MAX_ITERATIONS = 1000;
 
     vector<uint32_t> result;
-
     vector<Value::Range> resources;
 
     for (int i = 0; i < offer.resources_size(); ++i) {
@@ -144,6 +141,8 @@ namespace {
 
       result.push_back(d2(generator));
     }
+
+    return result;
   }
 
 
@@ -172,248 +171,277 @@ namespace {
 // --SECTION--                                                     class Aspects
 // -----------------------------------------------------------------------------
 
-namespace {
-  class Aspects {
-    public:
-      Aspects (const string& name, const string& role)
-        : _name(name), _role(role) {
-        _startedInstances = 0;
-        _runningInstances = 0;
+class Aspects {
+  public:
+    Aspects (const string& name, const string& role)
+      : _name(name), _role(role) {
+      _startedInstances = 0;
+      _runningInstances = 0;
 
-      }
+    }
 
-    public:
-      virtual size_t id () const = 0;
-      virtual OfferAnalysis analyseOffer (const Offer& offer) = 0;
+  public:
+    virtual size_t id () const = 0;
+    virtual OfferAnalysis analyseOffer (const Offer& offer) = 0;
 
-    public:
-      const string _name;
-      const string _role;
+  public:
+    const string _name;
+    const string _role;
 
-      Resources _minimumResources;
-      Resources _additionalResources;
+    Resources _minimumResources;
+    Resources _additionalResources;
 
-      bool _persistentVolumeRequired;
-      size_t _requiredPorts;
+    bool _persistentVolumeRequired;
+    size_t _requiredPorts;
 
-    public:
-      size_t _plannedInstances;
-      size_t _minimumInstances;
+    size_t _plannedInstances;
+    size_t _minimumInstances;
 
-      size_t _startedInstances;
-      size_t _runningInstances;
-  };
-}
+  public:
+    size_t _startedInstances;
+    size_t _runningInstances;
+
+  public:
+    unordered_set<string> _blockedSlaves;
+    unordered_set<string> _startedSlaves;
+   unordered_set<string> _preferredSlaves;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class AgencyAspects
 // -----------------------------------------------------------------------------
 
-namespace {
-  class AgencyAspects : public Aspects {
-    public:
-      AgencyAspects (const string& role) 
-        : Aspects("AGENCY", role) {
-        _minimumResources = Resources::parse("cpus:1;mem:100;disk:100").get();
-        _additionalResources = Resources();
-        _persistentVolumeRequired = true;
-        _requiredPorts = 2;
+class AgencyAspects : public Aspects {
+  public:
+    AgencyAspects (const string& role) 
+      : Aspects("AGENCY", role) {
+      _minimumResources = Resources::parse("cpus:1;mem:100;disk:100").get();
+      _additionalResources = Resources();
+      _persistentVolumeRequired = true;
+      _requiredPorts = 2;
 
-        _minimumInstances = 1;
-        _plannedInstances = 1;
-      }
+      _minimumInstances = 1;
+      _plannedInstances = 1;
+    }
 
-    public:
-      size_t id () const override {
-        return static_cast<size_t>(AspectsId::ID_AGENCY);
-      }
+  public:
+    size_t id () const override {
+      return static_cast<size_t>(AspectsId::ID_AGENCY);
+    }
 
-      OfferAnalysis analyseOffer (const Offer& offer) override {
-        Resources resources = offer.resources();
+    OfferAnalysis analyseOffer (const Offer& offer) override {
+      Resources resources = offer.resources();
 
-        // first check the number of ports
-        if (numberPorts(offer) < _requiredPorts) {
-          LOG(INFO) 
-          << "DEBUG " << resources << " does not have " 
-          << _requiredPorts << " ports";
+      // first check if this slave is already known
+      string slaveId = offer.slave_id().value();
 
-          return { OfferAnalysisType::NOT_USABLE };
-        }
-
-        // next check non-disk parts
-        bool reservationRequired = false;
-
-        Resources ndisk = _minimumResources.filter(notIsDisk);
-        Option<Resources> found = resources.find(ndisk);
-
-        if (found.isNone()) {
-          LOG(INFO) 
-          << "DEBUG " << resources << " does not have " 
-          << ndisk << " requirements";
-
-          return { OfferAnalysisType::NOT_USABLE };
-        }
-
-        Resources reserved = found.get();
-        Resources unreserved = reserved.filter(Resources::isUnreserved);
-
-        if (! unreserved.empty()) {
-          reservationRequired = true;
-        }
-
-        // next check the disk part
-        Resources mdisk = _minimumResources.filter(isDisk);
-        size_t mds = diskspace(mdisk);
-        Resources odisk = resources.filter(isDisk);
-
-        // first check for already persistent resources
-        for (auto res : odisk) {
-          cout << "DEBUG checking " << res << " for resistent" << endl;
-
-          if (res.role() != _role) {
-            cout << "DEBUG skip wrong role " << _role << endl;
-            continue;
-          }
-
-          if (diskspace(res) < mds) {
-            cout << "DEBUG too small " << mds << endl;
-            continue;
-          }
-
-          if (! res.has_disk()) {
-            cout << "DEBUG skip no disk" << endl;
-            continue;
-          }
-
-          if (! res.disk().has_persistence()) {
-            cout << "DEBUG skip no persistence" << endl;
-            continue;
-          }
-
-          string diskId = res.disk().persistence().id();
-
-          if (diskId.find("AGENCY:") != 0) {
-            cout << "DEBUG skip worng id" << endl;
-            continue;
-          }
-
-          cout << "could work" << endl;
-
-          if (reservationRequired) {
-            return { OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED, unreserved };
-          }
-          else {
-            return { OfferAnalysisType::USABLE, reserved };
-          }
-        }
-
-        // next check for reserved resources
-        for (auto res : odisk) {
-          cout << "DEBUG checking " << res << " for reserved" << endl;
-
-          if (res.role() != _role) {
-            cout << "DEBUG ignored, wrong role " << res.role() << endl;
-            continue;
-          }
-
-          if (diskspace(res) < mds) {
-            cout << "DEBUG too small " << mds << endl;
-            continue;
-          }
-
-          cout << "could work" << endl;
-
-          if (reservationRequired) {
-            return { OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED, unreserved };
-          }
-          else {
-            return { OfferAnalysisType::PERSISTENT_VOLUME_REQUIRED, Resources() + res };
-          }
-        }
-
-        // at last, try to find an unreserved resource
-        for (auto res : odisk) {
-          cout << "DEBUG checking " << res << " for unreserved" << endl;
-
-          if (res.role() != "*") {
-            cout << "DEBUG ignored, wrong role " << res.role() << endl;
-            continue;
-          }
-
-          if (diskspace(res) < mds) {
-            cout << "DEBUG too small " << mds << endl;
-            continue;
-          }
-
-          cout << "could work" << endl;
-
-          return { OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED, unreserved + res };
-        }
-
-        cout << "could not work" << endl;
+      if (_blockedSlaves.find(slaveId) != _blockedSlaves.end()) {
+        LOG(INFO)
+        << _name << " has blocked slave " << slaveId;
 
         return { OfferAnalysisType::NOT_USABLE };
       }
-  };
-}
+
+      if (_startedSlaves.find(slaveId) != _startedSlaves.end()) {
+        LOG(INFO)
+        << _name << " has already an instance started on slave " << slaveId;
+
+        return { OfferAnalysisType::NOT_USABLE };
+      }
+
+      if (_preferredSlaves.size() >= _plannedInstances) {
+        if (_preferredSlaves.find(slaveId) == _preferredSlaves.end()) {
+          LOG(INFO)
+          << _name << slaveId << " is not a preferred slave";
+
+          return { OfferAnalysisType::NOT_USABLE };
+        }
+      }
+
+      // first check the number of ports
+      if (numberPorts(offer) < _requiredPorts) {
+        LOG(INFO) 
+        << "DEBUG " << resources << " does not have " 
+        << _requiredPorts << " ports";
+
+        return { OfferAnalysisType::NOT_USABLE };
+      }
+
+      // next check non-disk parts
+      bool reservationRequired = false;
+
+      Resources ndisk = _minimumResources.filter(notIsDisk);
+      Option<Resources> found = resources.find(ndisk.flatten(_role, Resource::FRAMEWORK));
+
+      if (found.isNone()) {
+        LOG(INFO) 
+        << "DEBUG " << resources << " does not have " 
+        << ndisk << " requirements";
+
+        return { OfferAnalysisType::NOT_USABLE };
+      }
+
+      Resources reserved = found.get();
+      Resources unreserved = reserved.filter(Resources::isUnreserved);
+
+      cout << "==== ndisk " << ndisk << "\n";
+      cout << "==== reserved " << reserved << "\n";
+      cout << "==== unreserved " << unreserved << "\n";
+
+      if (! unreserved.empty()) {
+        reservationRequired = true;
+      }
+
+      // next check the disk part
+      Resources mdisk = _minimumResources.filter(isDisk);
+      size_t mds = diskspace(mdisk);
+      Resources odisk = resources.filter(isDisk);
+
+      // first check for already persistent resources
+      for (auto res : odisk) {
+        cout << "DEBUG checking " << res << " for persistent" << endl;
+
+        if (res.role() != _role) {
+          cout << "DEBUG skip wrong role " << _role << endl;
+          continue;
+        }
+
+        if (diskspace(res) < mds) {
+          cout << "DEBUG too small " << mds << endl;
+          continue;
+        }
+
+        if (! res.has_disk()) {
+          cout << "DEBUG skip no disk" << endl;
+          continue;
+        }
+
+        if (! res.disk().has_persistence()) {
+          cout << "DEBUG skip no persistence" << endl;
+          continue;
+        }
+
+        string diskId = res.disk().persistence().id();
+
+        if (diskId.find("AGENCY:") != 0) {
+          cout << "DEBUG skip worng id" << endl;
+          continue;
+        }
+
+        _blockedSlaves.insert(slaveId);
+
+        cout << "could work" << endl;
+
+        if (reservationRequired) {
+          return { OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED, unreserved };
+        }
+        else {
+          return { OfferAnalysisType::USABLE, reserved + res };
+        }
+      }
+
+      // next check for reserved resources
+      for (auto res : odisk) {
+        cout << "DEBUG checking " << res << " for reserved" << endl;
+
+        if (res.role() != _role) {
+          cout << "DEBUG ignored, wrong role " << res.role() << endl;
+          continue;
+        }
+
+        if (diskspace(res) < mds) {
+          cout << "DEBUG too small " << mds << endl;
+          continue;
+        }
+
+        cout << "could work" << endl;
+
+        if (reservationRequired) {
+          return { OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED, unreserved };
+        }
+        else {
+          return { OfferAnalysisType::PERSISTENT_VOLUME_REQUIRED, Resources() + res };
+        }
+      }
+
+      // at last, try to find an unreserved resource
+      for (auto res : odisk) {
+        cout << "DEBUG checking " << res << " for unreserved" << endl;
+
+        if (res.role() != "*") {
+          cout << "DEBUG ignored, wrong role " << res.role() << endl;
+          continue;
+        }
+
+        if (diskspace(res) < mds) {
+          cout << "DEBUG too small " << mds << endl;
+          continue;
+        }
+
+        cout << "could work" << endl;
+
+        return { OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED, unreserved + mdisk };
+      }
+
+      cout << "could not work" << endl;
+
+      return { OfferAnalysisType::NOT_USABLE };
+    }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class CoordinatorAspects
 // -----------------------------------------------------------------------------
 
-namespace {
-  class CoordinatorAspects : public Aspects {
-    public:
-      CoordinatorAspects (const string& role) 
-        : Aspects("COORDINATOR", role) {
-        _minimumResources = Resources::parse("cpus:4;mem:1024;disk:1024").get();
-        _additionalResources = Resources();
-        _persistentVolumeRequired = false;
-        _requiredPorts = 1;
+class CoordinatorAspects : public Aspects {
+  public:
+    CoordinatorAspects (const string& role) 
+      : Aspects("COORDINATOR", role) {
+      _minimumResources = Resources::parse("cpus:4;mem:1024;disk:1024").get();
+      _additionalResources = Resources();
+      _persistentVolumeRequired = false;
+      _requiredPorts = 1;
 
-        _minimumInstances = 1;
-        _plannedInstances = 4;
-      }
+      _minimumInstances = 1;
+      _plannedInstances = 3;
+    }
 
-    public:
-      size_t id () const override {
-        return static_cast<size_t>(AspectsId::ID_COORDINATOR);
-      }
+  public:
+    size_t id () const override {
+      return static_cast<size_t>(AspectsId::ID_COORDINATOR);
+    }
 
-      OfferAnalysis analyseOffer (const Offer& offer) override {
-        return OfferAnalysis();
-      }
-  };
-}
+    OfferAnalysis analyseOffer (const Offer& offer) override {
+      return OfferAnalysis();
+    }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class DBServersAspects
 // -----------------------------------------------------------------------------
 
-namespace {
-  class DBServerAspects : public Aspects {
-    public:
-      DBServerAspects (const string& role) 
-        : Aspects("DBSERVER", role) {
-        _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
-        _additionalResources = Resources();
-        _persistentVolumeRequired = true;
-        _requiredPorts = 1;
+class DBServerAspects : public Aspects {
+  public:
+    DBServerAspects (const string& role) 
+      : Aspects("DBSERVER", role) {
+      _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
+      _additionalResources = Resources();
+      _persistentVolumeRequired = true;
+      _requiredPorts = 1;
 
-        _minimumInstances = 2;
-        _plannedInstances = 2;
-      }
+      _minimumInstances = 2;
+      _plannedInstances = 2;
+    }
 
-    public:
-      size_t id () const override {
-        return static_cast<size_t>(AspectsId::ID_DBSERVER);
-      }
+  public:
+    size_t id () const override {
+      return static_cast<size_t>(AspectsId::ID_DBSERVER);
+    }
 
-      OfferAnalysis analyseOffer (const Offer& offer) override {
-        return OfferAnalysis();
-      }
-  };
-}
+    OfferAnalysis analyseOffer (const Offer& offer) override {
+      return OfferAnalysis();
+    }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class AspectInstanceStatus
@@ -459,19 +487,11 @@ class arangodb::ArangoManagerImpl {
     void makePersistentVolume (const string&, const Offer&, const Resources&) const;
     void makeDynamicReservation(const string&, const Offer&, const Resources&) const;
     OfferSummary findOffer (Aspects&);
-    OfferAnalysis findReservedOffer (Aspects&);
-    OfferAnalysis findUnreservedOffer (Aspects&);
 
-    void startInstance (Aspects&, OfferAnalysis&);
+    void startInstance (Aspects&, const Offer&, const OfferAnalysis&);
 
     void taskRunning (uint64_t);
     void taskFinished (uint64_t);
-
-    bool checkOfferAgency (const Offer& offer);
-    bool checkOfferCoordinator (const Offer& offer);
-    bool checkOfferDBServer (const Offer& offer);
-
-    Aspects* aspectsByType (InstanceType);
 
   public:
     const string _role;
@@ -487,6 +507,7 @@ class arangodb::ArangoManagerImpl {
     vector<Aspects*> _aspects;
 
     unordered_map<string, OfferSummary> _offers;
+    unordered_map<uint64_t, Instance> _instances;
 };
 
 // -----------------------------------------------------------------------------
@@ -561,10 +582,10 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   }
 
   if (! summary._usable) {
-    LOG(INFO)
-    << "OFFER declined, because minimum resource not satisfied";
+    // TODO(fc) declining the offer results in getting another offer with
+    // the same parameters over and over again. Why?
 
-    _scheduler->declineOffer(offer.id());
+    // _scheduler->declineOffer(offer.id());
 
     return;
   }
@@ -626,11 +647,9 @@ vector<Instance> ArangoManagerImpl::currentInstances () {
   {
     lock_guard<mutex> lock(_lock);
 
-#if 0
     for (const auto& instance : _instances) {
       result.push_back(instance.second);
     }
-#endif
   }
 
   return result;
@@ -645,15 +664,24 @@ vector<Instance> ArangoManagerImpl::currentInstances () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::removeOffer (const string& id) {
-  _offers.erase(id);
-#if 0
-  _agency._offers.erase(id);
-  _coordinator._offers.erase(id);
-  _dbserver._offers.erase(id);
-#endif
+  auto iter = _offers.find(id);
+
+  if (iter == _offers.end()) {
+    return;
+  }
+
+  const Offer& offer = iter->second._offer;
+  string slaveId = offer.slave_id().value();
+
+  _agency._blockedSlaves.erase(slaveId);
+  _coordinator._blockedSlaves.erase(slaveId);
+  _dbserver._blockedSlaves.erase(slaveId);
+
+  _offers.erase(iter);
 
   LOG(INFO)
-  << "OFFER removed: " << id << "\n";
+  << "DEBUG removed offer " << id
+  << " for slave " << slaveId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,15 +712,17 @@ void ArangoManagerImpl::checkInstances (Aspects& aspect) {
 
   OfferSummary offer = findOffer(aspect);
 
-#if 0
-  if (offer._type != OfferAnalysisType::USABLE) {
-    LOG(INFO) << "AGENCY cannot find a suitable resource for missing agency\n";
+  if (! offer._usable) {
+    LOG(INFO)
+    << aspect._name << " cannot find a suitable resource";
     return;
   }
 
+  OfferAnalysis& analysis = offer._analysis[aspect.id()];
+  analysis._ports = findFreePorts(offer._offer, aspect._requiredPorts);
+
   // try to start a new instance
-  startInstance(aspect, offer);
-#endif
+  startInstance(aspect, offer._offer, analysis);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -771,7 +801,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
 
   if (iter != _offers.end()) {
     OfferSummary result = iter->second;
-    _offers.erase(iter);
+    removeOffer(result._offer.id().value());
     return result;
   }
 
@@ -784,7 +814,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   if (iter != _offers.end()) {
     OfferSummary result = iter->second;
     makePersistentVolume(aspect._name, result._offer, result._analysis[id]._resources);
-    _offers.erase(iter);
+    removeOffer(result._offer.id().value());
     return { false };
   }
 
@@ -797,7 +827,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   if (iter != _offers.end()) {
     OfferSummary result = iter->second;
     makeDynamicReservation(aspect._name, result._offer, result._analysis[id]._resources);
-    _offers.erase(iter);
+    removeOffer(result._offer.id().value());
     return { false };
   }
 
@@ -805,115 +835,45 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a suitable reserved offer for an agency
-////////////////////////////////////////////////////////////////////////////////
-
-OfferAnalysis ArangoManagerImpl::findReservedOffer (Aspects& aspect) {
-#if 0
-  Resources resources = aspect.minimumResourcesRole();
-
-  Resources possibleVolume;
-  string possibleId;
-
-  for (auto& id_offer : _reservedOffers) {
-    Resources r = id_offer.second.resources();
-
-    if (r.contains(resources)) {
-      auto ports = findFreePorts(id_offer.second, aspect._requiredPorts);
-
-      if (ports.size() != aspect._requiredPorts) {
-        continue;
-      }
-
-      if (aspect._persistentVolumeRequired) {
-        Resources possible;
-        bool ok = aspect.hasPersistentVolume(r, possible);
-
-        cout << "########### " << ok << ":" << possible << endl;
-
-        if (! ok) {
-          possibleVolume = possible;
-          possibleId = id_offer.first;
-          continue;
-        }
-      }
-
-      return { OfferAnalysisType::USABLE, id_offer.second, resources, ports };
-    }
-  }
-
-  if (! possibleId.empty()) {
-    Offer offer = _reservedOffers[possibleId];
-
-    return {
-      OfferAnalysisType::REQUIRE_PERSISTENT_VOLUME,
-      offer,
-      possibleVolume
-    };
-  }
-
-  return { OfferAnalysisType::NOT_FOUND };
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a suitable unreserved offer for an agency
-////////////////////////////////////////////////////////////////////////////////
-
-OfferAnalysis ArangoManagerImpl::findUnreservedOffer (Aspects& aspect) {
-#if 0
-  Resources resources = aspect.minimumResources();
-
-  for (auto& id_offer : _unreservedOffers) {
-    Offer& offer = id_offer.second;
-    Resources r = offer.resources();
-
-    if (r.contains(resources) && numberPorts(offer) >= aspect._requiredPorts) {
-      return {
-        OfferAnalysisType::REQUIRE_DYNAMIC_RESERVATION,
-        id_offer.second,
-        r
-      };
-    }
-  }
-
-  return { OfferAnalysisType::NOT_FOUND };
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new agency
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::startInstance (Aspects& aspects, OfferAnalysis& offer) {
-#if 0
-  string const& id = offer._offer.id().value();
+void ArangoManagerImpl::startInstance (Aspects& aspect,
+                                       const Offer& offer,
+                                       const OfferAnalysis& analysis) {
+  string const& id = offer.id().value();
 
-  Resources resources = offer._resources;
-  resources += resourcesPorts(offer._ports);
+  Resources resources = analysis._resources;
+  resources += resourcesPorts(analysis._ports);
 
   LOG(INFO)
   << "AGENCY about to start agency using offer " << id 
-  << " with resources " << resources << "\n";
+  << " with resources " << resources
+  << " on host " << offer.hostname();
 
-  uint64_t taskId = _scheduler->startAgencyInstance(offer._offer, resources);
+  uint64_t taskId = _scheduler->startAgencyInstance(offer, resources);
+  string slaveId = offer.slave_id().value();
 
   Instance desc;
 
   desc._taskId = taskId;
-  desc._type = InstanceType::AGENCY;
+  desc._aspectId = aspect.id();
   desc._state = InstanceState::STARTED;
   desc._resources = resources;
-  desc._slaveId = offer._offer.slave_id().value();
+  desc._slaveId = slaveId;
   desc._started = system_clock::now();
   desc._lastUpdate = system_clock::time_point();
 
   _instances.insert({ taskId, desc });
-  _agency._instances.insert(taskId);
-  _agency._slaves[desc._slaveId].insert(taskId);
+  aspect._startedSlaves.insert(slaveId);
+
+  // TODO(fc) need to gc old slaves
+
+  if (aspect._preferredSlaves.size() < aspect._plannedInstances) {
+    aspect._preferredSlaves.insert(slaveId);
+  }
 
   ++(_agency._startedInstances);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -921,7 +881,6 @@ void ArangoManagerImpl::startInstance (Aspects& aspects, OfferAnalysis& offer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::taskRunning (uint64_t taskId) {
-#if 0
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -942,18 +901,17 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
     return;
   }
 
-  Aspects* aspects = aspectsByType(instance._type);
+  Aspects* aspect = _aspects[instance._aspectId];
 
   LOG(INFO)
-  << "INSTANCE changing state from "
-  << ArangoManager::stringInstanceState(instance._state)
+  << aspect->_name << " changing state from "
+  << toString(instance._state)
   << " to RUNNING for " << taskId;
 
   instance._state = InstanceState::RUNNING;
 
-  --(aspects->_startedInstances);
-  ++(aspects->_runningInstances);
-#endif
+  --(aspect->_startedInstances);
+  ++(aspect->_runningInstances);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -961,7 +919,6 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::taskFinished (uint64_t taskId) {
-#if 0
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -975,77 +932,23 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
     return;
   }
 
-  Aspects* aspects = aspectsByType(instance._type);
+  Aspects* aspect = _aspects[instance._aspectId];
 
   LOG(INFO)
-  << "INSTANCE changing state from " << ArangoManager::stringInstanceState(instance._state)
+  << aspect->_name << " changing state from "
+  << toString(instance._state)
   << " to FINISHED for " << taskId << "\n";
 
-  if (state == InstanceState::STARTED && 0 < aspects->_startedInstances) {
-    --(aspects->_startedInstances);
+  if (state == InstanceState::STARTED && 0 < aspect->_startedInstances) {
+    --(aspect->_startedInstances);
   }
-  else if (state == InstanceState::RUNNING && 0 < aspects->_runningInstances) {
-    --(aspects->_runningInstances);
+  else if (state == InstanceState::RUNNING && 0 < aspect->_runningInstances) {
+    --(aspect->_runningInstances);
   }
 
   instance._state = InstanceState::FINISHED;
 
-  const auto& jter = aspects->_slaves.find(instance._slaveId);
-
-  if (jter != aspects->_slaves.end()) {
-    aspects->_slaves.erase(jter);
-  }
-#endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if offer is suitable for agency
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManagerImpl::checkOfferAgency (const Offer& offer) {
-  return false;
-/*
-  return checkOfferAgainstResources(
-    offer, _agency._minimumResources, "agency");
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if offer is suitable for coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManagerImpl::checkOfferCoordinator (const Offer& offer) {
-  return false;
-/*
-  return checkOfferAgainstResources(
-    offer, _coordinator._minimumResources, "coordinator");
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if offer is suitable for DBserver
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManagerImpl::checkOfferDBServer (const Offer& offer) {
-  return false;
-/*
-  return checkOfferAgainstResources(
-    offer, _dbserver._minimumResources, "DBserver");
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the aspects for the type
-////////////////////////////////////////////////////////////////////////////////
-
-Aspects* ArangoManagerImpl::aspectsByType (InstanceType type) {
-  Aspects* aspects = nullptr;
-
-  switch (type) {
-    case InstanceType::AGENCY: return &_agency;
-    case InstanceType::COORDINATOR: return &_coordinator;
-    case InstanceType::DBSERVER: return &_dbserver;
-  }
+  aspect->_startedSlaves.erase(instance._slaveId);
 }
 
 // -----------------------------------------------------------------------------

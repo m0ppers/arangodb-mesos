@@ -72,7 +72,7 @@ static void usage (const char* argv0, const flags::FlagsBase& flags) {
 
 int main (int argc, char** argv) {
 
-  // Find this executable's directory to locate executor.
+  // find this executable's directory to locate executor
   string path = os::realpath(dirname(argv[0])).get();
   string uri = path + "/arangodb-executor";
 
@@ -80,6 +80,7 @@ int main (int argc, char** argv) {
     uri = string(getenv("ARANGODB_MESOS_DIR")) + "/arangodb-executor";
   }
 
+  // parse the command line flags
   logging::Flags flags;
 
   string role;
@@ -109,13 +110,15 @@ int main (int argc, char** argv) {
 
   logging::initialize(argv[0], flags, true); // Catch signals.
 
+  // create the different executors
   ExecutorInfo executor;
-  executor.mutable_executor_id()->set_value("default");
+  executor.mutable_executor_id()->set_value("arangodb:agency");
   executor.mutable_command()->set_value(uri);
-  executor.set_name("ArangoDB Agency");
-  executor.set_source("executor.cpp");
-  *executor.mutable_resources() = Resources::parse("cpus:1;mem:128;disk:32").get();
+  executor.set_name("arangodb:agency");
+  executor.set_source("arangodb");
+  *executor.mutable_resources() = Resources::parse("cpus:0.01;mem:32;disk:32").get();
 
+  // create the framework
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.
   framework.set_name("ArangoDB Framework");
@@ -129,6 +132,7 @@ int main (int argc, char** argv) {
         numify<bool>(os::getenv("MESOS_CHECKPOINT")).get());
   }
 
+  // create the scheduler
   ArangoScheduler scheduler(role, executor);
 
   MesosSchedulerDriver* driver;
@@ -161,17 +165,21 @@ int main (int argc, char** argv) {
 
   scheduler.setDriver(driver);
 
+  // and the http server
   HttpServer http(scheduler.manager());
+
+  // start and wait
   http.start(8181);
 
   int status = driver->run() == DRIVER_STOPPED ? 0 : 1;
 
   http.stop();
 
-  // Ensure that the driver process terminates.
+  // ensure that the driver process terminates
   driver->stop();
 
   delete driver;
+
   return status;
 }
 

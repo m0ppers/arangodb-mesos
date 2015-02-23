@@ -1,20 +1,29 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoDB Mesos Executor
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
 
@@ -28,12 +37,36 @@
 using namespace std;
 using namespace mesos;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                external processes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief low level exec
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecuteTask (const TaskInfo& task) {
+  string path = "/bin/sleep";
+  path = "/tmp/doit";
+
+  const ExecutorInfo& executor = task.executor();
+  const string& executorId = executor.executor_id().value();
+
+  cout << "executor: " << executorId << endl;
+
+  execlp(path.c_str(), path.c_str(), "300", nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs a new process
+////////////////////////////////////////////////////////////////////////////////
+
 struct ExternalInfo {
   int pid;
   bool failed;
 };
 
-static ExternalInfo StartExternalProcess (const string& path) {
+ExternalInfo StartExternalProcess (const TaskInfo& task) {
   ExternalInfo info = { 0, true };
   int processPid;
 
@@ -42,8 +75,11 @@ static ExternalInfo StartExternalProcess (const string& path) {
   // child process
   if (processPid == 0) {
     close(0);
+
+#ifdef CLOSE_OUTPUT
     fcntl(1, F_SETFD, 0);
     fcntl(2, F_SETFD, 0);
+#endif
 
     // ignore signals in worker process
     signal(SIGINT,  SIG_IGN);
@@ -52,8 +88,9 @@ static ExternalInfo StartExternalProcess (const string& path) {
     signal(SIGUSR1, SIG_IGN);
 
     // execute worker
-    execlp(path.c_str(), path.c_str(), "300", nullptr);
-
+    ExecuteTask(task);
+   
+    // uups, exec faile
     _exit(1);
   }
 
@@ -71,25 +108,29 @@ static ExternalInfo StartExternalProcess (const string& path) {
   return info;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief runs a new process
+////////////////////////////////////////////////////////////////////////////////
+
 struct StartInfo {
   StartInfo (ExecutorDriver* driver, const TaskInfo& task) 
     : driver(driver), task(task) {
   }
 
-  ExecutorDriver* driver;
-  const TaskInfo task;
+    ExecutorDriver* driver;
+    const TaskInfo task;
 };
 
-static void* RunProcess (void* args) {
+void* RunProcess (void* args) {
   StartInfo* info = static_cast<StartInfo*>(args);
   ExecutorDriver* driver = info->driver;
   const TaskInfo& task = info->task;
 
-  ExternalInfo external = StartExternalProcess("/bin/sleep");
+  ExternalInfo external = StartExternalProcess(task);
 
   {
     TaskStatus status;
-    status.mutable_task_id()->MergeFrom(task.task_id());
+    status.mutable_task_id()->CopyFrom(task.task_id());
 
     if (external.failed) {
       status.set_state(TASK_FAILED);
@@ -110,7 +151,7 @@ static void* RunProcess (void* args) {
   int s;
   waitpid(external.pid, &s, WUNTRACED);
 
-  cout << "WAIT " << external.pid << " returned\n";
+  cout << "WAIT for pid " << external.pid << " returned\n";
 
   if (WIFEXITED(s)) {
     if (WEXITSTATUS(s) == 0) {
@@ -128,7 +169,8 @@ static void* RunProcess (void* args) {
   }
   else if (WIFSTOPPED(s)) {
     cout << "EXIT " << external.pid << " stopped\n";
-    // deal with stopped, but how?
+
+    // TODO(fc) deal with stopped, but how?
     kill(external.pid, 9);
     status.set_state(TASK_FAILED);
   }
@@ -138,75 +180,157 @@ static void* RunProcess (void* args) {
   return nullptr;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class ArangoExecutor
+// -----------------------------------------------------------------------------
 
-class TestExecutor : public Executor
-{
-public:
-  virtual ~TestExecutor() {}
+class ArangoExecutor : public Executor {
 
-  virtual void registered(ExecutorDriver* driver,
-                          const ExecutorInfo& executorInfo,
-                          const FrameworkInfo& frameworkInfo,
-                          const SlaveInfo& slaveInfo)
-  {
-    cout << "Registered executor on " << slaveInfo.hostname() << endl;
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                     constructors and desctructors
+// -----------------------------------------------------------------------------
 
-  virtual void reregistered(ExecutorDriver* driver,
-                            const SlaveInfo& slaveInfo)
-  {
-    cout << "Re-registered executor on " << slaveInfo.hostname() << endl;
-  }
+  public:
 
-  virtual void disconnected(ExecutorDriver* driver) {
-    cout << "disconnected\n";
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
-  virtual void launchTask(ExecutorDriver* driver, const TaskInfo& task) {
-    cout << "Starting task " << task.task_id().value() << endl;
-
-    TaskStatus status;
-    status.mutable_task_id()->MergeFrom(task.task_id());
-
-    StartInfo* info = new StartInfo(driver, task);
-
-    pthread_t pthread;
-    int res = pthread_create(&pthread, NULL, &RunProcess, info);
-
-    if (res != 0) {
-      status.set_state(TASK_FAILED);
-    } 
-    else {
-      pthread_detach(pthread);
-      status.set_state(TASK_RUNNING);
+    virtual ~ArangoExecutor () {
     }
 
-    driver->sendStatusUpdate(status);
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  Executor methods
+// -----------------------------------------------------------------------------
 
-  virtual void killTask(ExecutorDriver* driver, const TaskID& taskId) {
-    cout << "killTask\n";
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registered
+////////////////////////////////////////////////////////////////////////////////
 
-  virtual void frameworkMessage(ExecutorDriver* driver, const string& data) {
-    cout << "frameworkMessage\n";
-  }
+    void registered (ExecutorDriver* driver,
+                     const ExecutorInfo& executorInfo,
+                     const FrameworkInfo& frameworkInfo,
+                     const SlaveInfo& slaveInfo)  override {
+      _executorId = executorInfo.executor_id().value();
 
-  virtual void shutdown(ExecutorDriver* driver) {
-    cout << "shutdown\n";
-  }
+      cout
+      << "Registered executor " << _executorId << " on "
+      << slaveInfo.hostname()
+      << endl;
+    }
 
-  virtual void error(ExecutorDriver* driver, const string& message) {
-    cout << "error: " << message << "\n";
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reregistered
+////////////////////////////////////////////////////////////////////////////////
+
+    void reregistered (ExecutorDriver* driver,
+                       const SlaveInfo& slaveInfo) override {
+      cout << "Re-registered executor on " << slaveInfo.hostname() << endl;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief disconnected
+////////////////////////////////////////////////////////////////////////////////
+
+    void disconnected (ExecutorDriver* driver) override {
+      cout << "disconnected\n";
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief launchTask
+////////////////////////////////////////////////////////////////////////////////
+
+    void launchTask (ExecutorDriver* driver, const TaskInfo& task) override {
+      cout << "Starting task " << task.task_id().value() << endl;
+
+      TaskStatus status;
+      status.mutable_task_id()->MergeFrom(task.task_id());
+
+      StartInfo* info = new StartInfo(driver, task);
+
+      pthread_t pthread;
+      int res = pthread_create(&pthread, NULL, &RunProcess, info);
+
+      if (res != 0) {
+        status.set_state(TASK_FAILED);
+        delete info;
+      } 
+      else {
+        pthread_detach(pthread);
+        status.set_state(TASK_RUNNING);
+      }
+
+      driver->sendStatusUpdate(status);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief killTask
+////////////////////////////////////////////////////////////////////////////////
+
+    void killTask (ExecutorDriver* driver, const TaskID& taskId) override {
+      cout << "killTask\n";
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frameworkMessage
+////////////////////////////////////////////////////////////////////////////////
+
+    void frameworkMessage (ExecutorDriver* driver,
+                           const string& data) override {
+      cout << "frameworkMessage\n";
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown
+////////////////////////////////////////////////////////////////////////////////
+
+    virtual void shutdown (ExecutorDriver* driver) override {
+      cout << "shutdown\n";
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief error
+////////////////////////////////////////////////////////////////////////////////
+
+    virtual void error(ExecutorDriver* driver, const string& message) override {
+      cout << "error: " << message << "\n";
+    }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+  private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executor identifier
+///
+/// for example: arangodb:agency
+////////////////////////////////////////////////////////////////////////////////
+
+    string _executorId;
 };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
-int main(int argc, char** argv)
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main
+////////////////////////////////////////////////////////////////////////////////
+
+int main (int argc, char** argv)
 {
-  cout << "starting executor\n";
-
-  TestExecutor executor;
+  ArangoExecutor executor;
   MesosExecutorDriver driver(&executor);
   return driver.run() == DRIVER_STOPPED ? 0 : 1;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// End:

@@ -14,20 +14,14 @@
 
 bin_PROGRAMS = \
 	bin/arangodb-framework \
-	bin/arangodb-executor \
-        testme
+	bin/arangodb-executor
 
-testme_SOURCES = \
-	testme.cpp
+################################################################################
+### @brief auxiliary programs
+################################################################################
 
-testme_CPPFLAGS = \
-        -I@top_srcdir@ \
-        $(AM_CPPFLAGS) \
-	@MESOS_CPPFLAGS@
-
-testme_LDADD = \
-	@MESOS_LIBS@ \
-	$(LIBS)
+noinst_PROGRAMS = \
+        tst/res
 
 ################################################################################
 ### @brief auxiliary libraries
@@ -96,6 +90,26 @@ bin_arangodb_executor_CPPFLAGS = \
 
 bin_arangodb_executor_LDADD = \
 	lib/libarangodb-mesos.a \
+	@MESOS_LIBS@ \
+	$(LIBS)
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                             tests
+## -----------------------------------------------------------------------------
+
+################################################################################
+### @brief source files
+################################################################################
+
+tst_res_SOURCES = \
+	tst/res.cpp
+
+tst_res_CPPFLAGS = \
+        -I@top_srcdir@ \
+        $(AM_CPPFLAGS) \
+	@MESOS_CPPFLAGS@
+
+tst_res_LDADD = \
 	@MESOS_LIBS@ \
 	$(LIBS)
 

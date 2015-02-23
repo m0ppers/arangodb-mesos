@@ -40,10 +40,6 @@ using namespace std;
 using namespace mesos;
 using namespace arangodb;
 
-using InstanceState = ArangoManager::InstanceState;
-using InstanceType = ArangoManager::InstanceType;
-using Instance = ArangoManager::Instance;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
@@ -237,7 +233,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS () {
     picojson::object r;
 
     r["offer"] = picojson::value(JsonOffer(offer._offer));
-    r["status"] = picojson::value(stringOfferAnalysisType(offer._analysis[0]._status));
+    r["status"] = picojson::value(toString(offer._analysis[0]._status));
 
     list.push_back(picojson::value(r));
   }
@@ -261,30 +257,11 @@ string HttpServerImpl::GET_DEBUG_INSTANCES () {
     picojson::object o;
 
     o["taskId"] = picojson::value((double) instance._taskId);
+    o["aspectId"] = picojson::value((double) instance._aspectId);
+    o["state"] = picojson::value(toString(instance._state));
     o["slaveId"] = picojson::value(instance._slaveId);
-    o["type"] = picojson::value(ArangoManager::stringInstanceType(instance._type));
-    o["state"] = picojson::value(ArangoManager::stringInstanceState(instance._state));
     o["started"] = picojson::value((double) instance._started.time_since_epoch().count());
     o["lastUpdate"] = picojson::value((double) instance._lastUpdate.time_since_epoch().count());
-
-    picojson::object rs;
-
-/*
-    rs["_cpus"] = picojson::value((double) instance._resources._cpus);
-    rs["_mem"] = picojson::value((double) instance._resources._mem);
-    rs["_disk"] = picojson::value((double) instance._resources._disk);
-    rs["_numberPorts"] = picojson::value((double) instance._resources._ports);
-
-    picojson::array rl;
-
-    for (const auto& port : instance._resources._usedPorts) {
-      rl.push_back(picojson::value((double) port));
-    }
-
-    rs["ports"] = picojson::value(rl);
-*/
-
-    o["resources"] = picojson::value(rs);
 
     list.push_back(picojson::value(o));
   }

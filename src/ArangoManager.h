@@ -47,7 +47,15 @@ namespace arangodb {
 // --SECTION--                                                    enum AspectsId
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ASPECTS_ID_LEN
+////////////////////////////////////////////////////////////////////////////////
+
 #define ASPECTS_ID_LEN 3
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief AspectsId
+////////////////////////////////////////////////////////////////////////////////
 
   enum class AspectsId {
     ID_AGENCY = 0,
@@ -59,6 +67,10 @@ namespace arangodb {
 // --SECTION--                                               class OfferAnalysis
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OfferAnalysisType
+////////////////////////////////////////////////////////////////////////////////
+
   enum class OfferAnalysisType {
     USABLE,
     DYNAMIC_RESERVATION_REQUIRED,
@@ -66,23 +78,33 @@ namespace arangodb {
     NOT_USABLE
   };
 
-  inline string stringOfferAnalysisType (OfferAnalysisType type) {
+  inline const string& toString (OfferAnalysisType type) {
+    static const string USABLE = "USABLE";
+    static const string DYNAMIC_RESERVATION_REQUIRED = "DYNAMIC_RESERVATION_REQUIRED";
+    static const string PERSISTENT_VOLUME_REQUIRED = "PERSISTENT_VOLUME_REQUIRED";
+    static const string NOT_USABLE = "NOT_USABLE";
+    static const string UNKNOWN = "UNKNOWN";
+
     switch (type) {
       case OfferAnalysisType::USABLE:
-        return "USABLE";
+        return USABLE;
 
       case OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED:
-        return "DYNAMIC_RESERVATION_REQUIRED";
+        return DYNAMIC_RESERVATION_REQUIRED;
 
       case OfferAnalysisType::PERSISTENT_VOLUME_REQUIRED:
-        return "PERSISTENT_VOLUME_REQUIRED";
+        return PERSISTENT_VOLUME_REQUIRED;
 
       case OfferAnalysisType::NOT_USABLE:
-        return "NOT_USABLE";
+        return NOT_USABLE;
     }
 
-    return "UNKNOWN";
+    return UNKNOWN;
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OfferAnalysis
+////////////////////////////////////////////////////////////////////////////////
 
   class OfferAnalysis {
     public:
@@ -92,14 +114,69 @@ namespace arangodb {
   };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               struct OfferSummary
+// --SECTION--                                                class OfferSummary
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief OfferSummary
+////////////////////////////////////////////////////////////////////////////////
 
   class OfferSummary {
     public:
       bool _usable;
       mesos::Offer _offer;
       OfferAnalysis _analysis[ASPECTS_ID_LEN];
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                enum InstanceState
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief instance states
+////////////////////////////////////////////////////////////////////////////////
+
+  enum class InstanceState {
+    STARTED,
+    RUNNING,
+    FINISHED,
+    FAILED
+  };
+
+  inline const string& toString (const InstanceState& state) {
+    static const string STARTED = "STARTED";
+    static const string RUNNING = "RUNNING";
+    static const string FINISHED = "FINISHED";
+    static const string FAILED = "FAILED";
+    static const string UNKNOWN = "UNKNOWN";
+
+    switch (state) {
+      case InstanceState::STARTED: return STARTED; break;
+      case InstanceState::RUNNING: return RUNNING; break;
+      case InstanceState::FINISHED: return FINISHED; break;
+      case InstanceState::FAILED: return FAILED; break;
+    }
+
+    return UNKNOWN;
+  }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    class Instance
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Instance
+////////////////////////////////////////////////////////////////////////////////
+
+  struct Instance {
+    public:
+      uint64_t _taskId;
+      size_t _aspectId;
+      InstanceState _state;
+      mesos::Resources _resources;
+      string _slaveId;
+      chrono::system_clock::time_point _started;
+      chrono::system_clock::time_point _lastUpdate;
   };
 
 // -----------------------------------------------------------------------------
@@ -111,74 +188,6 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
   class ArangoManager {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  embedded classes
-// -----------------------------------------------------------------------------
-
-    public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief instance types
-////////////////////////////////////////////////////////////////////////////////
-
-      enum class InstanceType {
-        AGENCY,
-        COORDINATOR,
-        DBSERVER
-      };
-
-      static const string& stringInstanceType (const InstanceType& type) {
-        static string agency = "AGENCY";
-        static string coordinator = "COORDINATOR";
-        static string dbserver = "DBSERVER";
-
-        switch (type) {
-          case InstanceType::AGENCY: return agency; break;
-          case InstanceType::COORDINATOR: return coordinator; break;
-          case InstanceType::DBSERVER: return dbserver; break;
-        }
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief instance states
-////////////////////////////////////////////////////////////////////////////////
-
-      enum class InstanceState {
-        STARTED,
-        RUNNING,
-        FINISHED,
-        FAILED
-      };
-
-      static const string& stringInstanceState (const InstanceState& state) {
-        static string started = "STARTED";
-        static string running = "RUNNING";
-        static string finished = "FINISHED";
-        static string failed = "FAILED";
-
-        switch (state) {
-          case InstanceState::STARTED: return started; break;
-          case InstanceState::RUNNING: return running; break;
-          case InstanceState::FINISHED: return finished; break;
-          case InstanceState::FAILED: return failed; break;
-        }
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief instance
-////////////////////////////////////////////////////////////////////////////////
-
-      struct Instance {
-        public:
-          uint64_t _taskId;
-          InstanceState _state;
-          InstanceType _type;
-          mesos::Resources _resources;
-          string _slaveId;
-          chrono::system_clock::time_point _started;
-          chrono::system_clock::time_point _lastUpdate;
-      };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
