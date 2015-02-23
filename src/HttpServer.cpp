@@ -67,75 +67,9 @@ string JsonConfig (size_t instances,
 }
 */
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class HttpServerImpl
-// -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http server implementation class
-////////////////////////////////////////////////////////////////////////////////
-
-class arangodb::HttpServerImpl {
-  public:
-    HttpServerImpl (ArangoManager* manager) 
-      : _manager(manager) {
-    }
-
-  public:
-    string GET_V1_CONFIG_AGENCY ();
-    string GET_V1_CONFIG_COORDINATOR ();
-    string GET_V1_CONFIG_DBSERVER ();
-    string GET_DEBUG_OFFERS ();
-    string GET_DEBUG_INSTANCES ();
-
-  private:
-    ArangoManager* _manager;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/config/agency
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_CONFIG_AGENCY () {
-  size_t instances = _manager->agencyInstances();
-//  ArangoManager::BasicResources resources = _manager->agencyResources();
-
-//  return JsonConfig(instances, resources);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/config/coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_CONFIG_COORDINATOR () {
-  size_t instances = _manager->coordinatorInstances();
-//  ArangoManager::BasicResources resources = _manager->coordinatorResources();
-
-//  return JsonConfig(instances, resources);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/config/dbserver
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_CONFIG_DBSERVER () {
-  size_t instances = _manager->dbserverInstances();
-//  ArangoManager::BasicResources resources = _manager->dbserverResources();
-
-//  return JsonConfig(instances, resources);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /debug/offers
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_DEBUG_OFFERS () {
-  vector<Offer> offers = _manager->currentOffers();
-
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& offer : offers) {
+namespace {
+  picojson::object JsonOffer (const Offer& offer) {
     picojson::object o;
 
     o["id"] = picojson::value(offer.id().value());
@@ -143,7 +77,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS () {
 
     picojson::array rs;
 
-    for (size_t i = 0; i < offer.resources_size(); ++i) {
+    for (int i = 0; i < offer.resources_size(); ++i) {
       picojson::object r;
 
       const auto& resource = offer.resources(i);
@@ -158,7 +92,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS () {
 
         const auto& ranges = resource.ranges();
 
-        for (size_t j = 0; j < ranges.range_size(); ++j) {
+        for (int j = 0; j < ranges.range_size(); ++j) {
           picojson::object ra;
 
           const auto& range = ranges.range(j);
@@ -227,7 +161,85 @@ string HttpServerImpl::GET_DEBUG_OFFERS () {
       
     o["resources"] = picojson::value(rs);
 
-    list.push_back(picojson::value(o));
+    return o;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class HttpServerImpl
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief http server implementation class
+////////////////////////////////////////////////////////////////////////////////
+
+class arangodb::HttpServerImpl {
+  public:
+    HttpServerImpl (ArangoManager* manager) 
+      : _manager(manager) {
+    }
+
+  public:
+    string GET_V1_CONFIG_AGENCY ();
+    string GET_V1_CONFIG_COORDINATOR ();
+    string GET_V1_CONFIG_DBSERVER ();
+    string GET_DEBUG_OFFERS ();
+    string GET_DEBUG_INSTANCES ();
+
+  private:
+    ArangoManager* _manager;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/config/agency
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CONFIG_AGENCY () {
+  size_t instances = _manager->agencyInstances();
+//  ArangoManager::BasicResources resources = _manager->agencyResources();
+
+//  return JsonConfig(instances, resources);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/config/coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CONFIG_COORDINATOR () {
+  size_t instances = _manager->coordinatorInstances();
+//  ArangoManager::BasicResources resources = _manager->coordinatorResources();
+
+//  return JsonConfig(instances, resources);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/config/dbserver
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CONFIG_DBSERVER () {
+  size_t instances = _manager->dbserverInstances();
+//  ArangoManager::BasicResources resources = _manager->dbserverResources();
+
+//  return JsonConfig(instances, resources);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/offers
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_OFFERS () {
+  vector<OfferSummary> offers = _manager->currentOffers();
+
+  picojson::object result;
+  picojson::array list;
+
+  for (const auto& offer : offers) {
+    picojson::object r;
+
+    r["offer"] = picojson::value(JsonOffer(offer._offer));
+    r["status"] = picojson::value(stringOfferAnalysisType(offer._analysis[0]._status));
+
+    list.push_back(picojson::value(r));
   }
 
   result["offers"] = picojson::value(list);
@@ -305,7 +317,8 @@ static int answerRequest (
   void** ptr) {
   HttpServerImpl* me = reinterpret_cast<HttpServerImpl*>(cls);
 
-  cout << "HTTP REQUEST: " << method << " " << url << "\n";
+  LOG(INFO)
+  << "handling http request '" << method << " " << url << "'";
 
   // find correct collback
   string (HttpServerImpl::*getMethod)() = nullptr;

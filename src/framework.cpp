@@ -112,14 +112,17 @@ int main (int argc, char** argv) {
   ExecutorInfo executor;
   executor.mutable_executor_id()->set_value("default");
   executor.mutable_command()->set_value(uri);
-  executor.set_name("Test Executor (C++)");
-  executor.set_source("cpp_test");
+  executor.set_name("ArangoDB Agency");
+  executor.set_source("executor.cpp");
   *executor.mutable_resources() = Resources::parse("cpus:1;mem:128;disk:32").get();
 
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.
   framework.set_name("ArangoDB Framework");
   framework.set_role(role);
+  framework.set_checkpoint(true);
+
+  // TODO(fc) webui_url
 
   if (os::hasenv("MESOS_CHECKPOINT")) {
     framework.set_checkpoint(

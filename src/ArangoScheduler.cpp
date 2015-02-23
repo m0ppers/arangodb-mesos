@@ -87,7 +87,7 @@ ArangoScheduler::~ArangoScheduler () {
 /// @brief returns the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager* ArangoScheduler::manager () {
+ArangoManager* ArangoScheduler::manager () const {
   return _manager;
 }
 
@@ -104,7 +104,7 @@ void ArangoScheduler::setDriver (SchedulerDriver* driver) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::reserveDynamically (const Offer& offer,
-                                          const Resources& resources) {
+                                          const Resources& resources) const {
   Offer::Operation reserve;
   reserve.set_type(Offer::Operation::RESERVE);
   reserve.mutable_reserve()->mutable_resources()->CopyFrom(resources);
@@ -113,10 +113,23 @@ void ArangoScheduler::reserveDynamically (const Offer& offer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a persistent disk
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::makePersistent (const Offer& offer,
+                                      const Resources& resources) const {
+  Offer::Operation reserve;
+  reserve.set_type(Offer::Operation::CREATE);
+  reserve.mutable_create()->mutable_volumes()->CopyFrom(resources);
+
+  _driver->acceptOffers({offer.id()}, {reserve});
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief declines an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::declineOffer (const OfferID& offerId) {
+void ArangoScheduler::declineOffer (const OfferID& offerId) const {
   LOG(INFO)
   << "DEBUG declining offer " << offerId.value();
 
@@ -128,20 +141,21 @@ void ArangoScheduler::declineOffer (const OfferID& offerId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
-                                               const Resources& resources) {
+                                               const Resources& resources) const {
   uint64_t taskId = NEXT_TASK_ID.fetch_add(1);
+  string id = "arangodb:agency:" + lexical_cast<string>(taskId);
   const string offerId = offer.id().value();
 
-  cout << "AGENCY launching task " << taskId 
-       << " using offer " << offerId 
-       << ": " << offer.resources()
-       << " and using resources " << resources
-       << "\n";
+  LOG(INFO)
+  << "AGENCY launching task " << taskId 
+  << " using offer " << offerId 
+  << ": " << offer.resources()
+  << " and using resources " << resources;
 
   TaskInfo task;
 
-  task.set_name("Agency " + lexical_cast<string>(taskId));
-  task.mutable_task_id()->set_value(lexical_cast<string>(taskId));
+  task.set_name(id);
+  task.mutable_task_id()->set_value(id);
   task.mutable_slave_id()->CopyFrom(offer.slave_id());
   task.mutable_executor()->CopyFrom(_executor);
   task.mutable_resources()->CopyFrom(resources);
@@ -166,7 +180,7 @@ void ArangoScheduler::registered (SchedulerDriver*,
                                   const FrameworkID&,
                                   const MasterInfo&) {
   // TODO(fc) what to do?
-  cout << "Registered!" << endl;
+  LOG(INFO) << "DEBUG Registered!";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +190,7 @@ void ArangoScheduler::registered (SchedulerDriver*,
 void ArangoScheduler::reregistered (SchedulerDriver*,
                                     const MasterInfo& masterInfo) {
   // TODO(fc) what to do?
-  cout << "Re-Registered!" << endl;
+  LOG(INFO) << "DEBUG Re-Registered!";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +199,7 @@ void ArangoScheduler::reregistered (SchedulerDriver*,
 
 void ArangoScheduler::disconnected (SchedulerDriver* driver) {
   // TODO(fc) what to do?
-  cout << "Disconnected!" << endl;
+  LOG(INFO) << "DEBUG Disconnected!";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,9 +237,17 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
   uint64_t taskId = lexical_cast<uint64_t>(status.task_id().value());
   auto state = status.state();
 
-  cout << "TASK '" << status.task_id().value() << "' is in state " << state << endl;
+  LOG(INFO)
+  << "TASK '" << status.task_id().value()
+  << "' is in state " << state
+  << " with reason " << status.reason()
+  << " from source " << status.source()
+  << " with message '" << status.message() << "'";
 
   switch (state) {
+    case TASK_STAGING:
+      break;
+
     case TASK_RUNNING:
       _manager->statusUpdate(taskId, ArangoManager::InstanceState::RUNNING);
       break;
@@ -242,13 +264,6 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
       _manager->statusUpdate(taskId, ArangoManager::InstanceState::FINISHED);
       break;
   }
-
-  cout << "Task info: " << status.task_id().value()
-       << " is in state " << status.state()
-       << " with reason " << status.reason()
-       << " from source " << status.source()
-       << " with message '" << status.message() << "'"
-       << endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +275,7 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
                                         const SlaveID& slaveId,
                                         const string& data) {
   // TODO(fc) what to do?
-  cout << "Framework Message!" << endl;
+  LOG(INFO) << "Framework Message!";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -270,7 +285,7 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
 void ArangoScheduler::slaveLost (SchedulerDriver* driver,
                                  const SlaveID& sid) {
   // TODO(fc) what to do?
-  cout << "Slave Lost!" << endl;
+  LOG(INFO) << "Slave Lost!";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +297,7 @@ void ArangoScheduler::executorLost (SchedulerDriver* driver,
                                     const SlaveID& slaveID,
                                     int status) {
   // TODO(fc) what to do?
-  cout << "Executor Lost!" << endl;
+  LOG(INFO) << "Executor Lost!";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,7 +306,8 @@ void ArangoScheduler::executorLost (SchedulerDriver* driver,
 
 void ArangoScheduler::error (SchedulerDriver* driver,
                              const string& message) {
-  cerr << "ERROR " << message << endl;
+  // TODO(fc) what to do?
+  LOG(ERROR) << "ERROR " << message;
 }
 
 // -----------------------------------------------------------------------------

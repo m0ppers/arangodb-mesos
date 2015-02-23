@@ -184,18 +184,28 @@ public:
     driver->sendStatusUpdate(status);
   }
 
-  virtual void killTask(ExecutorDriver* driver, const TaskID& taskId) {}
+  virtual void killTask(ExecutorDriver* driver, const TaskID& taskId) {
+    cout << "killTask\n";
+  }
 
-  virtual void frameworkMessage(ExecutorDriver* driver, const string& data) {}
+  virtual void frameworkMessage(ExecutorDriver* driver, const string& data) {
+    cout << "frameworkMessage\n";
+  }
 
-  virtual void shutdown(ExecutorDriver* driver) {}
+  virtual void shutdown(ExecutorDriver* driver) {
+    cout << "shutdown\n";
+  }
 
-  virtual void error(ExecutorDriver* driver, const string& message) {}
+  virtual void error(ExecutorDriver* driver, const string& message) {
+    cout << "error: " << message << "\n";
+  }
 };
 
 
 int main(int argc, char** argv)
 {
+  cout << "starting executor\n";
+
   TestExecutor executor;
   MesosExecutorDriver driver(&executor);
   return driver.run() == DRIVER_STOPPED ? 0 : 1;

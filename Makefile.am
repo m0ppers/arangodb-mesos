@@ -14,7 +14,20 @@
 
 bin_PROGRAMS = \
 	bin/arangodb-framework \
-	bin/arangodb-executor
+	bin/arangodb-executor \
+        testme
+
+testme_SOURCES = \
+	testme.cpp
+
+testme_CPPFLAGS = \
+        -I@top_srcdir@ \
+        $(AM_CPPFLAGS) \
+	@MESOS_CPPFLAGS@
+
+testme_LDADD = \
+	@MESOS_LIBS@ \
+	$(LIBS)
 
 ################################################################################
 ### @brief auxiliary libraries

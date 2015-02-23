@@ -37,15 +37,74 @@
 #include <mesos/resources.hpp>
 #include <mesos/scheduler.hpp>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ArangoManager
-// -----------------------------------------------------------------------------
-
 namespace arangodb {
   using namespace std;
 
   class ArangoManagerImpl;
   class ArangoScheduler;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    enum AspectsId
+// -----------------------------------------------------------------------------
+
+#define ASPECTS_ID_LEN 3
+
+  enum class AspectsId {
+    ID_AGENCY = 0,
+    ID_COORDINATOR = 1,
+    ID_DBSERVER = 2
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class OfferAnalysis
+// -----------------------------------------------------------------------------
+
+  enum class OfferAnalysisType {
+    USABLE,
+    DYNAMIC_RESERVATION_REQUIRED,
+    PERSISTENT_VOLUME_REQUIRED,
+    NOT_USABLE
+  };
+
+  inline string stringOfferAnalysisType (OfferAnalysisType type) {
+    switch (type) {
+      case OfferAnalysisType::USABLE:
+        return "USABLE";
+
+      case OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED:
+        return "DYNAMIC_RESERVATION_REQUIRED";
+
+      case OfferAnalysisType::PERSISTENT_VOLUME_REQUIRED:
+        return "PERSISTENT_VOLUME_REQUIRED";
+
+      case OfferAnalysisType::NOT_USABLE:
+        return "NOT_USABLE";
+    }
+
+    return "UNKNOWN";
+  }
+
+  class OfferAnalysis {
+    public:
+      OfferAnalysisType _status;
+      mesos::Resources _resources;
+      vector<uint32_t> _ports;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               struct OfferSummary
+// -----------------------------------------------------------------------------
+
+  class OfferSummary {
+    public:
+      bool _usable;
+      mesos::Offer _offer;
+      OfferAnalysis _analysis[ASPECTS_ID_LEN];
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class ArangoManager
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief manager class
@@ -203,7 +262,7 @@ namespace arangodb {
 /// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-      vector<mesos::Offer> currentOffers ();
+      vector<OfferSummary> currentOffers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current instances for debugging
