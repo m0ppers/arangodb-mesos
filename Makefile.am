@@ -41,7 +41,8 @@ noinst_LIBRARIES = \
 lib_libarangodb_mesos_a_SOURCES = \
 	src/ArangoManager.cpp \
 	src/ArangoScheduler.cpp \
-	src/HttpServer.cpp
+	src/HttpServer.cpp \
+	src/utils.cpp
 
 lib_libarangodb_mesos_a_CPPFLAGS = \
         -I@top_srcdir@ \

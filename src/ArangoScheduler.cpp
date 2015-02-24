@@ -36,6 +36,7 @@
 #include <mesos/resources.hpp>
 
 #include "ArangoManager.h"
+#include "utils.h"
 
 using namespace std;
 using namespace boost;
@@ -48,26 +49,6 @@ using namespace arangodb;
 
 namespace {
   atomic<uint64_t> NEXT_TASK_ID(1);
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
-
-namespace {
-  std::vector<std::string> split (const std::string& value, char separator) {
-    vector<std::string> result;
-    string::size_type p = 0;
-    string::size_type q;
-
-    while ((q = value.find(separator, p)) != std::string::npos) {
-      result.emplace_back(value, p, q - p);
-      p = q + 1;
-    }
-
-    result.emplace_back(value, p);
-    return result;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -157,20 +138,23 @@ void ArangoScheduler::declineOffer (const OfferID& offerId) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts an agency with a given offer
+/// @brief starts an instances with a given offer and resources
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
-                                               const Resources& resources) const {
+uint64_t ArangoScheduler::startInstance (const string& name,
+                                         const Offer& offer,
+                                         const Resources& resources,
+                                         const string& arguments) const {
   uint64_t taskId = NEXT_TASK_ID.fetch_add(1);
-  string id = "arangodb:agency:" + lexical_cast<string>(taskId);
+  string id = "ARANGODB:" + name + ":" + lexical_cast<string>(taskId);
   const string offerId = offer.id().value();
 
   LOG(INFO)
-  << "AGENCY launching task " << taskId 
+  << "INSTANCE launching task " << taskId 
   << " using offer " << offerId 
   << ": " << offer.resources()
-  << " and using resources " << resources;
+  << " and resources " << resources
+  << " and arguments " << join(split(arguments, '\n'), " ");
 
   TaskInfo task;
 
@@ -179,6 +163,7 @@ uint64_t ArangoScheduler::startAgencyInstance (const Offer& offer,
   task.mutable_slave_id()->CopyFrom(offer.slave_id());
   task.mutable_executor()->CopyFrom(_executor);
   task.mutable_resources()->CopyFrom(resources);
+  task.set_data(arguments);
 
   vector<TaskInfo> tasks;
   tasks.push_back(task);

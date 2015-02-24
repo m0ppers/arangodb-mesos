@@ -28,14 +28,20 @@
 #include <iostream>
 
 #include <mesos/executor.hpp>
+#include <mesos/resources.hpp>
 
 #include <stout/duration.hpp>
 #include <stout/os.hpp>
 
 #include <unistd.h>
 
+#include "logging/logging.hpp"
+
+#include "utils.h"
+
 using namespace std;
 using namespace mesos;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                external processes
@@ -46,15 +52,41 @@ using namespace mesos;
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecuteTask (const TaskInfo& task) {
-  string path = "/bin/sleep";
-  path = "/tmp/doit";
+  const string& executorId = task.executor().executor_id().value();
+  const string& data = task.data();
+  vector<string> args = split(data, '\n');
 
-  const ExecutorInfo& executor = task.executor();
-  const string& executorId = executor.executor_id().value();
+  Resources resources = task.resources();
 
-  cout << "executor: " << executorId << endl;
+  LOG(INFO)
+  << "executor " << executorId
+  << " with " << join(args, " ")
+  << " and " << resources;
 
-  execlp(path.c_str(), path.c_str(), "300", nullptr);
+  Resources persistent = resources.filter(Resources::isPersistentVolume);
+
+  for (const auto& volume : persistent) {
+    const string& path = volume.disk().volume().container_path();
+
+    LOG(INFO)
+    << "persistent volume " << path;
+
+    os::mkdir(path);
+  }
+
+  size_t len = data.size();
+  char** a = static_cast<char**>(malloc(sizeof(char*) * (len + 1)));
+
+  for (size_t i = 0;  i < len;  ++i) {
+    a[i] = const_cast<char*>(args[i].c_str());
+  }
+
+  a[len] = nullptr;
+
+  execv(args[0].c_str(), a);
+   
+  // upps, exec failed
+  _exit(1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,9 +121,6 @@ ExternalInfo StartExternalProcess (const TaskInfo& task) {
 
     // execute worker
     ExecuteTask(task);
-   
-    // uups, exec faile
-    _exit(1);
   }
 
   // parent

@@ -32,6 +32,8 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <mesos/resources.hpp>
@@ -42,6 +44,7 @@ namespace arangodb {
 
   class ArangoManagerImpl;
   class ArangoScheduler;
+  class OfferAnalysis;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    enum AspectsId
@@ -61,6 +64,46 @@ namespace arangodb {
     ID_AGENCY = 0,
     ID_COORDINATOR = 1,
     ID_DBSERVER = 2
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                     class Aspects
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Aspects
+////////////////////////////////////////////////////////////////////////////////
+
+  class Aspects {
+    public:
+      Aspects (const string& name, const string& role);
+
+    public:
+      virtual size_t id () const = 0;
+      virtual bool isUsable () const = 0;
+      virtual string arguments (const mesos::Offer&, const OfferAnalysis&) const = 0;
+
+    public:
+      const string _name;
+      const string _role;
+
+      mesos::Resources _minimumResources;
+      mesos::Resources _additionalResources;
+
+      bool _persistentVolumeRequired;
+      size_t _requiredPorts;
+
+      size_t _plannedInstances;
+      size_t _minimumInstances;
+
+    public:
+      size_t _startedInstances;
+      size_t _runningInstances;
+
+    public:
+      unordered_set<string> _blockedSlaves;
+      unordered_set<string> _startedSlaves;
+      unordered_set<string> _preferredSlaves;
   };
 
 // -----------------------------------------------------------------------------
@@ -110,6 +153,7 @@ namespace arangodb {
     public:
       OfferAnalysisType _status;
       mesos::Resources _resources;
+      string _persistentVolume;
       vector<uint32_t> _ports;
   };
 

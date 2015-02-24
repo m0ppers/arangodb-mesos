@@ -112,9 +112,9 @@ int main (int argc, char** argv) {
 
   // create the different executors
   ExecutorInfo executor;
-  executor.mutable_executor_id()->set_value("arangodb:agency");
+  executor.mutable_executor_id()->set_value("arangodb:executor");
   executor.mutable_command()->set_value(uri);
-  executor.set_name("arangodb:agency");
+  executor.set_name("arangodb:executor");
   executor.set_source("arangodb");
   *executor.mutable_resources() = Resources::parse("cpus:0.01;mem:32;disk:32").get();
 
