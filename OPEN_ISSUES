@@ -26,6 +26,8 @@ handled?
 How do I know that a slave is shutting down for maintenance? No failover
 necessary in this case.
 
+Also general shutdown? Need clean shutdown.
+
 ## Do not try to reserve ports
 
 Reserving ports will result in disaster: All resources for a framework are
@@ -35,8 +37,12 @@ the master.
 
 ## Checkpoint for Frameworks?
 
-How does it work?
+How does it work? Need to store information about "ETCD". In order to
+decide if we are dealing with a new or an existing cluster.
+
+How do I know where one of my "MASTER ETCD" is? Zookeeper? Checkpoint?
 
 ## Mesos Container?
 
 What is the preferred way? An executor? A Mesos container? A docker container? What are the differences?
+

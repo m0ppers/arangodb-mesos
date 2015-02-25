@@ -71,7 +71,9 @@ void ExecuteTask (const TaskInfo& task) {
     LOG(INFO)
     << "persistent volume " << path;
 
-    os::mkdir(path);
+    os::mkdir(path + "/data");
+    os::mkdir(path + "/logs");
+    os::mkdir(path + "/apps");
   }
 
   size_t len = data.size();

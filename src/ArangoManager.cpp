@@ -44,23 +44,60 @@ using std::chrono::system_clock;
 // -----------------------------------------------------------------------------
 
 namespace {
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief not-a-port filter
+///////////////////////////////////////////////////////////////////////////////
+
   bool notIsPorts (const Resource& resource) {
     return resource.name() != "ports";
   }
 
-
+///////////////////////////////////////////////////////////////////////////////
+/// @brief is-a-disk filter
+///////////////////////////////////////////////////////////////////////////////
 
   bool isDisk (const Resource& resource) {
     return resource.name() == "disk";
   }
 
-
+///////////////////////////////////////////////////////////////////////////////
+/// @brief is-not-a-disk filter
+///////////////////////////////////////////////////////////////////////////////
 
   bool notIsDisk (const Resource& resource) {
     return resource.name() != "disk";
   }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts diskspace from a resource
+///////////////////////////////////////////////////////////////////////////////
 
+  double diskspace (const Resource& resource) {
+    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+      return resource.scalar().value();
+    }
+
+    return 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts diskspace from resources
+///////////////////////////////////////////////////////////////////////////////
+
+  double diskspace (const Resources& resources) {
+    double value = 0;
+
+    for (auto resource : resources) {
+      value += diskspace(resource);
+    }
+
+    return value;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts number of avaiable ports from an offer
+///////////////////////////////////////////////////////////////////////////////
 
   size_t numberPorts (const Offer& offer) {
     size_t value = 0;
@@ -83,27 +120,9 @@ namespace {
     return value;
   }
 
-
-
-  double diskspace (const Resource& resource) {
-    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
-      return resource.scalar().value();
-    }
-
-    return 0;
-  }
-
-  double diskspace (const Resources& resources) {
-    double value = 0;
-
-    for (auto resource : resources) {
-      value += diskspace(resource);
-    }
-
-    return value;
-  }
-
-
+///////////////////////////////////////////////////////////////////////////////
+/// @brief finds free ports from an offer
+///////////////////////////////////////////////////////////////////////////////
 
   vector<uint32_t> findFreePorts (const Offer& offer, size_t len) {
     static const size_t MAX_ITERATIONS = 1000;
@@ -144,7 +163,9 @@ namespace {
     return result;
   }
 
-
+///////////////////////////////////////////////////////////////////////////////
+/// @brief generates resources from a list of ports
+///////////////////////////////////////////////////////////////////////////////
 
   Resources resourcesPorts (const vector<uint32_t>& ports) {
     Resources resources;
@@ -165,7 +186,9 @@ namespace {
     return resources;
   }
 
-
+///////////////////////////////////////////////////////////////////////////////
+/// @brief analyses an offer
+///////////////////////////////////////////////////////////////////////////////
 
   bool checkSlaveStates (const Aspects& aspect, const string& slaveId) {
     const string& name = aspect._name;
@@ -399,7 +422,37 @@ namespace {
 
     return { OfferAnalysisType::NOT_USABLE };
   }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief initializes an agency
+///////////////////////////////////////////////////////////////////////////////
+
+  void initializeAgency (const Instance& instance) {
+    
+    // extract the hostname
+    const string& hostname = instance._hostname;
+
+    // and the client port
+    uint32_t port = instance._ports[1];
+
+    string command
+      = "./bin/initAgency.sh " + hostname + " " + to_string(port);
+
+    int res = system(command.c_str());
+
+    LOG(INFO)
+    << "COMMAND " << command << " returned " << res;
+  }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class InstanceManager
+// -----------------------------------------------------------------------------
+
+class InstanceManager {
+  public:
+    unordered_map<uint64_t, Instance> _instances;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     class Aspects
@@ -415,6 +468,10 @@ Aspects::Aspects (const string& name, const string& role)
 // --SECTION--                                               class AgencyAspects
 // -----------------------------------------------------------------------------
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief AgencyAspects
+///////////////////////////////////////////////////////////////////////////////
+
 class AgencyAspects : public Aspects {
   public:
     AgencyAspects (const string& role) 
@@ -427,6 +484,9 @@ class AgencyAspects : public Aspects {
       _minimumInstances = 1;
       _plannedInstances = 1;
     }
+
+  public:
+    unordered_set<string> _masters;
 
   public:
     size_t id () const override {
@@ -447,7 +507,7 @@ class AgencyAspects : public Aspects {
       a.push_back("/usr/lib/arangodb/etcd-arango");
 
       a.push_back("--data-dir");
-      a.push_back(analysis._persistentVolume);
+      a.push_back(analysis._persistentVolume + "/data");
 
       a.push_back("--listen-peer-urls");
       a.push_back("http://" + offer.hostname() + ":" + to_string(p1));
@@ -466,7 +526,44 @@ class AgencyAspects : public Aspects {
 
       return join(a, "\n");
     }
+
+    void instanceUp (const Instance& instance) override {
+      const string& slaveId = instance._slaveId;
+
+      if (_masters.find(slaveId) == _masters.end()) {
+        initializeAgency(instance);
+      }
+
+      _masters.insert(slaveId);
+    }
 };
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief finds an agency endpoint
+///////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+  // TODO(fc) do not use a global variable
+  AgencyAspects* globalAgency = nullptr;
+  InstanceManager* instanceManager = nullptr;
+
+  string findAgencyEndpoint () {
+    default_random_engine generator;
+    uniform_int_distribution<int> d1(0, globalAgency->_masters.size() - 1);
+    size_t d2 = d1(generator);
+
+    auto iter = globalAgency->_masters.begin();
+    advance(iter, d2);
+
+    const string& slaveId = *iter;
+    uint64_t taskId = globalAgency->_slave2task[slaveId];
+
+    const Instance& instance = instanceManager->_instances[taskId];
+
+    return "tcp://" + instance._hostname + ":" + to_string(instance._ports[1]);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class CoordinatorAspects
@@ -503,12 +600,36 @@ class CoordinatorAspects : public Aspects {
       a.push_back("/usr/sbin/arangod");
 
       a.push_back("--database.directory");
-      a.push_back(analysis._persistentVolume);
+      a.push_back(analysis._persistentVolume + "/data");
+
+      a.push_back("--log.file");
+      a.push_back(analysis._persistentVolume + "/logs/coordinator.log");
+
+      a.push_back("--javascript.app-path");
+      a.push_back(analysis._persistentVolume + "/apps");
+
+      string serverEndpoint = "tcp://" + offer.hostname() + ":" + to_string(p1);
 
       a.push_back("--server.endpoint");
-      a.push_back("tcp://" + offer.hostname() + ":" + to_string(p1));
+      a.push_back(serverEndpoint);
+
+      string agency = findAgencyEndpoint();
+
+      a.push_back("--cluster.agency-endpoint");
+      a.push_back(agency);
+
+      a.push_back("--cluster.my-address");
+      a.push_back(serverEndpoint);
+
+      string slaveId = offer.slave_id().value();
+
+      a.push_back("--cluster.my-local-info");
+      a.push_back("coordinator:" + slaveId);
 
       return join(a, "\n");
+    }
+
+    void instanceUp (const Instance& instance) override {
     }
 };
 
@@ -547,12 +668,36 @@ class DBServerAspects : public Aspects {
       a.push_back("/usr/sbin/arangod");
 
       a.push_back("--database.directory");
-      a.push_back(analysis._persistentVolume);
+      a.push_back(analysis._persistentVolume + "/data");
+
+      a.push_back("--log.file");
+      a.push_back(analysis._persistentVolume + "/logs/dbserver.log");
+
+      a.push_back("--javascript.app-path");
+      a.push_back(analysis._persistentVolume + "/apps");
+
+      string serverEndpoint = "tcp://" + offer.hostname() + ":" + to_string(p1);
 
       a.push_back("--server.endpoint");
-      a.push_back("tcp://" + offer.hostname() + ":" + to_string(p1));
+      a.push_back(serverEndpoint);
 
-      return join(a, "\n");
+     string agency = findAgencyEndpoint();
+
+      a.push_back("--cluster.agency-endpoint");
+      a.push_back(agency);
+
+      a.push_back("--cluster.my-address");
+      a.push_back(serverEndpoint);
+
+      string slaveId = offer.slave_id().value();
+
+      a.push_back("--cluster.my-local-info");
+      a.push_back("dbserver:" + slaveId);
+
+       return join(a, "\n");
+    }
+
+    void instanceUp (const Instance& instance) override {
     }
 };
 
@@ -581,7 +726,7 @@ class AspectInstance {
 // --SECTION--                                           class ArangoManagerImpl
 // -----------------------------------------------------------------------------
 
-class arangodb::ArangoManagerImpl {
+class arangodb::ArangoManagerImpl : public InstanceManager {
   public:
     ArangoManagerImpl (const string& role, ArangoScheduler* _scheduler);
 
@@ -620,7 +765,6 @@ class arangodb::ArangoManagerImpl {
     vector<Aspects*> _aspects;
 
     unordered_map<string, OfferSummary> _offers;
-    unordered_map<uint64_t, Instance> _instances;
 };
 
 // -----------------------------------------------------------------------------
@@ -643,6 +787,9 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
   // TODO(fc) how to persist & change these values
 
   _aspects = { &_agency, &_coordinator, &_dbserver };
+
+  globalAgency = &_agency;
+  instanceManager = this;
 }
 
 // -----------------------------------------------------------------------------
@@ -978,11 +1125,14 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   desc._state = InstanceState::STARTED;
   desc._resources = resources;
   desc._slaveId = slaveId;
+  desc._hostname = offer.hostname();
+  desc._ports = analysis._ports;
   desc._started = system_clock::now();
   desc._lastUpdate = system_clock::time_point();
 
   _instances.insert({ taskId, desc });
   aspect._startedSlaves.insert(slaveId);
+  aspect._slave2task.insert({ slaveId, taskId });
 
   // TODO(fc) need to gc old slaves
 
@@ -1029,6 +1179,8 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
 
   --(aspect->_startedInstances);
   ++(aspect->_runningInstances);
+
+  aspect->instanceUp(instance);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

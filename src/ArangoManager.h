@@ -44,6 +44,7 @@ namespace arangodb {
 
   class ArangoManagerImpl;
   class ArangoScheduler;
+  class Instance;
   class OfferAnalysis;
 
 // -----------------------------------------------------------------------------
@@ -82,6 +83,7 @@ namespace arangodb {
       virtual size_t id () const = 0;
       virtual bool isUsable () const = 0;
       virtual string arguments (const mesos::Offer&, const OfferAnalysis&) const = 0;
+      virtual void instanceUp (const Instance&) = 0;
 
     public:
       const string _name;
@@ -101,9 +103,11 @@ namespace arangodb {
       size_t _runningInstances;
 
     public:
-      unordered_set<string> _blockedSlaves;
-      unordered_set<string> _startedSlaves;
-      unordered_set<string> _preferredSlaves;
+      unordered_set<string> _blockedSlaves;             // slaveId
+      unordered_set<string> _startedSlaves;             // slaveId
+      unordered_set<string> _preferredSlaves;           // slaveId
+
+      unordered_map<string, uint64_t> _slave2task;      // slaveId, Instance
   };
 
 // -----------------------------------------------------------------------------
@@ -212,13 +216,15 @@ namespace arangodb {
 /// @brief Instance
 ////////////////////////////////////////////////////////////////////////////////
 
-  struct Instance {
+  class Instance {
     public:
       uint64_t _taskId;
       size_t _aspectId;
       InstanceState _state;
       mesos::Resources _resources;
       string _slaveId;
+      string _hostname;
+      vector<uint32_t> _ports;
       chrono::system_clock::time_point _started;
       chrono::system_clock::time_point _lastUpdate;
   };
