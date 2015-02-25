@@ -96,6 +96,58 @@ namespace {
   }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts cpus from a resource
+///////////////////////////////////////////////////////////////////////////////
+
+  double cpus (const Resource& resource) {
+    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+      return resource.scalar().value();
+    }
+
+    return 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts cpus from resources
+///////////////////////////////////////////////////////////////////////////////
+
+  double cpus (const Resources& resources) {
+    double value = 0;
+
+    for (auto resource : resources) {
+      value += cpus(resource);
+    }
+
+    return value;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts memory from a resource
+///////////////////////////////////////////////////////////////////////////////
+
+  double memory (const Resource& resource) {
+    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+      return resource.scalar().value();
+    }
+
+    return 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts memory from resources
+///////////////////////////////////////////////////////////////////////////////
+
+  double memory (const Resources& resources) {
+    double value = 0;
+
+    for (auto resource : resources) {
+      value += memory(resource);
+    }
+
+    return value;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief extracts number of avaiable ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -200,6 +252,9 @@ namespace {
 
       return false;
     }
+
+    // TODO(fc) it is possible that we see a new offer BEFORE we get a 
+    // confirmation that the task died. Need to handle this somehow.
 
     auto& startedSlaves = aspect._startedSlaves;
 
@@ -434,6 +489,7 @@ namespace {
 ///////////////////////////////////////////////////////////////////////////////
 
   void initializeAgency (const Instance& instance) {
+    static const int SLEEP_SEC = 10;
     
     // extract the hostname
     const string& hostname = instance._hostname;
@@ -442,7 +498,7 @@ namespace {
     uint32_t port = instance._ports[1];
 
     string command
-      = "./bin/initAgency.sh " + hostname + " " + to_string(port);
+      = "sleep " + to_string(SLEEP_SEC) + " && ./bin/initAgency.sh " + hostname + " " + to_string(port);
 
     int res = system(command.c_str());
 
@@ -569,6 +625,22 @@ namespace {
 
     return "tcp://" + instance._hostname + ":" + to_string(instance._ports[1]);
   }
+
+  string findAgencyAddress () {
+    default_random_engine generator;
+    uniform_int_distribution<int> d1(0, globalAgency->_masters.size() - 1);
+    size_t d2 = d1(generator);
+
+    auto iter = globalAgency->_masters.begin();
+    advance(iter, d2);
+
+    const string& slaveId = *iter;
+    uint64_t taskId = globalAgency->_slave2task[slaveId];
+
+    const Instance& instance = instanceManager->_instances[taskId];
+
+    return instance._hostname + ":" + to_string(instance._ports[1]);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -596,6 +668,9 @@ class ArangoAspects : public Aspects {
 
       a.push_back("--log.file");
       a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
+
+      a.push_back("--log.level");
+      a.push_back("debug");
 
       a.push_back("--javascript.app-path");
       a.push_back(analysis._containerPath + "/apps");
@@ -655,6 +730,13 @@ class CoordinatorAspects : public ArangoAspects {
     }
 
     void instanceUp (const Instance& instance) override {
+      string command
+        = "./bin/discover.sh " + findAgencyAddress();
+
+      int res = system(command.c_str());
+
+      LOG(INFO)
+      << "COMMAND " << command << " returned " << res;
     }
 };
 
@@ -724,6 +806,7 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
     void statusUpdate (uint64_t, InstanceState);
     vector<OfferSummary> currentOffers ();
     vector<Instance> currentInstances ();
+    ClusterInfo clusterInfo (const string& name) const;
 
   private:
     void removeOffer (const string& offerId);
@@ -907,6 +990,35 @@ vector<Instance> ArangoManagerImpl::currentInstances () {
   }
 
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clusterInfo
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
+  ClusterInfo info;
+
+  info._name = name;
+
+  for (auto aspect : _aspects) {
+    info._planned._servers += aspect->_plannedInstances;
+    info._running._servers += aspect->_runningInstances;
+
+    double c = cpus(aspect->_minimumResources);
+    info._planned._cpus += aspect->_plannedInstances * c;
+    info._running._cpus += aspect->_runningInstances * c;
+
+    double m = memory(aspect->_minimumResources);
+    info._planned._memory += aspect->_plannedInstances * m;
+    info._running._memory += aspect->_runningInstances * m;
+
+    double d = diskspace(aspect->_minimumResources);
+    info._planned._disk += aspect->_plannedInstances * d;
+    info._running._disk += aspect->_runningInstances * d;
+  }
+
+  return info;
 }
 
 // -----------------------------------------------------------------------------
@@ -1268,64 +1380,12 @@ void ArangoManager::statusUpdate (uint64_t taskId, InstanceState state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns planned number of agency instances
+/// @brief returns the configured clusters
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t ArangoManager::agencyInstances () {
-  lock_guard<mutex> lock(_impl->_lock);
-  return _impl->_agency._plannedInstances;
+vector<ClusterInfo> ArangoManager::clusters () const {
+  return { _impl->clusterInfo("arangodb") };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns planned number of coordinator instances
-////////////////////////////////////////////////////////////////////////////////
-
-size_t ArangoManager::coordinatorInstances () {
-  lock_guard<mutex> lock(_impl->_lock);
-  return _impl->_coordinator._plannedInstances;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns planned number of dbserver instances
-////////////////////////////////////////////////////////////////////////////////
-
-size_t ArangoManager::dbserverInstances () {
-  lock_guard<mutex> lock(_impl->_lock);
-  return _impl->_dbserver._plannedInstances;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns minimum resources for agency
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-ArangoManager::BasicResources ArangoManager::agencyResources () {
-  lock_guard<mutex> lock(_impl->_lock);
-//  return _impl->_agency._minimumResources;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns minimum resources for coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-ArangoManager::BasicResources ArangoManager::coordinatorResources () {
-  lock_guard<mutex> lock(_impl->_lock);
-//  return _impl->_coordinator._minimumResources;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns minimum resources for DBserver
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-ArangoManager::BasicResources ArangoManager::dbserverResources () {
-  lock_guard<mutex> lock(_impl->_lock);
-//  return _impl->_dbserver._minimumResources;
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current offers for debugging

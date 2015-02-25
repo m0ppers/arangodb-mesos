@@ -65,6 +65,32 @@ string JsonConfig (size_t instances,
 
 
 namespace {
+  picojson::object JsonClusterInfo (const ClusterInfo& info) {
+    picojson::object o;
+
+    o["name"] = picojson::value(info._name);
+
+    picojson::object planned;
+
+    planned["servers"] = picojson::value(info._planned._servers);
+    planned["cpus"] = picojson::value(info._planned._cpus);
+    planned["memory"] = picojson::value(info._planned._memory);
+    planned["disk"] = picojson::value(info._planned._disk);
+
+    o["planned"] = picojson::value(planned);
+
+    picojson::object running;
+
+    running["servers"] = picojson::value(info._running._servers);
+    running["cpus"] = picojson::value(info._running._cpus);
+    running["memory"] = picojson::value(info._running._memory);
+    running["disk"] = picojson::value(info._running._disk);
+
+    o["running"] = picojson::value(running);
+
+    return o;
+  }
+
   picojson::object JsonOffer (const Offer& offer) {
     picojson::object o;
 
@@ -176,9 +202,7 @@ class arangodb::HttpServerImpl {
     }
 
   public:
-    string GET_V1_CONFIG_AGENCY ();
-    string GET_V1_CONFIG_COORDINATOR ();
-    string GET_V1_CONFIG_DBSERVER ();
+    string GET_V1_CLUSTER ();
     string GET_DEBUG_OFFERS ();
     string GET_DEBUG_INSTANCES ();
 
@@ -187,36 +211,24 @@ class arangodb::HttpServerImpl {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/config/agency
+/// @brief GET /v1/cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_CONFIG_AGENCY () {
-  size_t instances = _manager->agencyInstances();
-//  ArangoManager::BasicResources resources = _manager->agencyResources();
+string HttpServerImpl::GET_V1_CLUSTER () {
+  const vector<ClusterInfo> infos = _manager->clusters();
 
-//  return JsonConfig(instances, resources);
-}
+  picojson::object result;
+  picojson::array list;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/config/coordinator
-////////////////////////////////////////////////////////////////////////////////
+  for (const auto& info : infos) {
+    list.push_back(picojson::value(JsonClusterInfo(info)));
+  }
 
-string HttpServerImpl::GET_V1_CONFIG_COORDINATOR () {
-  size_t instances = _manager->coordinatorInstances();
-//  ArangoManager::BasicResources resources = _manager->coordinatorResources();
+  result["clusters"] = picojson::value(list);
 
-//  return JsonConfig(instances, resources);
-}
+  return picojson::value(result).serialize();
+  
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/config/dbserver
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_CONFIG_DBSERVER () {
-  size_t instances = _manager->dbserverInstances();
-//  ArangoManager::BasicResources resources = _manager->dbserverResources();
-
-//  return JsonConfig(instances, resources);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,14 +313,8 @@ static int answerRequest (
   string (HttpServerImpl::*getMethod)() = nullptr;
 
   if (0 == strcmp(method, "GET")) {
-    if (0 == strcmp(url, "/v1/config/agency")) {
-      getMethod = &HttpServerImpl::GET_V1_CONFIG_AGENCY;
-    }
-    else if (0 == strcmp(url, "/v1/config/coordinator")) {
-      getMethod = &HttpServerImpl::GET_V1_CONFIG_COORDINATOR;
-    }
-    else if (0 == strcmp(url, "/v1/config/dbserver")) {
-      getMethod = &HttpServerImpl::GET_V1_CONFIG_DBSERVER;
+    if (0 == strcmp(url, "/v1/cluster")) {
+      getMethod = &HttpServerImpl::GET_V1_CLUSTER;
     }
     else if (0 == strcmp(url, "/debug/offers")) {
       getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
