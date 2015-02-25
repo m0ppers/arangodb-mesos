@@ -36,6 +36,27 @@ using namespace std;
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes a FNV hash for strings
+////////////////////////////////////////////////////////////////////////////////
+
+  uint64_t FnvHashString (const vector<string>& texts) {
+    uint64_t nMagicPrime = 0x00000100000001b3ULL;
+    uint64_t nHashVal = 0xcbf29ce484222325ULL;
+
+    for (auto text : texts) {
+      const uint8_t* p = reinterpret_cast<const uint8_t*>(text.c_str());
+      const uint8_t* e = p + text.size();
+
+      for (; p < e;  ++p) {
+        nHashVal ^= *p;
+        nHashVal *= nMagicPrime;
+      }
+    }
+
+    return nHashVal;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief splits a string
 ////////////////////////////////////////////////////////////////////////////////
 

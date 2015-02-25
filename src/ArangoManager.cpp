@@ -386,12 +386,18 @@ namespace {
           unreserved };
       }
       else {
-        string path = diskres.second.disk().volume().container_path();
+        string containerPath = diskres.second.disk().volume().container_path();
+        string hostPath;
+
+        if (diskres.second.disk().volume().has_host_path()) {
+          hostPath = diskres.second.disk().volume().host_path();
+        }
 
         return {
           OfferAnalysisType::USABLE,
           reserved + diskres.second,
-          path };
+          containerPath,
+          hostPath };
       }
     }
 
@@ -507,7 +513,7 @@ class AgencyAspects : public Aspects {
       a.push_back("/usr/lib/arangodb/etcd-arango");
 
       a.push_back("--data-dir");
-      a.push_back(analysis._persistentVolume + "/data");
+      a.push_back(analysis._containerPath + "/data");
 
       a.push_back("--listen-peer-urls");
       a.push_back("http://" + offer.hostname() + ":" + to_string(p1));
@@ -566,13 +572,70 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               class ArangoAspects
+// -----------------------------------------------------------------------------
+
+class ArangoAspects : public Aspects {
+  public:
+    ArangoAspects (const string& name, const string& type, const string& role)
+      : Aspects(name, role),
+        _type(type) {
+    }
+
+  public:
+    string arguments (const Offer& offer,
+                      const OfferAnalysis& analysis) const override {
+      uint32_t p1 = analysis._ports[0];
+
+      vector<string> a;
+
+      a.push_back("/usr/sbin/arangod");
+
+      a.push_back("--database.directory");
+      a.push_back(analysis._containerPath + "/data");
+
+      a.push_back("--log.file");
+      a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
+
+      a.push_back("--javascript.app-path");
+      a.push_back(analysis._containerPath + "/apps");
+
+      string serverEndpoint = "tcp://" + offer.hostname() + ":" + to_string(p1);
+
+      a.push_back("--server.endpoint");
+      a.push_back(serverEndpoint);
+
+      string agency = findAgencyEndpoint();
+
+      a.push_back("--cluster.agency-endpoint");
+      a.push_back(agency);
+
+      a.push_back("--cluster.my-address");
+      a.push_back(serverEndpoint);
+
+      string slaveId = offer.slave_id().value();
+
+      // create a hash from the container_path and the slaveId
+      uint64_t hash = FnvHashString({ analysis._containerPath, slaveId });
+
+      a.push_back("--cluster.my-local-info");
+      a.push_back(_type + ":" + to_string(hash));
+
+      return join(a, "\n");
+    }
+
+  public:
+    const string _type;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                          class CoordinatorAspects
 // -----------------------------------------------------------------------------
 
-class CoordinatorAspects : public Aspects {
+class CoordinatorAspects : public ArangoAspects {
   public:
     CoordinatorAspects (const string& role) 
-      : Aspects("COORDINATOR", role) {
+      : ArangoAspects("COORDINATOR", "coordinator", role) {
       _minimumResources = Resources::parse("cpus:1;mem:1024;disk:1024").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -591,44 +654,6 @@ class CoordinatorAspects : public Aspects {
       return 0 < _runningInstances;
     }
 
-    string arguments (const Offer& offer,
-                      const OfferAnalysis& analysis) const override {
-      uint32_t p1 = analysis._ports[0];
-
-      vector<string> a;
-
-      a.push_back("/usr/sbin/arangod");
-
-      a.push_back("--database.directory");
-      a.push_back(analysis._persistentVolume + "/data");
-
-      a.push_back("--log.file");
-      a.push_back(analysis._persistentVolume + "/logs/coordinator.log");
-
-      a.push_back("--javascript.app-path");
-      a.push_back(analysis._persistentVolume + "/apps");
-
-      string serverEndpoint = "tcp://" + offer.hostname() + ":" + to_string(p1);
-
-      a.push_back("--server.endpoint");
-      a.push_back(serverEndpoint);
-
-      string agency = findAgencyEndpoint();
-
-      a.push_back("--cluster.agency-endpoint");
-      a.push_back(agency);
-
-      a.push_back("--cluster.my-address");
-      a.push_back(serverEndpoint);
-
-      string slaveId = offer.slave_id().value();
-
-      a.push_back("--cluster.my-local-info");
-      a.push_back("coordinator:" + slaveId);
-
-      return join(a, "\n");
-    }
-
     void instanceUp (const Instance& instance) override {
     }
 };
@@ -637,10 +662,10 @@ class CoordinatorAspects : public Aspects {
 // --SECTION--                                            class DBServersAspects
 // -----------------------------------------------------------------------------
 
-class DBServerAspects : public Aspects {
+class DBServerAspects : public ArangoAspects {
   public:
     DBServerAspects (const string& role) 
-      : Aspects("DBSERVER", role) {
+      : ArangoAspects("DBSERVER", "dbserver", role) {
       _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -657,44 +682,6 @@ class DBServerAspects : public Aspects {
 
     bool isUsable () const override {
       return 0 < _runningInstances;
-    }
-
-    string arguments (const Offer& offer,
-                      const OfferAnalysis& analysis) const override {
-      uint32_t p1 = analysis._ports[0];
-
-      vector<string> a;
-
-      a.push_back("/usr/sbin/arangod");
-
-      a.push_back("--database.directory");
-      a.push_back(analysis._persistentVolume + "/data");
-
-      a.push_back("--log.file");
-      a.push_back(analysis._persistentVolume + "/logs/dbserver.log");
-
-      a.push_back("--javascript.app-path");
-      a.push_back(analysis._persistentVolume + "/apps");
-
-      string serverEndpoint = "tcp://" + offer.hostname() + ":" + to_string(p1);
-
-      a.push_back("--server.endpoint");
-      a.push_back(serverEndpoint);
-
-     string agency = findAgencyEndpoint();
-
-      a.push_back("--cluster.agency-endpoint");
-      a.push_back(agency);
-
-      a.push_back("--cluster.my-address");
-      a.push_back(serverEndpoint);
-
-      string slaveId = offer.slave_id().value();
-
-      a.push_back("--cluster.my-local-info");
-      a.push_back("dbserver:" + slaveId);
-
-       return join(a, "\n");
     }
 
     void instanceUp (const Instance& instance) override {

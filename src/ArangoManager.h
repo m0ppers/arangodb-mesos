@@ -157,7 +157,8 @@ namespace arangodb {
     public:
       OfferAnalysisType _status;
       mesos::Resources _resources;
-      string _persistentVolume;
+      string _containerPath;
+      string _hostPath;
       vector<uint32_t> _ports;
   };
 
