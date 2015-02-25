@@ -18,3 +18,4 @@ configure
 # output directories
 bin
 lib
+tst/res
