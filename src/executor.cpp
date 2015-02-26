@@ -248,6 +248,11 @@ class ArangoExecutor : public Executor {
       << "Registered executor " << _executorId << " on "
       << slaveInfo.hostname()
       << endl;
+
+      string data;
+      slaveInfo.SerializeToString(&data);
+
+      driver->sendFrameworkMessage(data);
     }
 
 ////////////////////////////////////////////////////////////////////////////////

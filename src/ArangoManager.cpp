@@ -804,9 +804,12 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
     void addOffer (const Offer& offer);
     void removeOffer (const OfferID& offerId);
     void statusUpdate (uint64_t, InstanceState);
+    void slaveInfoUpdate (const mesos::SlaveInfo& info);
     vector<OfferSummary> currentOffers ();
     vector<Instance> currentInstances ();
     ClusterInfo clusterInfo (const string& name) const;
+    ClusterInfo adjustPlanned (const string& name, const ClusterInfo&);
+    vector<arangodb::SlaveInfo> slaveInfo (const string& name) const;
 
   private:
     void removeOffer (const string& offerId);
@@ -834,6 +837,7 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
   private:
     vector<Aspects*> _aspects;
 
+    unordered_map<string, mesos::SlaveInfo> _slaveInfo;
     unordered_map<string, OfferSummary> _offers;
 };
 
@@ -957,6 +961,17 @@ void ArangoManagerImpl::statusUpdate (uint64_t taskId,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slave update
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::slaveInfoUpdate (const mesos::SlaveInfo& info) {
+  LOG(INFO)
+  << "DEBUG received slave info for " << info.id().value();
+
+  _slaveInfo[info.id().value()] = info;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1037,6 +1052,66 @@ ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
   info._running._disk = round(info._running._disk * 1000.0) / 1000.0;
 
   return info;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clusterInfo
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterInfo ArangoManagerImpl::adjustPlanned (const string& name,
+                                              const ClusterInfo& info) {
+  _agency._plannedInstances = info._planned._agencies;
+  _coordinator._plannedInstances = info._planned._coordinators;
+  _dbserver._plannedInstances = info._planned._dbservers;
+
+  return clusterInfo(info._name);
+
+  // TODO(fc) kill old instances
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slaveInfo
+////////////////////////////////////////////////////////////////////////////////
+
+vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) const {
+  map<string, SlaveInfo> infos;
+
+  for (auto& i : _instances) {
+    auto& instance = i.second;
+    auto& info = infos[instance._slaveId];
+
+    info._used._cpus += cpus(instance._resources);
+    info._used._memory += memory(instance._resources) * 1024;
+    info._used._disk += diskspace(instance._resources) * 1024;
+  }
+
+  for (auto& i : infos) {
+    auto& info = i.second;
+
+    info._name = i.first;
+
+    info._available._cpus = info._used._cpus;
+    info._available._memory = info._used._memory;
+    info._available._disk = info._used._disk;
+  }
+
+  for (auto& i : _slaveInfo) {
+    auto& slave = i.second;
+    auto& info = infos[i.first];
+    Resources resources = slave.resources();
+
+    info._available._cpus = cpus(resources);
+    info._available._memory = memory(resources) * 1024;
+    info._available._disk = diskspace(resources) * 1024;
+  }
+
+  vector<SlaveInfo> result;
+
+  for (auto& i : infos) {
+    result.push_back(i.second);
+  }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------
@@ -1398,6 +1473,14 @@ void ArangoManager::statusUpdate (uint64_t taskId, InstanceState state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slave update
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManager::slaveInfoUpdate (const mesos::SlaveInfo& info) {
+  _impl->slaveInfoUpdate(info);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the configured clusters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1411,6 +1494,78 @@ vector<ClusterInfo> ArangoManager::clusters () const {
 
 ClusterInfo ArangoManager::cluster (const string& name) const {
   return _impl->clusterInfo(name);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of servers
+////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+  // TODO(fc) needs sensible minimum
+
+  void adjustSize (size_t& current, int value) {
+    if (0 <= value) {
+      current += value;
+      return;
+    }
+
+    if (current <= (size_t) -value) {
+      current = 1;
+      return;
+    }
+
+    current += value;
+  }
+}
+
+ClusterInfo ArangoManager::adjustServers (const string& name, int value) {
+  ClusterInfo info = _impl->clusterInfo(name);
+  adjustSize(info._planned._agencies, value);
+  adjustSize(info._planned._coordinators, value);
+  adjustSize(info._planned._dbservers, value);
+
+  return _impl->adjustPlanned(name, info);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of agencies
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterInfo ArangoManager::adjustAgencies (const string& name, int value) {
+  ClusterInfo info = _impl->clusterInfo(name);
+  adjustSize(info._planned._agencies, value);
+
+  return _impl->adjustPlanned(name, info);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of coordinators
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterInfo ArangoManager::adjustCoordinators (const string& name, int value) {
+  ClusterInfo info = _impl->clusterInfo(name);
+  adjustSize(info._planned._coordinators, value);
+
+  return _impl->adjustPlanned(name, info);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of dbservers
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterInfo ArangoManager::adjustDbservers (const string& name, int value) {
+  ClusterInfo info = _impl->clusterInfo(name);
+  adjustSize(info._planned._dbservers, value);
+
+  return _impl->adjustPlanned(name, info);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the slaves
+////////////////////////////////////////////////////////////////////////////////
+
+vector<arangodb::SlaveInfo> ArangoManager::slaveInfo (const string& name) {
+  return _impl->slaveInfo(name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -231,36 +231,51 @@ namespace arangodb {
   };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    class Instance
+// --SECTION--                                                   class SlaveInfo
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Instance
 ////////////////////////////////////////////////////////////////////////////////
 
+  class SlaveInfoDetails {
+    public:
+      double _cpus;
+      double _memory;
+      double _disk;
+  };
+
+  class SlaveInfo {
+    public:
+      string _name;
+      SlaveInfoDetails _available;
+      SlaveInfoDetails _used;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class ClusterInfo
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClusterInfo
+////////////////////////////////////////////////////////////////////////////////
+
+  class ClusterInfoDetails {
+    public:
+      double _servers;
+      size_t _agencies;
+      size_t _coordinators;
+      size_t _dbservers;
+      double _cpus;
+      double _memory;
+      double _disk;
+  };
+
   class ClusterInfo {
     public:
       string _name;
-
-      struct {
-        double _servers;
-        size_t _agencies;
-        size_t _coordinators;
-        size_t _dbservers;
-        double _cpus;
-        double _memory;
-        double _disk;
-      } _planned;
-
-      struct {
-        double _servers;
-        size_t _agencies;
-        size_t _coordinators;
-        size_t _dbservers;
-        double _cpus;
-        double _memory;
-        double _disk;
-      } _running;
+      ClusterInfoDetails _planned;
+      ClusterInfoDetails _running;
   };
 
 // -----------------------------------------------------------------------------
@@ -316,6 +331,12 @@ namespace arangodb {
       void statusUpdate (uint64_t, InstanceState);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slave update
+////////////////////////////////////////////////////////////////////////////////
+
+      void slaveInfoUpdate (const mesos::SlaveInfo&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the configured clusters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -326,6 +347,36 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       ClusterInfo cluster (const string& name) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of servers
+////////////////////////////////////////////////////////////////////////////////
+
+      ClusterInfo adjustServers (const string& name, int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of agencies
+////////////////////////////////////////////////////////////////////////////////
+
+      ClusterInfo adjustAgencies (const string& name, int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of coordinators
+////////////////////////////////////////////////////////////////////////////////
+
+      ClusterInfo adjustCoordinators (const string& name, int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts the total number of dbservers
+////////////////////////////////////////////////////////////////////////////////
+
+      ClusterInfo adjustDbservers (const string& name, int);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about the slaves
+////////////////////////////////////////////////////////////////////////////////
+
+      vector<SlaveInfo> slaveInfo (const string& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current offers for debugging

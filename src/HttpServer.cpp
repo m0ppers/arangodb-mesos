@@ -124,18 +124,11 @@ namespace {
     return o;
   }
 
-  picojson::object JsonOffer (const Offer& offer) {
-    picojson::object o;
-
-    o["id"] = picojson::value(offer.id().value());
-    o["slaveId"] = picojson::value(offer.slave_id().value());
-
+  picojson::array JsonResources (const Resources& resources) {
     picojson::array rs;
 
-    for (int i = 0; i < offer.resources_size(); ++i) {
+    for (auto& resource : resources) {
       picojson::object r;
-
-      const auto& resource = offer.resources(i);
 
       r["type"] = picojson::value(resource.name());
 
@@ -213,8 +206,40 @@ namespace {
 
       rs.push_back(picojson::value(r));
     }
-      
-    o["resources"] = picojson::value(rs);
+
+    return rs;
+  }
+
+  picojson::object JsonOffer (const Offer& offer) {
+    picojson::object o;
+
+    o["id"] = picojson::value(offer.id().value());
+    o["slaveId"] = picojson::value(offer.slave_id().value());
+    o["resources"] = picojson::value(JsonResources(offer.resources()));
+
+    return o;
+  }
+
+  picojson::object JsonSlaveInfo (const arangodb::SlaveInfo& info) {
+    picojson::object o;
+
+    o["name"] = picojson::value(info._name);
+
+    picojson::object available;
+
+    available["cpus"] = picojson::value(info._available._cpus);
+    available["memory"] = picojson::value(info._available._memory);
+    available["disk"] = picojson::value(info._available._disk);
+
+    o["available"] = picojson::value(available);
+
+    picojson::object used;
+
+    used["cpus"] = picojson::value(info._used._cpus);
+    used["memory"] = picojson::value(info._used._memory);
+    used["disk"] = picojson::value(info._used._disk);
+
+    o["used"] = picojson::value(used);
 
     return o;
   }
@@ -237,7 +262,8 @@ class arangodb::HttpServerImpl {
   public:
     string GET_V1_CLUSTER (const char*);
     string GET_V1_CLUSTER_NAME (const char*);
-    string POST_V1_CLUSTER_NAME (const char*, const char*);
+    string POST_V1_CLUSTER_NAME (const char*, const string&);
+    string GET_V1_SERVERS_NAME (const char*);
     string GET_DEBUG_OFFERS (const char*);
     string GET_DEBUG_INSTANCES (const char*);
 
@@ -278,10 +304,65 @@ string HttpServerImpl::GET_V1_CLUSTER_NAME (const char* name) {
 /// @brief POST /v1/cluster/<name>
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::POST_V1_CLUSTER_NAME (const char* name, const char* body) {
-  ClusterInfo info = _manager->cluster(name);
+string HttpServerImpl::POST_V1_CLUSTER_NAME (const char* name, const string& body) {
+  picojson::value v;
+  std::string err = picojson::parse(v, body);
 
+  // TODO(fc) error handling
+
+  if (! err.empty() || ! v.is<picojson::object>()) {
+    return "failed";
+  }
+
+  const picojson::value::object& obj = v.get<picojson::object>();
+  auto iter = obj.find("servers");
+
+  if (iter != obj.end() && iter->second.is<double>()) {
+    _manager->adjustServers(name, iter->second.get<double>());
+  }
+  else {
+    iter = obj.find("agencies");
+
+    if (iter != obj.end() && iter->second.is<double>()) {
+      _manager->adjustAgencies(name, iter->second.get<double>());
+    }
+    else {
+      iter = obj.find("coordinators");
+
+      if (iter != obj.end() && iter->second.is<double>()) {
+        _manager->adjustCoordinators(name, iter->second.get<double>());
+      }
+      else {
+        iter = obj.find("dbservers");
+
+        if (iter != obj.end() && iter->second.is<double>()) {
+          _manager->adjustDbservers(name, iter->second.get<double>());
+        }
+      }
+    }
+  }
+
+  ClusterInfo info = _manager->cluster(name);
   return picojson::value(JsonClusterInfo(info)).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/servers/<name>
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_SERVERS_NAME (const char* name) {
+  const vector<SlaveInfo> infos = _manager->slaveInfo(name);
+
+  picojson::object result;
+  picojson::array list;
+
+  for (const auto& info : infos) {
+    list.push_back(picojson::value(JsonSlaveInfo(info)));
+  }
+
+  result["servers"] = picojson::value(list);
+
+  return picojson::value(result).serialize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +406,7 @@ string HttpServerImpl::GET_DEBUG_INSTANCES (const char* name) {
     o["aspectId"] = picojson::value((double) instance._aspectId);
     o["state"] = picojson::value(toString(instance._state));
     o["slaveId"] = picojson::value(instance._slaveId);
+    o["resources"] = picojson::value(JsonResources(instance._resources));
     o["started"] = picojson::value((double) instance._started.time_since_epoch().count());
     o["lastUpdate"] = picojson::value((double) instance._lastUpdate.time_since_epoch().count());
 
@@ -376,29 +458,6 @@ struct ConnectionInfo {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief iterator for post
-////////////////////////////////////////////////////////////////////////////////
-
-static int iteratePost (void* con_cls,
-                        enum MHD_ValueKind kind,
-                        const char* key,
-                        const char* filename,
-                        const char* content_type,
-                        const char* transfer_encoding,
-                        const char* data,
-                        uint64_t off,
-                        size_t size) {
-  ConnectionInfo* con_info = reinterpret_cast<ConnectionInfo*>(con_cls);
-
-  cout << "##### key " << key << endl;
-  cout << "##### data " << data << endl;
-  cout << "##### off " << off << endl;
-  cout << "##### size " << size << endl;
-
-  return MHD_YES;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief callback if request has completed
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -406,17 +465,17 @@ static void requestCompleted (void* cls,
                               struct MHD_Connection* connection,
                               void** con_cls,
                               enum MHD_RequestTerminationCode toe) {
-  ConnectionInfo *con_info = reinterpret_cast<ConnectionInfo*>(*con_cls);
+  ConnectionInfo *conInfo = reinterpret_cast<ConnectionInfo*>(*con_cls);
 
-  if (NULL == con_info) {
+  if (NULL == conInfo) {
     return;
   }
 
-  if (con_info->type == POST) {
-    MHD_destroy_post_processor(con_info->processor);
+  if (conInfo->type == POST) {
+    MHD_destroy_post_processor(conInfo->processor);
   }
 
-  delete con_info;
+  delete conInfo;
   *con_cls = NULL;
 }
 
@@ -435,12 +494,9 @@ static int answerRequest (
   void** ptr) {
   HttpServerImpl* me = reinterpret_cast<HttpServerImpl*>(cls);
 
-  LOG(INFO)
-  << "handling http request '" << method << " " << url << "'";
-
   // find correct collback
   string (HttpServerImpl::*getMethod)(const char*) = nullptr;
-  string (HttpServerImpl::*postMethod)(const char*, const char*) = nullptr;
+  string (HttpServerImpl::*postMethod)(const char*, const string&) = nullptr;
   FILE* file = nullptr;
   struct stat buf;
   const char* prefix = url;
@@ -451,6 +507,10 @@ static int answerRequest (
     }
     else if (0 == strncmp(url, "/v1/cluster/", 12)) {
       getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
+      prefix = url + 12;
+    }
+    else if (0 == strncmp(url, "/v1/servers/", 12)) {
+      getMethod = &HttpServerImpl::GET_V1_SERVERS_NAME;
       prefix = url + 12;
     }
     else if (0 == strcmp(url, "/debug/offers")) {
@@ -480,19 +540,16 @@ static int answerRequest (
   }
 
   if (*ptr == nullptr) {
-    ConnectionInfo* con_info = new ConnectionInfo();
+    ConnectionInfo* conInfo = new ConnectionInfo();
 
     if (postMethod != nullptr) {
-      con_info->processor = MHD_create_post_processor (
-        connection, POSTBUFFERSIZE, iteratePost, (void *) con_info);
-
-      con_info->type = POST;
+      conInfo->type = POST;
     }
     else {
-      con_info->type = GET;
+      conInfo->type = GET;
     }
 
-    *ptr = reinterpret_cast<void*>(con_info);
+    *ptr = reinterpret_cast<void*>(conInfo);
     return MHD_YES;
   }
 
@@ -502,6 +559,9 @@ static int answerRequest (
 
   // handle GET
   if (getMethod != nullptr) {
+    LOG(INFO)
+    << "handling http request '" << method << " " << url << "'";
+
     const string r = (me->*getMethod)(prefix);
 
     response = MHD_create_response_from_buffer(
@@ -519,17 +579,19 @@ static int answerRequest (
 
   // handle POST
   else if (postMethod != nullptr) {
-    ConnectionInfo* con_info = reinterpret_cast<ConnectionInfo*>(*ptr);
-    const char* body = "";
+    ConnectionInfo* conInfo = reinterpret_cast<ConnectionInfo*>(*ptr);
 
     if (*upload_data_size != 0) {
-      MHD_post_process(con_info->processor, upload_data, *upload_data_size);
+      conInfo->body += string(upload_data, *upload_data_size);
       *upload_data_size = 0;
 
       return MHD_YES;
     }
 
-    const string r = (me->*postMethod)(prefix, body);
+    LOG(INFO)
+    << "handling http request '" << method << " " << url << "'";
+
+    const string r = (me->*postMethod)(prefix, conInfo->body);
 
     response = MHD_create_response_from_buffer(
       r.length(), (void *) r.c_str(),
@@ -546,6 +608,9 @@ static int answerRequest (
 
   // handle FILE
   else if (file != nullptr) {
+    LOG(INFO)
+    << "handling http request '" << method << " " << url << "'";
+
     response = MHD_create_response_from_callback(buf.st_size,
                                                  32 * 1024,
                                                  &file_reader,

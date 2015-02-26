@@ -288,8 +288,10 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
                                         const ExecutorID& executorId,
                                         const SlaveID& slaveId,
                                         const string& data) {
-  // TODO(fc) what to do?
-  LOG(INFO) << "Framework Message!";
+  mesos::SlaveInfo slaveInfo;
+  slaveInfo.ParseFromString(data);
+
+  _manager->slaveInfoUpdate(slaveInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,0 +1,21 @@
+{
+  "name": "Videos",
+  "running": {
+    "servers": 7,
+    "agencies": 2,
+    "coordinators": 3,
+    "dbservers": 4,
+    "cpus": 10,
+    "memory": 1234567890,
+    "disk": 12345677899
+  },
+  "planned": {
+    "servers": 7,
+    "agencies": 2,
+    "coordinators": 3,
+    "dbservers": 4,
+    "cpus": 10,
+    "memory": 1234567890,
+    "disk": 12345677899
+  }
+}
