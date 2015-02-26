@@ -244,6 +244,9 @@ namespace arangodb {
 
       struct {
         double _servers;
+        size_t _agencies;
+        size_t _coordinators;
+        size_t _dbservers;
         double _cpus;
         double _memory;
         double _disk;
@@ -251,6 +254,9 @@ namespace arangodb {
 
       struct {
         double _servers;
+        size_t _agencies;
+        size_t _coordinators;
+        size_t _dbservers;
         double _cpus;
         double _memory;
         double _disk;
@@ -314,6 +320,12 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       vector<ClusterInfo> clusters () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information for one cluster
+////////////////////////////////////////////////////////////////////////////////
+
+      ClusterInfo cluster (const string& name) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current offers for debugging

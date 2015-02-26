@@ -100,7 +100,7 @@ namespace {
 ///////////////////////////////////////////////////////////////////////////////
 
   double cpus (const Resource& resource) {
-    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+    if (resource.name() == "cpus" && resource.type() == Value::SCALAR) {
       return resource.scalar().value();
     }
 
@@ -126,7 +126,7 @@ namespace {
 ///////////////////////////////////////////////////////////////////////////////
 
   double memory (const Resource& resource) {
-    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+    if (resource.name() == "mem" && resource.type() == Value::SCALAR) {
       return resource.scalar().value();
     }
 
@@ -1001,6 +1001,14 @@ ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
 
   info._name = name;
 
+  info._planned._agencies = _agency._plannedInstances;
+  info._planned._coordinators = _coordinator._plannedInstances;
+  info._planned._dbservers = _dbserver._plannedInstances;
+
+  info._running._agencies = _agency._runningInstances;
+  info._running._coordinators = _coordinator._runningInstances;
+  info._running._dbservers = _dbserver._runningInstances;
+
   for (auto aspect : _aspects) {
     info._planned._servers += aspect->_plannedInstances;
     info._running._servers += aspect->_runningInstances;
@@ -1010,13 +1018,23 @@ ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
     info._running._cpus += aspect->_runningInstances * c;
 
     double m = memory(aspect->_minimumResources);
-    info._planned._memory += aspect->_plannedInstances * m;
-    info._running._memory += aspect->_runningInstances * m;
+    info._planned._memory += aspect->_plannedInstances * m * 1024;
+    info._running._memory += aspect->_runningInstances * m * 1024;
 
     double d = diskspace(aspect->_minimumResources);
-    info._planned._disk += aspect->_plannedInstances * d;
-    info._running._disk += aspect->_runningInstances * d;
+    info._planned._disk += aspect->_plannedInstances * d * 1024;
+    info._running._disk += aspect->_runningInstances * d * 1024;
   }
+
+  info._planned._servers = round(info._planned._servers * 1000.0) / 1000.0;
+  info._planned._cpus = round(info._planned._cpus * 1000.0) / 1000.0;
+  info._planned._memory = round(info._planned._memory * 1000.0) / 1000.0;
+  info._planned._disk = round(info._planned._disk * 1000.0) / 1000.0;
+
+  info._running._servers = round(info._running._servers * 1000.0) / 1000.0;
+  info._running._cpus = round(info._running._cpus * 1000.0) / 1000.0;
+  info._running._memory = round(info._running._memory * 1000.0) / 1000.0;
+  info._running._disk = round(info._running._disk * 1000.0) / 1000.0;
 
   return info;
 }
@@ -1385,6 +1403,14 @@ void ArangoManager::statusUpdate (uint64_t taskId, InstanceState state) {
 
 vector<ClusterInfo> ArangoManager::clusters () const {
   return { _impl->clusterInfo("arangodb") };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns information for one cluster
+////////////////////////////////////////////////////////////////////////////////
+
+ClusterInfo ArangoManager::cluster (const string& name) const {
+  return _impl->clusterInfo(name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

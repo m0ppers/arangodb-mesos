@@ -30,6 +30,10 @@
 #include <string.h>
 #include <picojson.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include <string>
 
 #include <mesos/mesos.pb.h>
@@ -40,31 +44,54 @@ using namespace std;
 using namespace mesos;
 using namespace arangodb;
 
+#define GET             0
+#define POST            1
+#define POSTBUFFERSIZE  512
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
-/*
-string JsonConfig (size_t instances,
-                   const ArangoManager::BasicResources& resources) {
-  picojson::object r1;
-
-  r1["cpus"] = picojson::value(resources._cpus);
-  r1["mem"] = picojson::value((double) resources._mem);
-  r1["disk"] = picojson::value((double) resources._disk);
-  r1["ports"] = picojson::value((double) resources._ports);
-
-  picojson::object result;
-
-  result["instances"] = picojson::value((double) instances);
-  result["resources"] = picojson::value(r1);
-
-  return picojson::value(result).serialize();
-}
-*/
-
-
 namespace {
+  string contentTypeByFilename (const string& filename) {
+    string::size_type n = filename.find(".");
+
+    if (n == string::npos) {
+      return "text/plain";
+    }
+
+    string suffix = filename.substr(n + 1);
+
+    if (suffix == "gif") return "image/gif";
+    if (suffix == "jpg") return "image/jpg";
+    if (suffix == "png") return "image/png";
+    if (suffix == "tiff") return "image/tiff";
+    if (suffix == "ico") return "image/x-icon";
+    if (suffix == "css") return "text/css";
+    if (suffix == "js") return "text/javascript";
+    if (suffix == "json") return "application/json";
+    if (suffix == "html") return "text/html";
+    if (suffix == "htm") return "text/html";
+    if (suffix == "pdf") return "application/pdf";
+    if (suffix == "ps") return "application/postscript";
+    if (suffix == "txt") return "text/plain";
+    if (suffix == "text") return "text/plain";
+    if (suffix == "xml") return "application/xml";
+    if (suffix == "dtd") return "application/xml-dtd";
+    if (suffix == "svg") return "image/svg+xml";
+    if (suffix == "ttf") return "application/x-font-ttf";
+    if (suffix == "otf") return "application/x-font-opentype";
+    if (suffix == "woff") return "application/font-woff";
+    if (suffix == "eot") return "application/vnd.ms-fontobject";
+    if (suffix == "bz2") return "application/x-bzip2";
+    if (suffix == "gz") return "application/x-gzip";
+    if (suffix == "tgz") return "application/x-tar";
+    if (suffix == "zip") return "application/x-compressed-zip";
+    if (suffix == "doc") return "application/msword";
+
+    return "text/plain";
+  }
+
   picojson::object JsonClusterInfo (const ClusterInfo& info) {
     picojson::object o;
 
@@ -73,6 +100,9 @@ namespace {
     picojson::object planned;
 
     planned["servers"] = picojson::value(info._planned._servers);
+    planned["agencies"] = picojson::value((double) info._planned._agencies);
+    planned["coordinators"] = picojson::value((double) info._planned._coordinators);
+    planned["dbservers"] = picojson::value((double) info._planned._dbservers);
     planned["cpus"] = picojson::value(info._planned._cpus);
     planned["memory"] = picojson::value(info._planned._memory);
     planned["disk"] = picojson::value(info._planned._disk);
@@ -82,6 +112,9 @@ namespace {
     picojson::object running;
 
     running["servers"] = picojson::value(info._running._servers);
+    running["agencies"] = picojson::value((double) info._running._agencies);
+    running["coordinators"] = picojson::value((double) info._running._coordinators);
+    running["dbservers"] = picojson::value((double) info._running._dbservers);
     running["cpus"] = picojson::value(info._running._cpus);
     running["memory"] = picojson::value(info._running._memory);
     running["disk"] = picojson::value(info._running._disk);
@@ -202,9 +235,11 @@ class arangodb::HttpServerImpl {
     }
 
   public:
-    string GET_V1_CLUSTER ();
-    string GET_DEBUG_OFFERS ();
-    string GET_DEBUG_INSTANCES ();
+    string GET_V1_CLUSTER (const char*);
+    string GET_V1_CLUSTER_NAME (const char*);
+    string POST_V1_CLUSTER_NAME (const char*, const char*);
+    string GET_DEBUG_OFFERS (const char*);
+    string GET_DEBUG_INSTANCES (const char*);
 
   private:
     ArangoManager* _manager;
@@ -214,7 +249,7 @@ class arangodb::HttpServerImpl {
 /// @brief GET /v1/cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_CLUSTER () {
+string HttpServerImpl::GET_V1_CLUSTER (const char*) {
   const vector<ClusterInfo> infos = _manager->clusters();
 
   picojson::object result;
@@ -227,15 +262,33 @@ string HttpServerImpl::GET_V1_CLUSTER () {
   result["clusters"] = picojson::value(list);
 
   return picojson::value(result).serialize();
-  
+}
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/cluster/<name>
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_CLUSTER_NAME (const char* name) {
+  ClusterInfo info = _manager->cluster(name);
+
+  return picojson::value(JsonClusterInfo(info)).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief POST /v1/cluster/<name>
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::POST_V1_CLUSTER_NAME (const char* name, const char* body) {
+  ClusterInfo info = _manager->cluster(name);
+
+  return picojson::value(JsonClusterInfo(info)).serialize();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET /debug/offers
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_DEBUG_OFFERS () {
+string HttpServerImpl::GET_DEBUG_OFFERS (const char* name) {
   vector<OfferSummary> offers = _manager->currentOffers();
 
   picojson::object result;
@@ -259,7 +312,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS () {
 /// @brief GET /debug/instances
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_DEBUG_INSTANCES () {
+string HttpServerImpl::GET_DEBUG_INSTANCES (const char* name) {
   vector<Instance> instances = _manager->currentInstances();
 
   picojson::object result;
@@ -292,6 +345,82 @@ string HttpServerImpl::GET_DEBUG_INSTANCES () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief file callback for read
+////////////////////////////////////////////////////////////////////////////////
+
+static ssize_t file_reader (void *cls, uint64_t pos, char *buf, size_t max) {
+  FILE *file = reinterpret_cast<FILE*>(cls);
+
+  (void) fseek(file, pos, SEEK_SET);
+  return fread(buf, 1, max, file);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief file callback for free
+////////////////////////////////////////////////////////////////////////////////
+
+static void free_callback (void *cls) {
+  FILE *file = reinterpret_cast<FILE*>(cls);
+
+  fclose(file);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief connection structure
+////////////////////////////////////////////////////////////////////////////////
+
+struct ConnectionInfo {
+  int type;
+  string body;
+  struct MHD_PostProcessor* processor;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterator for post
+////////////////////////////////////////////////////////////////////////////////
+
+static int iteratePost (void* con_cls,
+                        enum MHD_ValueKind kind,
+                        const char* key,
+                        const char* filename,
+                        const char* content_type,
+                        const char* transfer_encoding,
+                        const char* data,
+                        uint64_t off,
+                        size_t size) {
+  ConnectionInfo* con_info = reinterpret_cast<ConnectionInfo*>(con_cls);
+
+  cout << "##### key " << key << endl;
+  cout << "##### data " << data << endl;
+  cout << "##### off " << off << endl;
+  cout << "##### size " << size << endl;
+
+  return MHD_YES;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback if request has completed
+////////////////////////////////////////////////////////////////////////////////
+
+static void requestCompleted (void* cls,
+                              struct MHD_Connection* connection,
+                              void** con_cls,
+                              enum MHD_RequestTerminationCode toe) {
+  ConnectionInfo *con_info = reinterpret_cast<ConnectionInfo*>(*con_cls);
+
+  if (NULL == con_info) {
+    return;
+  }
+
+  if (con_info->type == POST) {
+    MHD_destroy_post_processor(con_info->processor);
+  }
+
+  delete con_info;
+  *con_cls = NULL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for daemon
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -310,11 +439,19 @@ static int answerRequest (
   << "handling http request '" << method << " " << url << "'";
 
   // find correct collback
-  string (HttpServerImpl::*getMethod)() = nullptr;
+  string (HttpServerImpl::*getMethod)(const char*) = nullptr;
+  string (HttpServerImpl::*postMethod)(const char*, const char*) = nullptr;
+  FILE* file = nullptr;
+  struct stat buf;
+  const char* prefix = url;
 
-  if (0 == strcmp(method, "GET")) {
+  if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) {
     if (0 == strcmp(url, "/v1/cluster")) {
       getMethod = &HttpServerImpl::GET_V1_CLUSTER;
+    }
+    else if (0 == strncmp(url, "/v1/cluster/", 12)) {
+      getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
+      prefix = url + 12;
     }
     else if (0 == strcmp(url, "/debug/offers")) {
       getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
@@ -322,17 +459,40 @@ static int answerRequest (
     else if (0 == strcmp(url, "/debug/instances")) {
       getMethod = &HttpServerImpl::GET_DEBUG_INSTANCES;
     }
+    else {
+      string filename = "assets/";
+      filename += &url[1];
+
+      if (0 == ::stat(filename.c_str(), &buf))  {
+        file = fopen(filename.c_str(), "rb");
+      }
+    }
+  }
+  else if (0 == strcmp(method, MHD_HTTP_METHOD_POST)) {
+    if (0 == strncmp(url, "/v1/cluster/", 12)) {
+      postMethod = &HttpServerImpl::POST_V1_CLUSTER_NAME;
+      prefix = url + 12;
+    }
   }
 
-  if (getMethod == nullptr) {
+  if (getMethod == nullptr && postMethod == nullptr && file == nullptr) {
     return MHD_NO;
   }
 
-  // do never respond on first call
-  static int aptr;
+  if (*ptr == nullptr) {
+    ConnectionInfo* con_info = new ConnectionInfo();
 
-  if (&aptr != *ptr) {
-    *ptr = &aptr;
+    if (postMethod != nullptr) {
+      con_info->processor = MHD_create_post_processor (
+        connection, POSTBUFFERSIZE, iteratePost, (void *) con_info);
+
+      con_info->type = POST;
+    }
+    else {
+      con_info->type = GET;
+    }
+
+    *ptr = reinterpret_cast<void*>(con_info);
     return MHD_YES;
   }
 
@@ -340,22 +500,73 @@ static int answerRequest (
   struct MHD_Response *response;
   int ret;
 
-  /* reset when done */
-  *ptr = NULL;
+  // handle GET
+  if (getMethod != nullptr) {
+    const string r = (me->*getMethod)(prefix);
 
-  const string r = (me->*getMethod)();
+    response = MHD_create_response_from_buffer(
+      r.length(), (void *) r.c_str(),
+      MHD_RESPMEM_MUST_COPY);
 
-  response = MHD_create_response_from_buffer(
-    r.length(), (void *) r.c_str(),
-    MHD_RESPMEM_MUST_COPY);
+    MHD_add_response_header(
+      response, 
+      "Content-Type", 
+      "application/json; charset=utf-8");
 
-  MHD_add_response_header(
-    response, 
-    "Content-Type", 
-    "application/json; charset=utf-8");
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+  }
 
-  ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
-  MHD_destroy_response(response);
+  // handle POST
+  else if (postMethod != nullptr) {
+    ConnectionInfo* con_info = reinterpret_cast<ConnectionInfo*>(*ptr);
+    const char* body = "";
+
+    if (*upload_data_size != 0) {
+      MHD_post_process(con_info->processor, upload_data, *upload_data_size);
+      *upload_data_size = 0;
+
+      return MHD_YES;
+    }
+
+    const string r = (me->*postMethod)(prefix, body);
+
+    response = MHD_create_response_from_buffer(
+      r.length(), (void *) r.c_str(),
+      MHD_RESPMEM_MUST_COPY);
+
+    MHD_add_response_header(
+      response, 
+      "Content-Type", 
+      "application/json; charset=utf-8");
+
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+  }
+
+  // handle FILE
+  else if (file != nullptr) {
+    response = MHD_create_response_from_callback(buf.st_size,
+                                                 32 * 1024,
+                                                 &file_reader,
+                                                 file,
+                                                 &free_callback);
+    if (response == NULL) {
+      fclose (file);
+      return MHD_NO;
+    }
+
+    MHD_add_response_header(
+      response, 
+      "Content-Type", 
+      contentTypeByFilename(url).c_str());
+
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+  }
+  else {
+    return MHD_NO;
+  }
 
   return ret;
 }
@@ -397,6 +608,7 @@ void HttpServer::start (int port) {
     nullptr, nullptr,
     &answerRequest, (void*) _impl,
     MHD_OPTION_CONNECTION_TIMEOUT, (unsigned int) 120,
+    MHD_OPTION_NOTIFY_COMPLETED, requestCompleted, nullptr,
     MHD_OPTION_END);
 }
 
