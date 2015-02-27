@@ -260,12 +260,12 @@ class arangodb::HttpServerImpl {
     }
 
   public:
-    string GET_V1_CLUSTER (const char*);
-    string GET_V1_CLUSTER_NAME (const char*);
-    string POST_V1_CLUSTER_NAME (const char*, const string&);
-    string GET_V1_SERVERS_NAME (const char*);
-    string GET_DEBUG_OFFERS (const char*);
-    string GET_DEBUG_INSTANCES (const char*);
+    string GET_V1_CLUSTER (const string&);
+    string GET_V1_CLUSTER_NAME (const string&);
+    string POST_V1_CLUSTER_NAME (const string&, const string&);
+    string GET_V1_SERVERS_NAME (const string&);
+    string GET_DEBUG_OFFERS (const string&);
+    string GET_DEBUG_INSTANCES (const string&);
 
   private:
     ArangoManager* _manager;
@@ -275,7 +275,7 @@ class arangodb::HttpServerImpl {
 /// @brief GET /v1/cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_CLUSTER (const char*) {
+string HttpServerImpl::GET_V1_CLUSTER (const string&) {
   const vector<ClusterInfo> infos = _manager->clusters();
 
   picojson::object result;
@@ -294,7 +294,7 @@ string HttpServerImpl::GET_V1_CLUSTER (const char*) {
 /// @brief GET /v1/cluster/<name>
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_CLUSTER_NAME (const char* name) {
+string HttpServerImpl::GET_V1_CLUSTER_NAME (const string& name) {
   ClusterInfo info = _manager->cluster(name);
 
   return picojson::value(JsonClusterInfo(info)).serialize();
@@ -304,7 +304,7 @@ string HttpServerImpl::GET_V1_CLUSTER_NAME (const char* name) {
 /// @brief POST /v1/cluster/<name>
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::POST_V1_CLUSTER_NAME (const char* name, const string& body) {
+string HttpServerImpl::POST_V1_CLUSTER_NAME (const string& name, const string& body) {
   picojson::value v;
   std::string err = picojson::parse(v, body);
 
@@ -350,7 +350,7 @@ string HttpServerImpl::POST_V1_CLUSTER_NAME (const char* name, const string& bod
 /// @brief GET /v1/servers/<name>
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_SERVERS_NAME (const char* name) {
+string HttpServerImpl::GET_V1_SERVERS_NAME (const string& name) {
   const vector<SlaveInfo> infos = _manager->slaveInfo(name);
 
   picojson::object result;
@@ -369,7 +369,7 @@ string HttpServerImpl::GET_V1_SERVERS_NAME (const char* name) {
 /// @brief GET /debug/offers
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_DEBUG_OFFERS (const char* name) {
+string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
   vector<OfferSummary> offers = _manager->currentOffers();
 
   picojson::object result;
@@ -393,7 +393,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS (const char* name) {
 /// @brief GET /debug/instances
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_DEBUG_INSTANCES (const char* name) {
+string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
   vector<Instance> instances = _manager->currentInstances();
 
   picojson::object result;
@@ -453,7 +453,15 @@ static void free_callback (void *cls) {
 
 struct ConnectionInfo {
   int type;
+
+  string (HttpServerImpl::*getMethod)(const string&);
+  string (HttpServerImpl::*postMethod)(const string&, const string&);
+
+  string prefix;
   string body;
+
+  string filename;
+
   struct MHD_PostProcessor* processor;
 };
 
@@ -495,58 +503,51 @@ static int answerRequest (
   HttpServerImpl* me = reinterpret_cast<HttpServerImpl*>(cls);
 
   // find correct collback
-  string (HttpServerImpl::*getMethod)(const char*) = nullptr;
-  string (HttpServerImpl::*postMethod)(const char*, const string&) = nullptr;
-  FILE* file = nullptr;
-  struct stat buf;
-  const char* prefix = url;
-
-  if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) {
-    if (0 == strcmp(url, "/v1/cluster")) {
-      getMethod = &HttpServerImpl::GET_V1_CLUSTER;
-    }
-    else if (0 == strncmp(url, "/v1/cluster/", 12)) {
-      getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
-      prefix = url + 12;
-    }
-    else if (0 == strncmp(url, "/v1/servers/", 12)) {
-      getMethod = &HttpServerImpl::GET_V1_SERVERS_NAME;
-      prefix = url + 12;
-    }
-    else if (0 == strcmp(url, "/debug/offers")) {
-      getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
-    }
-    else if (0 == strcmp(url, "/debug/instances")) {
-      getMethod = &HttpServerImpl::GET_DEBUG_INSTANCES;
-    }
-    else {
-      string filename = "assets/";
-      filename += &url[1];
-
-      if (0 == ::stat(filename.c_str(), &buf))  {
-        file = fopen(filename.c_str(), "rb");
-      }
-    }
-  }
-  else if (0 == strcmp(method, MHD_HTTP_METHOD_POST)) {
-    if (0 == strncmp(url, "/v1/cluster/", 12)) {
-      postMethod = &HttpServerImpl::POST_V1_CLUSTER_NAME;
-      prefix = url + 12;
-    }
-  }
-
-  if (getMethod == nullptr && postMethod == nullptr && file == nullptr) {
-    return MHD_NO;
-  }
-
   if (*ptr == nullptr) {
     ConnectionInfo* conInfo = new ConnectionInfo();
 
-    if (postMethod != nullptr) {
-      conInfo->type = POST;
-    }
-    else {
+    if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) {
       conInfo->type = GET;
+
+      if (0 == strcmp(url, "/v1/cluster")) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER;
+      }
+      else if (0 == strncmp(url, "/v1/cluster/", 12)) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
+        conInfo->prefix = url + 12;
+      }
+      else if (0 == strncmp(url, "/v1/servers/", 12)) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_SERVERS_NAME;
+        conInfo->prefix = url + 12;
+      }
+      else if (0 == strcmp(url, "/debug/offers")) {
+        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
+      }
+      else if (0 == strcmp(url, "/debug/instances")) {
+        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_INSTANCES;
+      }
+      else {
+        conInfo->filename = "assets/";
+
+        if (url[1] == '\0') {
+          conInfo->filename += "index.html";
+        }
+        else {
+          conInfo->filename += &url[1];
+        }
+      }
+    }
+    else if (0 == strcmp(method, MHD_HTTP_METHOD_POST)) {
+      conInfo->type = POST;
+
+      if (0 == strncmp(url, "/v1/cluster/", 12)) {
+        conInfo->postMethod = &HttpServerImpl::POST_V1_CLUSTER_NAME;
+        conInfo->prefix = url + 12;
+      }
+    }
+
+    if (conInfo->getMethod == nullptr && conInfo->postMethod == nullptr && conInfo->filename.empty()) {
+      return MHD_NO;
     }
 
     *ptr = reinterpret_cast<void*>(conInfo);
@@ -554,15 +555,16 @@ static int answerRequest (
   }
 
   // generate response
+  ConnectionInfo* conInfo = reinterpret_cast<ConnectionInfo*>(*ptr);
   struct MHD_Response *response;
   int ret;
 
   // handle GET
-  if (getMethod != nullptr) {
+  if (conInfo->getMethod != nullptr) {
     LOG(INFO)
     << "handling http request '" << method << " " << url << "'";
 
-    const string r = (me->*getMethod)(prefix);
+    const string r = (me->*(conInfo->getMethod))(conInfo->prefix);
 
     response = MHD_create_response_from_buffer(
       r.length(), (void *) r.c_str(),
@@ -578,9 +580,7 @@ static int answerRequest (
   }
 
   // handle POST
-  else if (postMethod != nullptr) {
-    ConnectionInfo* conInfo = reinterpret_cast<ConnectionInfo*>(*ptr);
-
+  else if (conInfo->postMethod != nullptr) {
     if (*upload_data_size != 0) {
       conInfo->body += string(upload_data, *upload_data_size);
       *upload_data_size = 0;
@@ -591,7 +591,7 @@ static int answerRequest (
     LOG(INFO)
     << "handling http request '" << method << " " << url << "'";
 
-    const string r = (me->*postMethod)(prefix, conInfo->body);
+    const string r = (me->*(conInfo->postMethod))(conInfo->prefix, conInfo->body);
 
     response = MHD_create_response_from_buffer(
       r.length(), (void *) r.c_str(),
@@ -607,9 +607,21 @@ static int answerRequest (
   }
 
   // handle FILE
-  else if (file != nullptr) {
+  else if (! conInfo->filename.empty()) {
     LOG(INFO)
     << "handling http request '" << method << " " << url << "'";
+
+    struct stat buf;
+
+    if (0 != ::stat(conInfo->filename.c_str(), &buf))  {
+      return MHD_NO;
+    }
+
+    FILE* file = fopen(conInfo->filename.c_str(), "rb");
+
+    if (file == nullptr) {
+      return MHD_NO;
+    }
 
     response = MHD_create_response_from_callback(buf.st_size,
                                                  32 * 1024,
@@ -624,7 +636,7 @@ static int answerRequest (
     MHD_add_response_header(
       response, 
       "Content-Type", 
-      contentTypeByFilename(url).c_str());
+      contentTypeByFilename(conInfo->filename).c_str());
 
     ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
     MHD_destroy_response(response);

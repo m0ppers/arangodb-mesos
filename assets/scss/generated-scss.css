@@ -6681,7 +6681,12 @@ nav.navbar {
   z-index: 1000; }
 
 .shadow {
-  /*opacity: 0.5;*/ }
+  opacity: 0.5;
+  -webkit-transition: 0.3s ease all;
+  -moz-transition: 0.3s ease all;
+  -ms-transition: 0.3s ease all;
+  -o-transition: 0.3s ease all;
+  transition: 0.3s ease all; }
 
 .button-close {
   padding-top: 10px;
@@ -8783,6 +8788,8 @@ pre.gv-object-view {
   width: 500px; }
   .modal .fa-plus {
     color: #00B482; }
+  .modal .fa-minus {
+    color: #f22929; }
 
 .tableRow {
   color: #fff;
@@ -8829,6 +8836,9 @@ pre.gv-object-view {
     color: #fff;
     border-top-color: #fff !important; }
 
+.modal-footer {
+  display: none; }
+
 #cluster-content .fa-refresh {
   float: right;
   position: relative;
@@ -8848,6 +8858,8 @@ pre.gv-object-view {
 .header p {
   padding-left: 10px; }
 
+.cluster-right .pure-u-1-1 {
+  overflow: hidden; }
 .cluster-right .legend-circle {
   width: 80px;
   height: 80px;
@@ -8862,13 +8874,20 @@ pre.gv-object-view {
 .cluster-right .legend-disk {
   background-color: #57cfcd; }
 .cluster-right .pure-u-1-1 p {
-  margin-top: 40px;
+  margin-top: 30px;
   float: left; }
 .cluster-right p {
   padding-right: 5px; }
 
 .cluster-left p {
   padding-left: 5px; }
+
+.empty-pie .none {
+  stroke: rgba(255, 255, 255, 0.3) !important;
+  fill: rgba(255, 255, 255, 0.05) !important; }
+
+.pie:hover {
+  cursor: pointer; }
 
 .pie {
   float: left;

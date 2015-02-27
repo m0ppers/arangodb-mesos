@@ -1090,9 +1090,9 @@ vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) co
 
     info._name = i.first;
 
-    info._available._cpus = info._used._cpus;
-    info._available._memory = info._used._memory;
-    info._available._disk = info._used._disk;
+    info._available._cpus = info._used._cpus * 2;
+    info._available._memory = info._used._memory * 2;
+    info._available._disk = info._used._disk * 2;
   }
 
   for (auto& i : _slaveInfo) {

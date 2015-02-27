@@ -27,9 +27,14 @@
       var id = (e.currentTarget.id).substr(3, e.currentTarget.id.length),
       current = this.layoutData[id];
 
+      if (id === '') {
+        return;
+      }
+
       $('.cpu-label').text(this.round1Dec(current[0].percent) + ' %');
       $('.ram-label').text(this.round1Dec(current[1].percent) + ' %');
       $('.disk-label').text(this.round1Dec(current[2].percent) + ' %');
+      $('.name-label').text($(e.currentTarget).find('.pie-name').text());
     },
 
     clearDetailInfo: function () {
@@ -37,6 +42,7 @@
       $('.cpu-label').empty()
       $('.ram-label').empty();
       $('.disk-label').empty();
+      $('.name-label').empty();
     },
 
     round1Dec: function(value) {
@@ -91,9 +97,9 @@
     calculateLayout: function(node) {
       var pCPU, pMEM, pDISK;
 
-      pCPU = this.pToValue(node.available.cpus / node.used.cpus);
-      pMEM = this.pToValue(node.available.memory / node.used.memory);
-      pDISK = this.pToValue(node.available.disk / node.used.disk);
+      pCPU = this.pToValue(node.used.cpus, node.available.cpus);
+      pMEM = this.pToValue(node.used.memory, node.available.memory);
+      pDISK = this.pToValue(node.used.disk, node.available.disk);
 
       this.layoutNames.push({name: node.name});
 
@@ -121,23 +127,24 @@
 
     },
 
-    pToValue: function(value) {
-      var calc = 0;
+    pToValue: function(used, available) {
 
-      if (value === 1) {
-        calc = 33;
-      }
-      else {
-        calc = 33 - ((33/100)*value*10);
-      }
+      var division = used/available,
+      calc = 0;
+
+      calc = 33*division;
       return calc;
     },
 
     pToPercent: function(value) {
+
       var calc = value*3;
 
       if (calc === 99) {
         calc = 100;
+      }
+      else if (calc === 49.5) {
+        calc = 50;
       }
       return calc;
     },
@@ -182,12 +189,21 @@
     },
 
     renderPie: function(id, data, delay) {
-      var name = this.layoutNames[id].name;
+      var name = this.layoutNames[id].name,
+      isEmpty = false;
+
+      if (data[0].value === 0 && data[1].value === 0 && data[2].value === 0) {
+        isEmpty = true;
+      }
+
       $('#pie'+id).epoch({
         type: 'pie',
         data: data,
         inner: 30
       });
+      if (isEmpty === true) {
+        $('#pie'+id).addClass('empty-pie');
+      }
 
       if (delay === 0) {
         $('#pie'+id).append('<p class="pie-name">'+name+'</p>');
@@ -295,7 +311,7 @@
               id: "id_cpus",
               value:
                 '<span class="valuePlanned">' + json.planned.cpus +
-                '</span<span> / </span>' + _.escape(json.running.cpus)
+                '</span><span> / </span><span class="value">' + _.escape(json.running.cpus) + '</span>'
             },
             {
               type: window.modalView.tables.READONLY,
@@ -303,7 +319,7 @@
               id: "id_memory",
               value:
                 '<span class="valuePlanned">' + filesize(_.escape(json.planned.memory)) +
-                '</span<span> / </span>' + filesize(_.escape(json.running.memory))
+                '</span><span> / </span><span class="value">' + filesize(_.escape(json.running.memory)) + '</span>'
             },
             {
               type: window.modalView.tables.READONLY,
@@ -311,7 +327,7 @@
               id: "id_disk",
               value:
                 '<span class="valuePlanned">' + filesize(_.escape(json.planned.disk)) +
-                '</span<span> / </span>' + filesize(_.escape(json.running.disk))
+                '</span><span> / </span><span class="value">' + filesize(_.escape(json.running.disk)) + '</span>'
             }
           ];
 
@@ -364,6 +380,28 @@
       });
     },
 
+    rerenderValues: function(data) {
+
+      _.each(data.planned, function(val, key) {
+
+        if (key === 'memory' || key === 'disk') {
+          $('#id_'+key+' .valuePlanned').text(filesize(_.escape(val)));
+        }
+        else {
+          $('#id_'+key+' .valuePlanned').text(val);
+        }
+      });
+      _.each(data.running, function(val, key) {
+        if (key === 'memory' || key === 'disk') {
+          $('#id_'+key+' .valuePlanned').text(filesize(_.escape(val)));
+        }
+        else {
+          $('#id_'+key+' .value').text(val);
+        }
+      });
+
+    },
+
     postCluster: function (e) {
       var attributeElement = $(e).parent().find('.value'),
       self = this,
@@ -375,7 +413,7 @@
       if ($(e).hasClass('fa-plus')) {
 
         var postMsg = {};
-        postMsg[attributeName] = attributeValue+1;
+        postMsg[attributeName] = 1;
 
         $.ajax({
           type: "POST",
@@ -383,9 +421,8 @@
           data: JSON.stringify(postMsg),
           contentType: "application/json",
           processData: false,
-          success: function () {
-            window.modalView.hide();
-            self.drawServerModal(null, clusterName);
+          success: function (data) {
+            self.rerenderValues(data);
           },
           error: function () {
             console.log("post plus req error");
@@ -396,7 +433,7 @@
       else if ($(e).hasClass('fa-minus')) {
 
         var postMsg = {};
-        postMsg[attributeName] = attributeValue-1;
+        postMsg[attributeName] = -1;
 
         $.ajax({
           type: "POST",
@@ -404,9 +441,8 @@
           data: JSON.stringify(postMsg),
           contentType: "application/json",
           processData: false,
-          success: function () {
-            window.modalView.hide();
-            self.drawServerModal(null, clusterName);
+          success: function (data) {
+            self.rerenderValues(data);
           },
           error: function () {
             console.log("post minus req error");

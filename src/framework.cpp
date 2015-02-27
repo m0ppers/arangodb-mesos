@@ -39,6 +39,7 @@
 #include <stout/numify.hpp>
 #include <stout/os.hpp>
 #include <stout/stringify.hpp>
+#include <stout/net.hpp>
 
 #include "logging/flags.hpp"
 #include "logging/logging.hpp"
@@ -125,7 +126,14 @@ int main (int argc, char** argv) {
   framework.set_role(role);
   framework.set_checkpoint(true);
 
-  // TODO(fc) webui_url
+  Try<string> hostnameTry = net::hostname();
+  string hostname = hostnameTry.get();
+
+  int port = 8181;
+  
+  string url = "http://" + hostname + ":" + to_string(port) + "/index.html";
+
+  framework.set_webui_url(url);
 
   if (os::hasenv("MESOS_CHECKPOINT")) {
     framework.set_checkpoint(
@@ -169,7 +177,7 @@ int main (int argc, char** argv) {
   HttpServer http(scheduler.manager());
 
   // start and wait
-  http.start(8181);
+  http.start(port);
 
   int status = driver->run() == DRIVER_STOPPED ? 0 : 1;
 
