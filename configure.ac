@@ -77,11 +77,88 @@ LDFLAGS="${LDFLAGS} ${PTHREAD_CFLAGS}"
 LIBS="${LIBS} ${PTHREAD_LIBS} "
 
 dnl ----------------------------------------------------------------------------
+dnl protobuf
+dnl ----------------------------------------------------------------------------
+
+AC_LANG(C++)
+
+AC_CHECK_HEADERS(google/protobuf/stubs/common.h, [PROTOBUF=yes], [PROTOBUF=no])
+
+AC_MSG_CHECKING([PROTOBUF])
+
+if test "x$PROTOBUF" = "xno";  then
+  AC_MSG_ERROR([Please install 'libprotobuf-dev'])
+else
+  AC_MSG_RESULT([found])
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl glog
+dnl ----------------------------------------------------------------------------
+
+AC_LANG(C++)
+
+AC_CHECK_HEADERS(glog/logging.h, [GLOG=yes], [GLOG=no])
+
+AC_MSG_CHECKING([GLOG])
+
+if test "x$GLOG" = "xno";  then
+  AC_MSG_ERROR([Please install 'libgoogle-glog-dev'])
+else
+  AC_MSG_RESULT([found])
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl boost
+dnl ----------------------------------------------------------------------------
+
+AC_LANG(C++)
+
+AC_CHECK_HEADERS(boost/lexical_cast.hpp, [BOOST=yes], [BOOST=no])
+
+AC_MSG_CHECKING([BOOST])
+
+if test "x$BOOST" = "xno";  then
+  AC_MSG_ERROR([Please install 'libboost-dev'])
+else
+  AC_MSG_RESULT([found])
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl picojson.h
+dnl ----------------------------------------------------------------------------
+
+CPPFLAGS="$CPPFLAGS -I`pwd`/${srcdir}/3rdParty/picojson"
+
+dnl ----------------------------------------------------------------------------
 dnl mesos
 dnl ----------------------------------------------------------------------------
 
-MESOS_CPPFLAGS="-I../mesos/src -I../mesos/build/src"
+AC_LANG(C++)
+
+MESOS_CPPFLAGS="-I/usr/local/include -I`pwd`/${builddir}"
 MESOS_LIBS="-lmesos"
+
+SAVE_CPPFLAGS="$CPPFLAGS"
+CPPFLAGS="$CPPFLAGS $MESOS_CPPFLAGS"
+
+AC_CHECK_HEADERS(mesos/resources.hpp, [MESOS=yes], [MESOS=no])
+
+AC_MSG_CHECKING([MESOS])
+
+if test "x$MESOS" = "xno";  then
+  AC_MSG_ERROR([Please install MESOS])
+else
+  AC_MSG_RESULT([found])
+fi
+
+AC_CHECK_HEADERS(logging/flags.hpp, [MESOS=yes], [MESOS=no])
+
+if test "x$MESOS" = "xno";  then
+  AC_MSG_ERROR([Please link 'logging' from mesos, i. e. 'ln -s ../mesos/src/logging .'])
+fi
+
+CPPFLAGS="$SAVE_CPPFLAGS"
 
 AC_SUBST(MESOS_CPPFLAGS)
 AC_SUBST(MESOS_LIBS)
@@ -90,8 +167,20 @@ dnl ----------------------------------------------------------------------------
 dnl microhttpd
 dnl ----------------------------------------------------------------------------
 
+AC_LANG(C)
+
 MICROHTTPD_CPPFLAGS=""
 MICROHTTPD_LIBS="-lmicrohttpd"
+
+AC_CHECK_HEADERS(microhttpd.h, [MICROHTTPD=yes], [MICROHTTPD=no])
+
+AC_MSG_CHECKING([MICROHTTPD])
+
+if test "x$MICROHTTPD" = "xno";  then
+  AC_MSG_ERROR([Please install 'libmicrohttpd-dev'])
+else
+  AC_MSG_RESULT([found])
+fi
 
 AC_SUBST(MICROHTTPD_CPPFLAGS)
 AC_SUBST(MICROHTTPD_LIBS)
