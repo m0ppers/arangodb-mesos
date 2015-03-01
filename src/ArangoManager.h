@@ -242,6 +242,36 @@ namespace arangodb {
     return UNKNOWN;
   }
 
+
+  inline const string& toStringShort (OfferAnalysisStatus type) {
+    static const string DYNAMIC_RESERVATION_REQUIRED = "DYNREQ";
+    static const string PERSISTENT_VOLUME_REQUIRED = "VOLREQ";
+    static const string TOO_SMALL = "SMALL";
+    static const string USABLE = "USE";
+    static const string WAIT = "WAIT";
+
+    static const string UNKNOWN = "UNKNOWN";
+
+    switch (type) {
+      case OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED:
+        return DYNAMIC_RESERVATION_REQUIRED;
+
+      case OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED:
+        return PERSISTENT_VOLUME_REQUIRED;
+
+      case OfferAnalysisStatus::TOO_SMALL:
+        return TOO_SMALL;
+
+      case OfferAnalysisStatus::USABLE:
+        return USABLE;
+
+      case OfferAnalysisStatus::WAIT:
+        return WAIT;
+    }
+
+    return UNKNOWN;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief OfferAnalysis
 ////////////////////////////////////////////////////////////////////////////////

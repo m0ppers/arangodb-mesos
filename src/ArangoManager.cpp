@@ -70,84 +70,6 @@ namespace {
   }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts diskspace from a resource
-///////////////////////////////////////////////////////////////////////////////
-
-  double diskspace (const Resource& resource) {
-    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
-      return resource.scalar().value();
-    }
-
-    return 0;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts diskspace from resources
-///////////////////////////////////////////////////////////////////////////////
-
-  double diskspace (const Resources& resources) {
-    double value = 0;
-
-    for (auto resource : resources) {
-      value += diskspace(resource);
-    }
-
-    return value;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts cpus from a resource
-///////////////////////////////////////////////////////////////////////////////
-
-  double cpus (const Resource& resource) {
-    if (resource.name() == "cpus" && resource.type() == Value::SCALAR) {
-      return resource.scalar().value();
-    }
-
-    return 0;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts cpus from resources
-///////////////////////////////////////////////////////////////////////////////
-
-  double cpus (const Resources& resources) {
-    double value = 0;
-
-    for (auto resource : resources) {
-      value += cpus(resource);
-    }
-
-    return value;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts memory from a resource
-///////////////////////////////////////////////////////////////////////////////
-
-  double memory (const Resource& resource) {
-    if (resource.name() == "mem" && resource.type() == Value::SCALAR) {
-      return resource.scalar().value();
-    }
-
-    return 0;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts memory from resources
-///////////////////////////////////////////////////////////////////////////////
-
-  double memory (const Resources& resources) {
-    double value = 0;
-
-    for (auto resource : resources) {
-      value += memory(resource);
-    }
-
-    return value;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
 /// @brief extracts number of avaiable ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -840,10 +762,12 @@ void ArangoManagerImpl::dispatch () {
 
       checkInstances(_agency);
 
+/*
       if (_agency.isUsable()) {
         checkInstances(_coordinator);
         checkInstances(_dbserver);
       }
+*/
     }
 
     this_thread::sleep_for(chrono::seconds(SLEEP_SEC));

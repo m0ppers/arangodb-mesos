@@ -27,7 +27,16 @@
 
 #include "utils.h"
 
+#include <time.h>
+
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+
 using namespace std;
+using namespace mesos;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -88,6 +97,97 @@ namespace arangodb {
     }
 
     return result;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts diskspace from a resource
+///////////////////////////////////////////////////////////////////////////////
+
+  double diskspace (const Resource& resource) {
+    if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+      return resource.scalar().value();
+    }
+
+    return 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts diskspace from resources
+///////////////////////////////////////////////////////////////////////////////
+
+  double diskspace (const Resources& resources) {
+    double value = 0;
+
+    for (const auto& resource : resources) {
+      value += diskspace(resource);
+    }
+
+    return value;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts cpus from a resource
+///////////////////////////////////////////////////////////////////////////////
+
+  double cpus (const Resource& resource) {
+    if (resource.name() == "cpus" && resource.type() == Value::SCALAR) {
+      return resource.scalar().value();
+    }
+
+    return 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts cpus from resources
+///////////////////////////////////////////////////////////////////////////////
+
+  double cpus (const Resources& resources) {
+    double value = 0;
+
+    for (const auto& resource : resources) {
+      value += cpus(resource);
+    }
+
+    return value;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts memory from a resource
+///////////////////////////////////////////////////////////////////////////////
+
+  double memory (const Resource& resource) {
+    if (resource.name() == "mem" && resource.type() == Value::SCALAR) {
+      return resource.scalar().value();
+    }
+
+    return 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts memory from resources
+///////////////////////////////////////////////////////////////////////////////
+
+  double memory (const Resources& resources) {
+    double value = 0;
+
+    for (const auto& resource : resources) {
+      value += memory(resource);
+    }
+
+    return value;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief converts system time
+///////////////////////////////////////////////////////////////////////////////
+
+  string toStringSystemTime (const chrono::system_clock::time_point& tp) {
+    time_t tt = chrono::system_clock::to_time_t(tp);
+
+    char buf[1024];
+    strftime(buf, sizeof(buf) - 1, "%F %T", localtime(&tt));
+
+    return buf;
   }
 }
 

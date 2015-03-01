@@ -39,6 +39,7 @@
 #include <mesos/mesos.pb.h>
 
 #include "ArangoManager.h"
+#include "utils.h"
 
 using namespace std;
 using namespace mesos;
@@ -220,6 +221,76 @@ namespace {
     return o;
   }
 
+  picojson::object JsonOfferSummary (const OfferSummary& summary) {
+    const Offer& offer = summary._offer;
+
+    picojson::object o;
+
+    o["offerId"] = picojson::value(offer.id().value());
+    o["slaveId"] = picojson::value(offer.slave_id().value());
+
+    picojson::object resources;
+
+    Resources r = offer.resources();
+
+    resources["cpus"] = picojson::value(cpus(r));
+    resources["memory"] = picojson::value(memory(r) * 1024);
+    resources["disk"] = picojson::value(diskspace(r) * 1024);
+
+    o["resources"] = picojson::value(resources);
+
+    picojson::object status;
+
+    status["agency"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_AGENCY]._status));
+    status["coordinator"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_COORDINATOR]._status));
+    status["dbserver"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_DBSERVER]._status));
+
+    o["status"] = picojson::value(status);
+
+    return o;
+  }
+
+  picojson::object JsonInstance (const Instance& instance) {
+    picojson::object o;
+
+    o["taskId"] = picojson::value((double) instance._taskId);
+    o["slaveId"] = picojson::value(instance._slaveId);
+    o["hostname"] = picojson::value(instance._hostname);
+    o["started"] = picojson::value(toStringSystemTime(instance._started));
+    o["lastUpdate"] = picojson::value(toStringSystemTime(instance._lastUpdate));
+    o["status"] = picojson::value(toString(instance._state));
+
+    switch (instance._aspectId) {
+      case 0:
+        o["aspect"] = picojson::value("AGENCY");
+        break;
+
+      case 1:
+        o["aspect"] = picojson::value("COORDINATOR");
+        break;
+
+      case 2:
+        o["aspect"] = picojson::value("DBSERVER");
+        break;
+
+      default:
+        o["aspect"] = picojson::value("");
+        break;
+    }
+
+    picojson::object resources;
+
+    const Resources& r = instance._resources;
+
+    resources["cpus"] = picojson::value(cpus(r));
+    resources["memory"] = picojson::value(memory(r) * 1024);
+    resources["disk"] = picojson::value(diskspace(r) * 1024);
+
+    o["resources"] = picojson::value(resources);
+
+    return o;
+  }
+
   picojson::object JsonSlaveInfo (const arangodb::SlaveInfo& info) {
     picojson::object o;
 
@@ -264,6 +335,9 @@ class arangodb::HttpServerImpl {
     string GET_V1_CLUSTER_NAME (const string&);
     string POST_V1_CLUSTER_NAME (const string&, const string&);
     string GET_V1_SERVERS_NAME (const string&);
+    string GET_V1_OFFERS_NAME (const string&);
+    string GET_V1_INSTANCES_NAME (const string&);
+
     string GET_DEBUG_OFFERS (const string&);
     string GET_DEBUG_INSTANCES (const string&);
 
@@ -361,6 +435,44 @@ string HttpServerImpl::GET_V1_SERVERS_NAME (const string& name) {
   }
 
   result["servers"] = picojson::value(list);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/offers/<name>
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_OFFERS_NAME (const string& name) {
+  vector<OfferSummary> offers = _manager->currentOffers();
+
+  picojson::object result;
+  picojson::array list;
+
+  for (const auto& offer : offers) {
+    list.push_back(picojson::value(JsonOfferSummary(offer)));
+  }
+
+  result["offers"] = picojson::value(list);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/instances/<name>
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_INSTANCES_NAME (const string& name) {
+  vector<Instance> instances = _manager->currentInstances();
+
+  picojson::object result;
+  picojson::array list;
+
+  for (const auto& instance : instances) {
+    list.push_back(picojson::value(JsonInstance(instance)));
+  }
+
+  result["instances"] = picojson::value(list);
 
   return picojson::value(result).serialize();
 }
@@ -519,6 +631,14 @@ static int answerRequest (
       else if (0 == strncmp(url, "/v1/servers/", 12)) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_SERVERS_NAME;
         conInfo->prefix = url + 12;
+      }
+      else if (0 == strncmp(url, "/v1/offers/", 11)) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_OFFERS_NAME;
+        conInfo->prefix = url + 11;
+      }
+      else if (0 == strncmp(url, "/v1/instances/", 14)) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_INSTANCES_NAME;
+        conInfo->prefix = url + 14;
       }
       else if (0 == strcmp(url, "/debug/offers")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;

@@ -139,3 +139,7 @@ var host = ARGUMENTS[0];
 print("Starting to send data to Agency " + host + " ...");
 var res = sendToAgency("http://" + host + "/v2/keys", "/", agencyData);
 print("Result:",res);
+
+if (res.code == 500) {
+  throw new Error("failed to initialize agency");
+}
