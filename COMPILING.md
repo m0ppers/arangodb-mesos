@@ -46,5 +46,5 @@ Checkout and compile:
     container> nohup mesos-slave --master=$IP:5050 --containerizers=mesos --work_dir=/tmp/slave > mesos-slave.log 2>&1 &
 
     container> cd /home/arangodb-mesos
-    container> ./bin/arangodb-framework --master=172.17.0.34:5050 --role=arangodb 
+    container> ./bin/arangodb-framework --master=$IP:5050 --role=arangodb 
 
