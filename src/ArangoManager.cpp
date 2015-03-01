@@ -239,46 +239,14 @@ namespace {
   }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief analyses an offer
+/// @brief analyses an initial offer
+///
+/// Will either return
+/// - TOO_SMALL
+/// - DYNAMIC_RESERVATION_REQUIRED
+/// - PERSISTENT_VOLUME_REQUIRED
+/// - USABLE
 ///////////////////////////////////////////////////////////////////////////////
-
-  bool checkSlaveStates (const Aspects& aspect, const string& slaveId) {
-    const string& name = aspect._name;
-    auto& blockedSlaves = aspect._blockedSlaves;
-
-    if (blockedSlaves.find(slaveId) != blockedSlaves.end()) {
-      LOG(INFO)
-      << name << " has blocked slave " << slaveId;
-
-      return false;
-    }
-
-    // TODO(fc) it is possible that we see a new offer BEFORE we get a 
-    // confirmation that the task died. Need to handle this somehow.
-
-    auto& startedSlaves = aspect._startedSlaves;
-
-    if (startedSlaves.find(slaveId) != startedSlaves.end()) {
-      LOG(INFO)
-      << name << " has already an instance started on slave " << slaveId;
-
-      return false;
-    }
-
-    auto& preferredSlaves = aspect._preferredSlaves;
-
-    if (preferredSlaves.size() >= aspect._plannedInstances) {
-      if (preferredSlaves.find(slaveId) == preferredSlaves.end()) {
-        LOG(INFO)
-        << name << slaveId << " is not a preferred slave";
-
-        return false;
-      }
-    }
-
-    return true;
-  }
-
 
   bool checkPorts (const Aspects& aspect, const Offer& offer) {
     if (numberPorts(offer) < aspect._requiredPorts) {
@@ -403,18 +371,13 @@ namespace {
 
 
 
-  OfferAnalysis analyseOffer (const Aspects& aspect, const Offer& offer) {
+  OfferAnalysis analyseInitialOffer (const Aspects& aspect, const Offer& offer) {
     Resources resources = offer.resources();
     string slaveId = offer.slave_id().value();
 
-    // first check if this slave is already known
-    if (! checkSlaveStates(aspect, slaveId)) {
-      return { OfferAnalysisType::NOT_USABLE };
-    }
-
     // first check the number of ports
     if (! checkPorts(aspect, offer)) {
-      return { OfferAnalysisType::NOT_USABLE };
+      return { OfferAnalysisStatus::TOO_SMALL };
     }
 
     // next check non-disk parts
@@ -422,7 +385,7 @@ namespace {
     Resources unreserved;
       
     if (! checkMemCpu(aspect, offer, reserved, unreserved)) {
-      return { OfferAnalysisType::NOT_USABLE };
+      return { OfferAnalysisStatus::TOO_SMALL };
     }
 
     bool reservationRequired = ! unreserved.empty();
@@ -437,7 +400,7 @@ namespace {
     if (diskres.first) {
       if (reservationRequired) {
         return {
-          OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED,
+          OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED,
           unreserved };
       }
       else {
@@ -449,7 +412,7 @@ namespace {
         }
 
         return {
-          OfferAnalysisType::USABLE,
+          OfferAnalysisStatus::USABLE,
           reserved + diskres.second,
           containerPath,
           hostPath };
@@ -462,12 +425,12 @@ namespace {
     if (diskres.first) {
       if (reservationRequired) {
         return {
-          OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED,
+          OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED,
           unreserved };
       }
       else {
         return { 
-          OfferAnalysisType::PERSISTENT_VOLUME_REQUIRED,
+          OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED,
           Resources() + diskres.second };
       }
     }
@@ -477,11 +440,11 @@ namespace {
 
     if (diskres.first) {
       return {
-        OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED,
+        OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED,
         unreserved + mdisk };
     }
 
-    return { OfferAnalysisType::NOT_USABLE };
+    return { OfferAnalysisStatus::TOO_SMALL };
   }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -508,20 +471,11 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class InstanceManager
-// -----------------------------------------------------------------------------
-
-class InstanceManager {
-  public:
-    unordered_map<uint64_t, Instance> _instances;
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                     class Aspects
 // -----------------------------------------------------------------------------
 
-Aspects::Aspects (const string& name, const string& role)
-  : _name(name), _role(role) {
+Aspects::Aspects (const string& name, const string& role, InstanceManager* manager)
+  : _name(name), _role(role), _instanceManager(manager) {
   _startedInstances = 0;
   _runningInstances = 0;
 }
@@ -536,8 +490,8 @@ Aspects::Aspects (const string& name, const string& role)
 
 class AgencyAspects : public Aspects {
   public:
-    AgencyAspects (const string& role) 
-      : Aspects("AGENCY", role) {
+    AgencyAspects (const string& role, InstanceManager* manager) 
+      : Aspects("AGENCY", role, manager) {
       _minimumResources = Resources::parse("cpus:0.5;mem:100;disk:100").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -608,7 +562,6 @@ namespace {
 
   // TODO(fc) do not use a global variable
   AgencyAspects* globalAgency = nullptr;
-  InstanceManager* instanceManager = nullptr;
 
   string findAgencyEndpoint () {
     default_random_engine generator;
@@ -621,7 +574,7 @@ namespace {
     const string& slaveId = *iter;
     uint64_t taskId = globalAgency->_slave2task[slaveId];
 
-    const Instance& instance = instanceManager->_instances[taskId];
+    const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
 
     return "tcp://" + instance._hostname + ":" + to_string(instance._ports[1]);
   }
@@ -637,7 +590,7 @@ namespace {
     const string& slaveId = *iter;
     uint64_t taskId = globalAgency->_slave2task[slaveId];
 
-    const Instance& instance = instanceManager->_instances[taskId];
+    const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
 
     return instance._hostname + ":" + to_string(instance._ports[1]);
   }
@@ -649,8 +602,11 @@ namespace {
 
 class ArangoAspects : public Aspects {
   public:
-    ArangoAspects (const string& name, const string& type, const string& role)
-      : Aspects(name, role),
+    ArangoAspects (const string& name,
+                   const string& type,
+                   const string& role,
+                   InstanceManager* manager)
+      : Aspects(name, role, manager),
         _type(type) {
     }
 
@@ -709,8 +665,8 @@ class ArangoAspects : public Aspects {
 
 class CoordinatorAspects : public ArangoAspects {
   public:
-    CoordinatorAspects (const string& role) 
-      : ArangoAspects("COORDINATOR", "coordinator", role) {
+    CoordinatorAspects (const string& role, InstanceManager* manager) 
+      : ArangoAspects("COORDINATOR", "coordinator", role, manager) {
       _minimumResources = Resources::parse("cpus:1;mem:1024;disk:1024").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -746,8 +702,8 @@ class CoordinatorAspects : public ArangoAspects {
 
 class DBServerAspects : public ArangoAspects {
   public:
-    DBServerAspects (const string& role) 
-      : ArangoAspects("DBSERVER", "dbserver", role) {
+    DBServerAspects (const string& role, InstanceManager* manager) 
+      : ArangoAspects("DBSERVER", "dbserver", role, manager) {
       _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -854,16 +810,15 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
   : _role(role),
     _scheduler(scheduler),
     _stopDispatcher(false),
-    _agency(role),
-    _coordinator(role),
-    _dbserver(role) {
+    _agency(role, this),
+    _coordinator(role, this),
+    _dbserver(role, this) {
 
   // TODO(fc) how to persist & change these values
 
   _aspects = { &_agency, &_coordinator, &_dbserver };
 
   globalAgency = &_agency;
-  instanceManager = this;
 }
 
 // -----------------------------------------------------------------------------
@@ -903,7 +858,6 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
   const string& id = offer.id().value();
-  const string& slaveId = offer.slave_id().value();
 
   LOG(INFO)
   << "OFFER received: " << id << ": " << offer.resources() << "\n";
@@ -912,11 +866,11 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   OfferSummary summary = { false, offer };
 
   for (auto& aspect : _aspects) {
-    OfferAnalysis oa = analyseOffer(*aspect, offer);
+    OfferAnalysis oa = analyseInitialOffer(*aspect, offer);
+    oa._initialStatus = oa._status;
 
-    if (oa._status != OfferAnalysisType::NOT_USABLE) {
+    if (oa._status != OfferAnalysisStatus::TOO_SMALL) {
       summary._usable = true;
-      aspect->_blockedSlaves.insert(slaveId);
     }
 
     summary._analysis[aspect->id()]= oa;
@@ -1132,10 +1086,6 @@ void ArangoManagerImpl::removeOffer (const string& id) {
   const Offer& offer = iter->second._offer;
   const string& slaveId = offer.slave_id().value();
 
-  _agency._blockedSlaves.erase(slaveId);
-  _coordinator._blockedSlaves.erase(slaveId);
-  _dbserver._blockedSlaves.erase(slaveId);
-
   LOG(INFO)
   << "DEBUG removed offer " << id
   << " for slave " << slaveId;
@@ -1178,11 +1128,24 @@ void ArangoManagerImpl::checkInstances (Aspects& aspect) {
     return;
   }
 
-  OfferAnalysis& analysis = offer._analysis[aspect.id()];
+  size_t aspectId = aspect.id();
+  OfferAnalysis& analysis = offer._analysis[aspectId];
   analysis._ports = findFreePorts(offer._offer, aspect._requiredPorts);
 
   // try to start a new instance
   startInstance(aspect, offer._offer, analysis);
+
+  // block the other offers from this slave
+  const string& slaveId = offer._offer.slave_id().value();
+
+  for (auto& other : _offers) {
+    auto& offerAnalysis = other.second._analysis[aspectId];
+    const string& otherSlaveId = other.second._offer.slave_id().value();
+
+    if (slaveId == otherSlaveId && offerAnalysis._status != OfferAnalysisStatus::TOO_SMALL) {
+      offerAnalysis._status = OfferAnalysisStatus::WAIT;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1252,11 +1215,46 @@ void ArangoManagerImpl::makeDynamicReservation (const string& name,
 
 OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   size_t id = aspect.id();
+  const auto& preferredSlaves = aspect._preferredSlaves;
 
-  // find a usable offer
+  // find a usable offer on a preferred slave
   auto iter = std::find_if(_offers.begin(), _offers.end(),
     [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._status == OfferAnalysisType::USABLE;
+      const string& slaveId = offer.second._offer.slave_id().value();
+      const auto& analysis = offer.second._analysis[id];
+
+      return preferredSlaves.find(slaveId) != preferredSlaves.end()
+          && analysis._status == OfferAnalysisStatus::USABLE;
+  });
+
+  if (iter != _offers.end()) {
+    OfferSummary result = iter->second;
+    removeOffer(result._offer.id().value());
+    return result;
+  }
+
+  // TODO(fc) panic mode: no prefered slave!
+
+  // find a usable offer on a non-preferred slave
+  iter = std::find_if(_offers.begin(), _offers.end(),
+    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
+      const string& slaveId = offer.second._offer.slave_id().value();
+      const auto& analysis = offer.second._analysis[id];
+
+      return preferredSlaves.find(slaveId) == preferredSlaves.end()
+          && analysis._status == OfferAnalysisStatus::USABLE;
+  });
+
+  if (iter != _offers.end()) {
+    OfferSummary result = iter->second;
+    removeOffer(result._offer.id().value());
+    return result;
+  }
+
+  // find a usable offer
+  iter = std::find_if(_offers.begin(), _offers.end(),
+    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
+      return offer.second._analysis[id]._status == OfferAnalysisStatus::USABLE;
   });
 
   if (iter != _offers.end()) {
@@ -1268,7 +1266,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   // find a persistent offer
   iter = std::find_if(_offers.begin(), _offers.end(),
     [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._status == OfferAnalysisType::PERSISTENT_VOLUME_REQUIRED;
+      return offer.second._analysis[id]._status == OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED;
   });
 
   if (iter != _offers.end()) {
@@ -1281,7 +1279,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   // find a dynamic reservation offer
   iter = std::find_if(_offers.begin(), _offers.end(),
     [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._status == OfferAnalysisType::DYNAMIC_RESERVATION_REQUIRED;
+      return offer.second._analysis[id]._status == OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED;
   });
 
   if (iter != _offers.end()) {
@@ -1393,13 +1391,15 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
     return;
   }
 
-  Aspects* aspect = _aspects[instance._aspectId];
+  size_t aspectId = instance._aspectId;
+  Aspects* aspect = _aspects[aspectId];
 
   LOG(INFO)
   << aspect->_name << " changing state from "
   << toString(instance._state)
   << " to FINISHED for " << taskId << "\n";
 
+  // update statistics
   if (state == InstanceState::STARTED && 0 < aspect->_startedInstances) {
     --(aspect->_startedInstances);
   }
@@ -1409,7 +1409,19 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
 
   instance._state = InstanceState::FINISHED;
 
-  aspect->_startedSlaves.erase(instance._slaveId);
+  // change waiting offers
+  const string& slaveId = instance._slaveId;
+
+  for (auto& offer : _offers) {
+    auto& analysis = offer.second._analysis[aspectId];
+
+    if (analysis._status == OfferAnalysisStatus::WAIT) {
+      analysis._status = analysis._initialStatus;
+    }
+  }
+
+  // remove instances completely
+  aspect->_startedSlaves.erase(slaveId);
 }
 
 // -----------------------------------------------------------------------------
