@@ -234,8 +234,8 @@ namespace {
     Resources r = offer.resources();
 
     resources["cpus"] = picojson::value(cpus(r));
-    resources["memory"] = picojson::value(memory(r) * 1024);
-    resources["disk"] = picojson::value(diskspace(r) * 1024);
+    resources["memory"] = picojson::value(memory(r) * 1024 * 1024);
+    resources["disk"] = picojson::value(diskspace(r) * 1024 * 1024);
 
     o["resources"] = picojson::value(resources);
 
@@ -283,8 +283,8 @@ namespace {
     const Resources& r = instance._resources;
 
     resources["cpus"] = picojson::value(cpus(r));
-    resources["memory"] = picojson::value(memory(r) * 1024);
-    resources["disk"] = picojson::value(diskspace(r) * 1024);
+    resources["memory"] = picojson::value(memory(r) * 1024 * 1024);
+    resources["disk"] = picojson::value(diskspace(r) * 1024 * 1024);
 
     o["resources"] = picojson::value(resources);
 
@@ -491,7 +491,14 @@ string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
     picojson::object r;
 
     r["offer"] = picojson::value(JsonOffer(offer._offer));
-    r["status"] = picojson::value(toString(offer._analysis[0]._status));
+
+    picojson::object s;
+
+    s["agency"] = picojson::value(toString(offer._analysis[0]._status));
+    s["coordinator"] = picojson::value(toString(offer._analysis[1]._status));
+    s["dbserver"] = picojson::value(toString(offer._analysis[2]._status));
+
+    r["status"] = picojson::value(s);
 
     list.push_back(picojson::value(r));
   }

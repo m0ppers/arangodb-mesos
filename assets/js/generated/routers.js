@@ -9,7 +9,8 @@ arangoDatabase, btoa, _*/
     routes: {
       ""                       : "dashboard",
       "dashboard"              : "dashboard",
-      "overview"               : "cluster"
+      "overview"               : "cluster",
+      "debug"                  : "debug"
     },
 
     initialize: function() {
@@ -39,6 +40,17 @@ arangoDatabase, btoa, _*/
 
       this.navigationView.selectMenuItem('dashboard-menu');
       this.dashboardView.render();
+    },
+
+    debug: function() {
+      if (this.debugView) {
+      }
+      else {
+        this.debugView = new window.DebugView();
+      }
+
+      this.navigationView.selectMenuItem('debug-menu');
+      this.debugView.render();
     },
 
     cluster: function() {

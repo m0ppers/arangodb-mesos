@@ -931,6 +931,7 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
   const string& id = offer.id().value();
+  const string& slaveId = offer.slave_id().value();
 
   LOG(INFO)
   << "OFFER received: " << id << ": " << offer.resources() << "\n";
@@ -940,9 +941,15 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
 
   for (auto& aspect : _aspects) {
     OfferAnalysis oa = analyseInitialOffer(*aspect, offer);
+    auto& startedSlaves = aspect->_startedSlaves;
+
     oa._initialStatus = oa._status;
 
     if (oa._status != OfferAnalysisStatus::TOO_SMALL) {
+      if (startedSlaves.find(slaveId) != startedSlaves.end()) {
+        oa._status = OfferAnalysisStatus::WAIT;
+      }
+
       summary._usable = true;
     }
 
@@ -1060,12 +1067,12 @@ ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
     info._running._cpus += aspect->_runningInstances * c;
 
     double m = memory(aspect->_minimumResources);
-    info._planned._memory += aspect->_plannedInstances * m * 1024;
-    info._running._memory += aspect->_runningInstances * m * 1024;
+    info._planned._memory += aspect->_plannedInstances * m * 1024 * 1024;
+    info._running._memory += aspect->_runningInstances * m * 1024 * 1024;
 
     double d = diskspace(aspect->_minimumResources);
-    info._planned._disk += aspect->_plannedInstances * d * 1024;
-    info._running._disk += aspect->_runningInstances * d * 1024;
+    info._planned._disk += aspect->_plannedInstances * d * 1024 * 1024;
+    info._running._disk += aspect->_runningInstances * d * 1024 * 1024;
   }
 
   info._planned._servers = round(info._planned._servers * 1000.0) / 1000.0;
@@ -1108,8 +1115,8 @@ vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) co
     auto& info = infos[instance._slaveId];
 
     info._used._cpus += cpus(instance._resources);
-    info._used._memory += memory(instance._resources) * 1024;
-    info._used._disk += diskspace(instance._resources) * 1024;
+    info._used._memory += memory(instance._resources) * 1024 * 1024;
+    info._used._disk += diskspace(instance._resources) * 1024 * 1024;
   }
 
   for (auto& i : infos) {
@@ -1128,8 +1135,8 @@ vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) co
     Resources resources = slave.resources();
 
     info._available._cpus = cpus(resources);
-    info._available._memory = memory(resources) * 1024;
-    info._available._disk = diskspace(resources) * 1024;
+    info._available._memory = memory(resources) * 1024 * 1024;
+    info._available._disk = diskspace(resources) * 1024 * 1024;
   }
 
   vector<SlaveInfo> result;

@@ -19,9 +19,11 @@
   <div id="cluster-content" class="innerContent">
 
     <div class="pure-g">
-      <div class="pure-u-3-5 header"><p>Nodes</p></div>
+      <div class="pure-u-2-5 header"><p>Nodes</p></div>
       <div class="pure-u-1-5">
-      <i class="fa fa-refresh"></i>
+        <i class="fa fa-refresh"></i>
+      </div>
+      <div class="pure-u-1-5">
       <select class="blue-select">
         <optgroup class="cluster-select" label="Clusters">
         </optgroup>
@@ -81,6 +83,96 @@
     <div class="pure-u-1-5"><p class="t-label align-center">No running clusters.</p></div>
     <div class="pure-u-1-5"><p class="t-label"></p></div>
     <div class="pure-u-1-5"><p class="t-label"></p></div>
+  </div>
+
+  </div>
+
+</script>
+
+<script id="debugView.ejs" type="text/template">
+
+  <div id="debug-content" class="innerContent">
+
+  <div class="pure-g tab-bar">
+    <div class="pure-u-1-4 tab-div header active debug-offers"><p>Offers</p></div>
+    <div class="pure-u-1-4 tab-div header debug-instances"><p>Instances</p></div>
+    <div class="pure-u-1-4 header">
+      <i class="fa fa-refresh"></i>
+    </div>
+    <div class="pure-u-1-4 header select-box tab-select">
+      <select class="blue-select">
+        <optgroup class="cluster-select" label="Clusters">
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="pure-g t-head t-cluster">
+    <div class="pure-u-6-24"><p class="t-label">Offer ID<i data-sortkey="offerId" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-6-24"><p class="t-label">Slave ID<i data-sortkey="slaveId" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">Agency</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Coordinator</p></div>
+    <div class="pure-u-2-24"><p class="t-label">DBServer</p></div>
+    <div class="pure-u-2-24"><p class="t-label">CPUs</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Mem</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Disk</p></div>
+  </div>
+
+  <div class="pure-g t-body t-cluster-body">
+    <div class="pure-u-6-24"><p class="t-label"></p></div>
+    <div class="pure-u-6-24"><p class="t-label"></p></div>
+    <div class="pure-u-6-24"><p class="t-label"></p></div>
+    <div class="pure-u-6-24"><p class="t-label">No data available.</p></div>
+    <div class="pure-u-6-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+  </div>
+
+  </div>
+
+</script>
+
+<script id="debugView2.ejs" type="text/template">
+
+  <div id="debug-content" class="innerContent">
+
+  <div class="pure-g tab-bar">
+    <div class="pure-u-1-4 tab-div header debug-offers"><p>Offers</p></div>
+    <div class="pure-u-1-4 tab-div header active debug-instances"><p>Instances</p></div>
+    <div class="pure-u-1-4 header">
+      <i class="fa fa-refresh"></i>
+    </div>
+    <div class="pure-u-1-4 header select-box tab-select">
+      <select class="blue-select">
+        <optgroup class="cluster-select" label="Clusters">
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="pure-g t-head t-cluster">
+    <div class="pure-u-2-24"><p class="t-label">Aspect<i data-sortkey="aspect" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-6-24"><p class="t-label">Slave ID<i data-sortkey="slaveId" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">Hostname<i data-sortkey="hostname" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">Status<i data-sortkey="status" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">CPUs</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Memory</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Disk</p></div>
+    <div class="pure-u-3-24"><p class="t-label">Started</p></div>
+    <div class="pure-u-3-24"><p class="t-label">Last update</p></div>
+  </div>
+
+  <div class="pure-g t-body t-cluster-body">
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-6-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label">No data available.</p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-3-24"><p class="t-label"></p></div>
+    <div class="pure-u-3-24"><p class="t-label"></p></div>
   </div>
 
   </div>
@@ -251,6 +343,7 @@
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard">Dashboard</a></li>
     <li class="overview-menu"><a id="overview" class="tab" href="#overview">Overview</a></li>
+    <li class="debug-menu"><a id="debug" class="tab" href="#debug">Debug</a></li>
   </ul>
 </script>
 
