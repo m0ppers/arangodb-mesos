@@ -662,10 +662,13 @@ class ArangoAspects : public Aspects {
       a.push_back(analysis._containerPath + "/data");
 
       a.push_back("--log.file");
-      a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
+      // a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
+      a.push_back("-");
 
       a.push_back("--log.level");
-      a.push_back("debug");
+      // a.push_back("trace");
+      // a.push_back("debug");
+      a.push_back("info");
 
       a.push_back("--javascript.app-path");
       a.push_back(analysis._containerPath + "/apps");

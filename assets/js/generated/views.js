@@ -383,6 +383,10 @@
             self.render(this);
           });
 
+          $(".modal-backdrop").bind( "click", function() {
+            self.render(this);
+          });
+
         }).fail(function(data) {
           console.log("something went wrong");
           console.log(data);

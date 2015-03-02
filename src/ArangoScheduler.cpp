@@ -163,6 +163,7 @@ uint64_t ArangoScheduler::startInstance (const string& name,
   task.mutable_slave_id()->CopyFrom(offer.slave_id());
   task.mutable_executor()->CopyFrom(_executor);
   task.mutable_resources()->CopyFrom(resources);
+
   task.set_data(arguments);
 
   vector<TaskInfo> tasks;
