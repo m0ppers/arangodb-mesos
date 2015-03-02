@@ -241,9 +241,9 @@ namespace {
 
     picojson::object status;
 
-    status["agency"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_AGENCY]._status));
-    status["coordinator"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_COORDINATOR]._status));
-    status["dbserver"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_DBSERVER]._status));
+    status["agency"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_AGENCY]._state));
+    status["coordinator"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_COORDINATOR]._state));
+    status["dbserver"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_DBSERVER]._state));
 
     o["status"] = picojson::value(status);
 
@@ -494,9 +494,9 @@ string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
 
     picojson::object s;
 
-    s["agency"] = picojson::value(toString(offer._analysis[0]._status));
-    s["coordinator"] = picojson::value(toString(offer._analysis[1]._status));
-    s["dbserver"] = picojson::value(toString(offer._analysis[2]._status));
+    s["agency"] = picojson::value(toString(offer._analysis[0]._state));
+    s["coordinator"] = picojson::value(toString(offer._analysis[1]._state));
+    s["dbserver"] = picojson::value(toString(offer._analysis[2]._state));
 
     r["status"] = picojson::value(s);
 

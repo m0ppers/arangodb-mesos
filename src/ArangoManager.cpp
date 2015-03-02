@@ -776,7 +776,7 @@ enum class AspectInstanceStatus {
 
 class AspectInstance {
   public:
-    AspectInstanceStatus _status;
+    AspectInstanceStatus _state;
     OfferID _offerId;
     chrono::system_clock::time_point _started;
 };
@@ -943,11 +943,11 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
     OfferAnalysis oa = analyseInitialOffer(*aspect, offer);
     auto& startedSlaves = aspect->_startedSlaves;
 
-    oa._initialStatus = oa._status;
+    oa._initialState = oa._state;
 
-    if (oa._status != OfferAnalysisStatus::TOO_SMALL) {
+    if (oa._state != OfferAnalysisStatus::TOO_SMALL) {
       if (startedSlaves.find(slaveId) != startedSlaves.end()) {
-        oa._status = OfferAnalysisStatus::WAIT;
+        oa._state = OfferAnalysisStatus::WAIT;
       }
 
       summary._usable = true;
@@ -1112,6 +1112,11 @@ vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) co
 
   for (auto& i : _instances) {
     auto& instance = i.second;
+
+    if (instance._state != InstanceState::STARTED && instance._state != InstanceState::RUNNING) {
+      continue;
+    }
+
     auto& info = infos[instance._slaveId];
 
     info._used._cpus += cpus(instance._resources);
@@ -1222,8 +1227,8 @@ void ArangoManagerImpl::checkInstances (Aspects& aspect) {
     auto& offerAnalysis = other.second._analysis[aspectId];
     const string& otherSlaveId = other.second._offer.slave_id().value();
 
-    if (slaveId == otherSlaveId && offerAnalysis._status != OfferAnalysisStatus::TOO_SMALL) {
-      offerAnalysis._status = OfferAnalysisStatus::WAIT;
+    if (slaveId == otherSlaveId && offerAnalysis._state != OfferAnalysisStatus::TOO_SMALL) {
+      offerAnalysis._state = OfferAnalysisStatus::WAIT;
     }
   }
 }
@@ -1304,7 +1309,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
       const auto& analysis = offer.second._analysis[id];
 
       return preferredSlaves.find(slaveId) != preferredSlaves.end()
-          && analysis._status == OfferAnalysisStatus::USABLE;
+          && analysis._state == OfferAnalysisStatus::USABLE;
   });
 
   if (iter != _offers.end()) {
@@ -1322,7 +1327,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
       const auto& analysis = offer.second._analysis[id];
 
       return preferredSlaves.find(slaveId) == preferredSlaves.end()
-          && analysis._status == OfferAnalysisStatus::USABLE;
+          && analysis._state == OfferAnalysisStatus::USABLE;
   });
 
   if (iter != _offers.end()) {
@@ -1334,7 +1339,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   // find a usable offer
   iter = std::find_if(_offers.begin(), _offers.end(),
     [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._status == OfferAnalysisStatus::USABLE;
+      return offer.second._analysis[id]._state == OfferAnalysisStatus::USABLE;
   });
 
   if (iter != _offers.end()) {
@@ -1346,7 +1351,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   // find a persistent offer
   iter = std::find_if(_offers.begin(), _offers.end(),
     [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._status == OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED;
+      return offer.second._analysis[id]._state == OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED;
   });
 
   if (iter != _offers.end()) {
@@ -1359,7 +1364,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
   // find a dynamic reservation offer
   iter = std::find_if(_offers.begin(), _offers.end(),
     [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._status == OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED;
+      return offer.second._analysis[id]._state == OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED;
   });
 
   if (iter != _offers.end()) {
@@ -1502,8 +1507,8 @@ void ArangoManagerImpl::taskFinished (uint64_t taskId) {
   for (auto& offer : _offers) {
     auto& analysis = offer.second._analysis[aspectId];
 
-    if (analysis._status == OfferAnalysisStatus::WAIT) {
-      analysis._status = analysis._initialStatus;
+    if (analysis._state == OfferAnalysisStatus::WAIT) {
+      analysis._state = analysis._initialState;
     }
   }
 

@@ -594,7 +594,7 @@
           sorted = self.sortByKey(data.instances, self.sortKey, self.sortAsc);
         }
         else {
-          sorted = data.instances;
+          sorted = self.sortByKey(data.instances, 'aspect', true);
         }
 
         _.each(sorted, function(val, key) {
@@ -697,7 +697,7 @@
           sorted = self.sortByKey(data.offers, self.sortKey, self.sortAsc);
         }
         else {
-          sorted = data.offers;
+          sorted = self.sortByKey(data.offers, 'offerId', true);
         }
 
         _.each(sorted, function(val, key) {

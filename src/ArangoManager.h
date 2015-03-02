@@ -278,12 +278,12 @@ namespace arangodb {
 
   class OfferAnalysis {
     public:
-      OfferAnalysisStatus _status;
+      OfferAnalysisStatus _state;
       mesos::Resources _resources;
       string _containerPath;
       string _hostPath;
       vector<uint32_t> _ports;
-      OfferAnalysisStatus _initialStatus;
+      OfferAnalysisStatus _initialState;
   };
 
 // -----------------------------------------------------------------------------
