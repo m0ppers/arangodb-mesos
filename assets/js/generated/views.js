@@ -604,7 +604,7 @@
         _.each(sorted, function(val, key) {
           self.drawServerLineInstances(
             val.aspect, val.slaveId, val.hostname, val.status, val.resources.cpus,
-            filesize(val.resources.memory), filesize(val.resources.disk), val.started, val.lastUpdate
+            filesize(val.resources.memory), filesize(val.resources.disk), val.started, val.lastUpdate, val.link
           );
         });
       }).fail(function(data) {
@@ -612,10 +612,14 @@
 
     },
 
-    drawServerLineInstances: function(aspect, slaveId, hostname, status, cpus, memory, disk, started, lastUpdate) {
+    drawServerLineInstances: function(aspect, slaveId, hostname, status, cpus, memory, disk, started, lastUpdate, link) {
       var htmlString = '<div class="t-row pure-g">';
-
-      htmlString += '<div class="pure-u-2-24"><p class="t-content">'+aspect+'</p></div>';
+      if (link) {
+        htmlString += '<div class="pure-u-2-24"><p class="t-content"><a href="'+link+'" target="_blank">'+aspect+'</a></p></div>';
+      }
+      else {
+        htmlString += '<div class="pure-u-2-24"><p class="t-content">'+aspect+'</p></div>';
+      }
       htmlString += '<div class="pure-u-6-24"><p class="t-content">'+slaveId+'</p></div>';
       htmlString += '<div class="pure-u-2-24"><p class="t-content">'+hostname+'</p></div>';
       htmlString += '<div class="pure-u-2-24"><p class="t-content">'+status+'</p></div>';

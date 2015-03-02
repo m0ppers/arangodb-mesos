@@ -261,15 +261,15 @@ namespace {
     o["status"] = picojson::value(toString(instance._state));
 
     switch (instance._aspectId) {
-      case 0:
+      case ASPECTS_ID_AGENCY:
         o["aspect"] = picojson::value("AGENCY");
         break;
 
-      case 1:
+      case ASPECTS_ID_COORDINATOR:
         o["aspect"] = picojson::value("COORDINATOR");
         break;
 
-      case 2:
+      case ASPECTS_ID_DBSEVER:
         o["aspect"] = picojson::value("DBSERVER");
         break;
 
@@ -287,6 +287,19 @@ namespace {
     resources["disk"] = picojson::value(diskspace(r) * 1024 * 1024);
 
     o["resources"] = picojson::value(resources);
+
+    if (instance._state == InstanceState::RUNNING) {
+      string link = "http://" + instance._hostname + ":";
+
+      if (instance._aspectId == ASPECTS_ID_AGENCY) {
+        link += to_string(instance._ports[1]) + "/v2/keys";
+      }
+      else {
+        link += to_string(instance._ports[0]) + "/";
+      }
+
+      o["link"] = picojson::value(link);
+    }
 
     return o;
   }

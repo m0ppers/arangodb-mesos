@@ -8597,6 +8597,8 @@ body {
   background-color: #252525; }
 .t-body .t-content {
   padding-left: 10px; }
+  .t-body .t-content a {
+    color: white; }
 
 .modal-header, .modal-dashboard-header {
   background-color: #2A2D2F;
