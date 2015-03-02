@@ -374,7 +374,7 @@ namespace {
 ///////////////////////////////////////////////////////////////////////////////
 
   bool initializeAgency (const Instance& instance) {
-    static const int SLEEP_SEC = 30;
+    static const int SLEEP_SEC = 5;
     
     // extract the hostname
     const string& hostname = instance._hostname;
@@ -486,7 +486,7 @@ namespace {
     string address = "http://" + hostname + ":" + to_string(port);
 
     string command
-      = "curl -s -X POST " + address + "/_admin/cluster/bootstrapCoordinator -d '{\"isRelaunch\":false}'";
+      = "curl -s -X POST " + address + "/_admin/cluster/upgradeClusterDatabase -d '{\"isRelaunch\":false}'";
 
     LOG(INFO)
     << "COORDINATOR upgrading database using: " << command;
@@ -662,8 +662,8 @@ class ArangoAspects : public Aspects {
       a.push_back(analysis._containerPath + "/data");
 
       a.push_back("--log.file");
-      // a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
-      a.push_back("-");
+      a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
+      // a.push_back("-");
 
       a.push_back("--log.level");
       // a.push_back("trace");
@@ -869,11 +869,61 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
 void ArangoManagerImpl::dispatch () {
   static const int SLEEP_SEC = 10;
 
+  bool init = false;
+  unordered_set<uint64_t> bootstrapped;
+
   while (! _stopDispatcher) {
     LOG(INFO) << "DISPATCHER checking state\n";
 
     {
       lock_guard<mutex> lock(_lock);
+
+      for (const auto& st : _dbserver._slave2task) {
+        uint64_t ti = st.second;
+
+        if (bootstrapped.find(ti) != bootstrapped.end()) {
+          continue;
+        }
+
+        auto iter = _instances.find(ti);
+
+        if (iter != _instances.end()) {
+          const auto& instance = *iter;
+
+          bootstrapDbserver(instance.second);
+          bootstrapped.insert(ti);
+        }
+      }
+
+      if (! init && 0 < _coordinator._runningInstances && 0 < _dbserver._runningInstances) {
+        uint64_t tc = _coordinator._slave2task.begin()->second;
+        auto iter = _instances.find(tc);
+
+        if (iter != _instances.end()) {
+          const auto& instance = *iter;
+
+          upgradeDatabase(instance.second);
+
+          init = true;
+        }
+      }
+
+      for (const auto& st : _coordinator._slave2task) {
+        uint64_t ti = st.second;
+
+        if (bootstrapped.find(ti) != bootstrapped.end()) {
+          continue;
+        }
+
+        auto iter = _instances.find(ti);
+
+        if (iter != _instances.end()) {
+          const auto& instance = *iter;
+
+          bootstrapCoordinator(instance.second);
+          bootstrapped.insert(ti);
+        }
+      }
 
       checkInstances(_agency);
 
@@ -886,40 +936,6 @@ void ArangoManagerImpl::dispatch () {
           checkInstances(_coordinator);
         }
       }
-
-#if 0
-      for (const auto& st : _dbserver._slave2task) {
-        auto iter = _instances.find(st.second);
-
-        if (iter != _instances.end()) {
-          const auto& instance = *iter;
-
-          bootstrapDbserver(instance.second);
-        }
-      }
-
-      if (0 < _coordinator._runningInstances && 0 < _dbserver._runningInstances) {
-        uint64_t tc = _coordinator._slave2task.begin()->second;
-        auto iter = _instances.find(tc);
-
-        if (iter != _instances.end()) {
-          const auto& instance = *iter;
-
-          upgradeDatabase(instance.second);
-        }
-      }
-
-      for (const auto& st : _coordinator._slave2task) {
-        auto iter = _instances.find(st.second);
-
-        if (iter != _instances.end()) {
-          const auto& instance = *iter;
-
-          bootstrapCoordinator(instance.second);
-        }
-      }
-#endif
-
     }
 
     this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
