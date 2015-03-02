@@ -762,12 +762,10 @@ void ArangoManagerImpl::dispatch () {
 
       checkInstances(_agency);
 
-/*
       if (_agency.isUsable()) {
         checkInstances(_coordinator);
         checkInstances(_dbserver);
       }
-*/
     }
 
     this_thread::sleep_for(chrono::seconds(SLEEP_SEC));

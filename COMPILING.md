@@ -41,7 +41,7 @@ Checkout and compile:
 
 # Running
 
-    container> IP=....
+    container> IP=<IP ADDRESS OF MASTER>
     container> nohup mesos-master --roles=arangodb --ip=$IP --work_dir=/tmp > mesos-master.log 2>&1 &
     container> nohup mesos-slave --master=$IP:5050 --containerizers=mesos --work_dir=/tmp/slave > mesos-slave.log 2>&1 &
 
