@@ -145,7 +145,7 @@ namespace arangodb {
       virtual size_t id () const = 0;
       virtual bool isUsable () const = 0;
       virtual string arguments (const mesos::Offer&, const OfferAnalysis&) const = 0;
-      virtual void instanceUp (const Instance&) = 0;
+      virtual bool instanceUp (const Instance&) = 0;
 
     public:
       const string _name;

@@ -373,8 +373,8 @@ namespace {
 /// @brief initializes an agency
 ///////////////////////////////////////////////////////////////////////////////
 
-  void initializeAgency (const Instance& instance) {
-    static const int SLEEP_SEC = 10;
+  bool initializeAgency (const Instance& instance) {
+    static const int SLEEP_SEC = 30;
     
     // extract the hostname
     const string& hostname = instance._hostname;
@@ -383,12 +383,118 @@ namespace {
     uint32_t port = instance._ports[1];
 
     string command
-      = "sleep " + to_string(SLEEP_SEC) + " && ./bin/initAgency.sh " + hostname + " " + to_string(port);
+      = "sleep " + to_string(SLEEP_SEC) 
+      + " && ./bin/initAgency.sh " + hostname + " " + to_string(port);
+
+    LOG(INFO)
+    << "AGENCY about to initialize using: " << command;
 
     int res = system(command.c_str());
 
     LOG(INFO)
-    << "COMMAND " << command << " returned " << res;
+    << "AGENCY " << command << " returned " << res;
+
+    return res == 0;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief discovers new coordinators and dbservers
+///////////////////////////////////////////////////////////////////////////////
+
+  string findAgencyAddress ();
+
+  void discoverRoles () {
+    string command
+      = "./bin/discover.sh " + findAgencyAddress();
+
+    LOG(INFO)
+    << "DISCOVERY about to start: " << command;
+
+    int res = system(command.c_str());
+
+    LOG(INFO)
+    << "DISCOVERY " << command << " returned " << res;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief bootstraps a dbserver
+///////////////////////////////////////////////////////////////////////////////
+
+  void bootstrapDbserver (const Instance& instance) {
+    
+    // extract the hostname
+    const string& hostname = instance._hostname;
+
+    // and the client port
+    uint32_t port = instance._ports[0];
+
+    // construct the address
+    string address = "http://" + hostname + ":" + to_string(port);
+
+    string command
+      = "curl -s -X POST " + address + "/_admin/cluster/bootstrapDbServer -d '{\"isRelaunch\":false}'";
+
+    LOG(INFO)
+    << "DBSERVER bootstraping using: " << command;
+
+    int res = system(command.c_str());
+
+    LOG(INFO)
+    << "DBSERVER " << command << " returned " << res;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief bootstraps a coordinator
+///////////////////////////////////////////////////////////////////////////////
+
+  void bootstrapCoordinator (const Instance& instance) {
+    
+    // extract the hostname
+    const string& hostname = instance._hostname;
+
+    // and the client port
+    uint32_t port = instance._ports[0];
+
+    // construct the address
+    string address = "http://" + hostname + ":" + to_string(port);
+
+    string command
+      = "curl -s -X POST " + address + "/_admin/cluster/bootstrapCoordinator -d '{\"isRelaunch\":false}'";
+
+    LOG(INFO)
+    << "COORDINATOR bootstraping using: " << command;
+
+    int res = system(command.c_str());
+
+    LOG(INFO)
+    << "COORDINATOR " << command << " returned " << res;
+  }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief upgrades the cluster database
+///////////////////////////////////////////////////////////////////////////////
+
+  void upgradeDatabase (const Instance& instance) {
+
+    // extract the hostname
+    const string& hostname = instance._hostname;
+
+    // and the client port
+    uint32_t port = instance._ports[0];
+
+    // construct the address
+    string address = "http://" + hostname + ":" + to_string(port);
+
+    string command
+      = "curl -s -X POST " + address + "/_admin/cluster/bootstrapCoordinator -d '{\"isRelaunch\":false}'";
+
+    LOG(INFO)
+    << "COORDINATOR upgrading database using: " << command;
+
+    int res = system(command.c_str());
+
+    LOG(INFO)
+    << "COORDINATOR " << command << " returned " << res;
   }
 }
 
@@ -424,7 +530,11 @@ class AgencyAspects : public Aspects {
     }
 
   public:
-    unordered_set<string> _masters;
+    // TODO(fc) might be much better to use taskId as key, instead
+    // of slave id - somehow need a way to "know" when an instances
+    // is initialized.
+
+    unordered_set<string> _masters; // list slave_id with usable agencies
 
   public:
     size_t id () const override {
@@ -432,7 +542,7 @@ class AgencyAspects : public Aspects {
     }
 
     bool isUsable () const override {
-      return 0 < _runningInstances;
+      return ! _masters.empty();
     }
 
     string arguments (const Offer& offer,
@@ -465,14 +575,21 @@ class AgencyAspects : public Aspects {
       return join(a, "\n");
     }
 
-    void instanceUp (const Instance& instance) override {
+    bool instanceUp (const Instance& instance) override {
       const string& slaveId = instance._slaveId;
 
-      if (_masters.find(slaveId) == _masters.end()) {
-        initializeAgency(instance);
+      if (_masters.find(slaveId) != _masters.end()) {
+        return true;
+      }
+
+      bool ok = initializeAgency(instance);
+
+      if (! ok) {
+        return false;
       }
 
       _masters.insert(slaveId);
+      return true;
     }
 };
 
@@ -595,7 +712,7 @@ class CoordinatorAspects : public ArangoAspects {
       _requiredPorts = 1;
 
       _minimumInstances = 1;
-      _plannedInstances = 3;
+      _plannedInstances = 1;
     }
 
   public:
@@ -607,14 +724,8 @@ class CoordinatorAspects : public ArangoAspects {
       return 0 < _runningInstances;
     }
 
-    void instanceUp (const Instance& instance) override {
-      string command
-        = "./bin/discover.sh " + findAgencyAddress();
-
-      int res = system(command.c_str());
-
-      LOG(INFO)
-      << "COMMAND " << command << " returned " << res;
+    bool instanceUp (const Instance& instance) override {
+      return true;
     }
 };
 
@@ -631,8 +742,8 @@ class DBServerAspects : public ArangoAspects {
       _persistentVolumeRequired = true;
       _requiredPorts = 1;
 
-      _minimumInstances = 2;
-      _plannedInstances = 2;
+      _minimumInstances = 1;
+      _plannedInstances = 1;
     }
 
   public:
@@ -644,7 +755,8 @@ class DBServerAspects : public ArangoAspects {
       return 0 < _runningInstances;
     }
 
-    void instanceUp (const Instance& instance) override {
+    bool instanceUp (const Instance& instance) override {
+      return true;
     }
 };
 
@@ -763,9 +875,48 @@ void ArangoManagerImpl::dispatch () {
       checkInstances(_agency);
 
       if (_agency.isUsable()) {
-        checkInstances(_coordinator);
+        discoverRoles();
+
         checkInstances(_dbserver);
+
+        if (_dbserver.isUsable()) {
+          checkInstances(_coordinator);
+        }
       }
+
+#if 0
+      for (const auto& st : _dbserver._slave2task) {
+        auto iter = _instances.find(st.second);
+
+        if (iter != _instances.end()) {
+          const auto& instance = *iter;
+
+          bootstrapDbserver(instance.second);
+        }
+      }
+
+      if (0 < _coordinator._runningInstances && 0 < _dbserver._runningInstances) {
+        uint64_t tc = _coordinator._slave2task.begin()->second;
+        auto iter = _instances.find(tc);
+
+        if (iter != _instances.end()) {
+          const auto& instance = *iter;
+
+          upgradeDatabase(instance.second);
+        }
+      }
+
+      for (const auto& st : _coordinator._slave2task) {
+        auto iter = _instances.find(st.second);
+
+        if (iter != _instances.end()) {
+          const auto& instance = *iter;
+
+          bootstrapCoordinator(instance.second);
+        }
+      }
+#endif
+
     }
 
     this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
@@ -1292,7 +1443,14 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
   --(aspect->_startedInstances);
   ++(aspect->_runningInstances);
 
-  aspect->instanceUp(instance);
+  bool ok = aspect->instanceUp(instance);
+
+  if (! ok) {
+    _scheduler->killInstance(aspect->_name, instance._taskId);
+
+    // TODO(fc) keep a list of killed task and try again, if now 
+    // update is received within a certain time.
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -173,6 +173,23 @@ uint64_t ArangoScheduler::startInstance (const string& name,
   return taskId;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an instances
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::killInstance (const string& name,
+                                    uint64_t taskId) const {
+  string id = "ARANGODB:" + name + ":" + lexical_cast<string>(taskId);
+
+  LOG(INFO)
+  << "INSTANCE kill instance " << id;
+
+  TaskID ti;
+  ti.set_value(id);
+
+  _driver->killTask(ti);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods
 // -----------------------------------------------------------------------------

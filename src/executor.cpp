@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <mutex>
+#include <unordered_map>
 
 #include <mesos/executor.hpp>
 #include <mesos/resources.hpp>
@@ -46,6 +48,13 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                external processes
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maps taskId to PID
+////////////////////////////////////////////////////////////////////////////////
+
+mutex TaskId2PidLock;
+unordered_map<string, pid_t> TaskId2Pid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief low level exec
@@ -92,17 +101,17 @@ void ExecuteTask (const TaskInfo& task) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs a new process
+/// @brief forks a new process
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ExternalInfo {
-  int pid;
+  pid_t pid;
   bool failed;
 };
 
 ExternalInfo StartExternalProcess (const TaskInfo& task) {
   ExternalInfo info = { 0, true };
-  int processPid;
+  pid_t processPid;
 
   processPid = fork();
 
@@ -176,8 +185,16 @@ void* RunProcess (void* args) {
     driver->sendStatusUpdate(status);
   }
 
+  {
+    lock_guard<mutex> lock(TaskId2PidLock);
+
+    const string& taskId = task.task_id().value();
+
+    TaskId2Pid[taskId] = external.pid;
+  }
+
   TaskStatus status;
-  status.mutable_task_id()->MergeFrom(task.task_id());
+  status.mutable_task_id()->CopyFrom(task.task_id());
 
   int s;
   waitpid(external.pid, &s, WUNTRACED);
@@ -304,7 +321,25 @@ class ArangoExecutor : public Executor {
 ////////////////////////////////////////////////////////////////////////////////
 
     void killTask (ExecutorDriver* driver, const TaskID& taskId) override {
-      cout << "killTask\n";
+      const string& ti = taskId.value();
+      pid_t pid;
+
+      {
+        lock_guard<mutex> lock(TaskId2PidLock);
+
+        auto iter = TaskId2Pid.find(ti);
+
+        if (iter == TaskId2Pid.end()) {
+          LOG(WARNING)
+          << "unknown task id '" << ti << "'";
+          return;
+        }
+
+        pid = iter->second;
+      }
+
+      // TODO(fc) be graceful
+      kill(pid, 9);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
