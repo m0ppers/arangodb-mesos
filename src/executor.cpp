@@ -69,7 +69,7 @@ void ExecuteTask (const TaskInfo& task) {
 
   LOG(INFO)
   << "executor " << executorId
-  << " with " << join(args, " ")
+  << " with '" << join(args, " ") << "'"
   << " and " << resources;
 
   Resources persistent = resources.filter(Resources::isPersistentVolume);
@@ -78,24 +78,39 @@ void ExecuteTask (const TaskInfo& task) {
     const string& path = volume.disk().volume().container_path();
 
     LOG(INFO)
-    << "persistent volume " << path;
+    << "using persistent volume " << path;
 
     os::mkdir(path + "/data");
     os::mkdir(path + "/logs");
     os::mkdir(path + "/apps");
+
+    string cmd = "ls -l " + path;
+
+    int r = system(cmd.c_str());
+
+    if (r) {
+      LOG(WARNING)
+      << "failed with " << r;
+    }
   }
 
-  size_t len = data.size();
+  size_t len = args.size();
   char** a = static_cast<char**>(malloc(sizeof(char*) * (len + 1)));
 
   for (size_t i = 0;  i < len;  ++i) {
     a[i] = const_cast<char*>(args[i].c_str());
+
+    LOG(INFO)
+    << i << ". argument: " << a[i];
   }
 
   a[len] = nullptr;
 
   execv(args[0].c_str(), a);
    
+  LOG(FATAL)
+  << "PANIC execv failed";
+
   // upps, exec failed
   _exit(1);
 }
@@ -202,17 +217,19 @@ void* RunProcess (void* args) {
   cout << "WAIT for pid " << external.pid << " returned\n";
 
   if (WIFEXITED(s)) {
-    if (WEXITSTATUS(s) == 0) {
-      cout << "EXIT " << external.pid << " status == 0\n";
+    int es = WEXITSTATUS(s);
+
+    if (es == 0) {
+      cout << "EXIT " << external.pid << ", status == 0\n";
       status.set_state(TASK_FINISHED);
     }
     else {
-      cout << "EXIT " << external.pid << " status != 0\n";
+      cout << "EXIT " << external.pid << ", status " << es << "\n";
       status.set_state(TASK_FAILED);
     }
   }
   else if (WIFSIGNALED(s)) {
-    cout << "EXIT " << external.pid << " signalled\n";
+    cout << "EXIT " << external.pid << " signalled with " << WTERMSIG(s) << "\n";
     status.set_state(TASK_FAILED);
   }
   else if (WIFSTOPPED(s)) {
