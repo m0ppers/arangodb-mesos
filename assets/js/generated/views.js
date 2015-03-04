@@ -230,7 +230,7 @@
     el: '#content',
 
     events: {
-      "click .t-row" : "drawServerModal"
+      "click #dashboard-content .t-row" : "drawServerModal"
     },
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
