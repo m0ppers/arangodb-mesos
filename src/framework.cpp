@@ -31,6 +31,7 @@
 #include <string>
 
 #include "ArangoScheduler.h"
+#include "ArangoState.h"
 #include "HttpServer.h"
 
 #include <stout/check.hpp>
@@ -73,6 +74,10 @@ static void usage (const char* argv0, const flags::FlagsBase& flags) {
 
 int main (int argc, char** argv) {
 
+  // .............................................................................
+  // command line options
+  // .............................................................................
+
   // find this executable's directory to locate executor
   string path = os::realpath(dirname(argv[0])).get();
   string uri = path + "/arangodb-executor";
@@ -111,7 +116,11 @@ int main (int argc, char** argv) {
 
   logging::initialize(argv[0], flags, true); // Catch signals.
 
-  // create the different executors
+  // .............................................................................
+  // executor
+  // .............................................................................
+
+  // create the executors
   ExecutorInfo executor;
   executor.mutable_executor_id()->set_value("arangodb:executor");
   executor.mutable_command()->set_value(uri);
@@ -119,12 +128,28 @@ int main (int argc, char** argv) {
   executor.set_source("arangodb");
   *executor.mutable_resources() = Resources::parse("cpus:0.01;mem:32;disk:32").get();
 
+  // .............................................................................
+  // framework
+  // .............................................................................
+
   // create the framework
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.
   framework.set_name("ArangoDB Framework");
   framework.set_role(role);
   framework.set_checkpoint(true);
+
+  // .............................................................................
+  // state
+  // .............................................................................
+
+  ArangoState state("arangodb");
+  state.init();
+  state.load();
+
+  // .............................................................................
+  // http server
+  // .............................................................................
 
   Try<string> hostnameTry = net::hostname();
   string hostname = hostnameTry.get();
@@ -139,6 +164,10 @@ int main (int argc, char** argv) {
     framework.set_checkpoint(
         numify<bool>(os::getenv("MESOS_CHECKPOINT")).get());
   }
+
+  // .............................................................................
+  // scheduler
+  // .............................................................................
 
   // create the scheduler
   ArangoScheduler scheduler(role, executor);
@@ -172,6 +201,10 @@ int main (int argc, char** argv) {
   }
 
   scheduler.setDriver(driver);
+
+  // .............................................................................
+  // run
+  // .............................................................................
 
   // and the http server
   HttpServer http(scheduler.manager());

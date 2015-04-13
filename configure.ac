@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  ArangoDB GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([arangodb-mesos], [0.0.1], [info@arangodb.com], [arangodb-mesos], [https://www.arangodb.com])
+AC_INIT([arangodb-mesos], [0.2.0], [info@arangodb.com], [arangodb-mesos], [https://www.arangodb.com])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -14,6 +14,17 @@ dnl ----------------------------------------------------------------------------
 
 AC_CONFIG_AUX_DIR([config])
 AC_CONFIG_MACRO_DIR([m4])
+
+dnl ----------------------------------------------------------------------------
+dnl use automake to generate Makfile.in
+dnl ----------------------------------------------------------------------------
+
+AM_INIT_AUTOMAKE([foreign subdir-objects])
+AM_SILENT_RULES(yes)
+
+dnl ----------------------------------------------------------------------------
+dnl output flags
+dnl ----------------------------------------------------------------------------
 
 CURRENT_DIR=`pwd`
 
@@ -24,13 +35,6 @@ AC_MSG_NOTICE([with CPPFLAGS='$CPPFLAGS'])
 AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
-
-dnl ----------------------------------------------------------------------------
-dnl use automake to generate Makfile.in
-dnl ----------------------------------------------------------------------------
-
-AM_INIT_AUTOMAKE([foreign subdir-objects])
-AM_SILENT_RULES(yes)
 
 dnl ----------------------------------------------------------------------------
 dnl checks for compiler and basic settings
@@ -136,7 +140,8 @@ dnl ----------------------------------------------------------------------------
 
 AC_LANG(C++)
 
-MESOS_CPPFLAGS="-I/usr/local/include -I`pwd`/${builddir}"
+topdir="${ac_pwd}"
+MESOS_CPPFLAGS="-I${topdir}/mesos/include -I${topdir}/mesos/src -I${topdir}/mesos/build/include -I${topdir}/mesos/build/src"
 MESOS_LIBS="-lmesos"
 
 SAVE_CPPFLAGS="$CPPFLAGS"
@@ -155,7 +160,7 @@ fi
 AC_CHECK_HEADERS(logging/flags.hpp, [MESOS=yes], [MESOS=no])
 
 if test "x$MESOS" = "xno";  then
-  AC_MSG_ERROR([Please link 'logging' from mesos, i. e. 'ln -s ../mesos/src/logging .'])
+  AC_MSG_ERROR([Please link mesos, i. e. 'ln -s ../mesos .'])
 fi
 
 CPPFLAGS="$SAVE_CPPFLAGS"

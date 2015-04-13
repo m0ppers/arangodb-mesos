@@ -44,6 +44,7 @@ namespace arangodb {
 
   class ArangoManagerImpl;
   class ArangoScheduler;
+  class ArangoState;
   class Instance;
   class OfferAnalysis;
 
@@ -62,21 +63,15 @@ namespace arangodb {
     FAILED
   };
 
-  inline const string& toString (const InstanceState& state) {
-    static const string STARTED = "STARTED";
-    static const string RUNNING = "RUNNING";
-    static const string FINISHED = "FINISHED";
-    static const string FAILED = "FAILED";
-    static const string UNKNOWN = "UNKNOWN";
-
+  inline string toString (const InstanceState& state) {
     switch (state) {
-      case InstanceState::STARTED: return STARTED; break;
-      case InstanceState::RUNNING: return RUNNING; break;
-      case InstanceState::FINISHED: return FINISHED; break;
-      case InstanceState::FAILED: return FAILED; break;
+      case InstanceState::STARTED: return "STARTED"; break;
+      case InstanceState::RUNNING: return "RUNNING"; break;
+      case InstanceState::FINISHED: return "FINISHED"; break;
+      case InstanceState::FAILED: return "FAILED"; break;
     }
 
-    return UNKNOWN;
+    return "UNKNOWN";
   }
 
 // -----------------------------------------------------------------------------
@@ -89,7 +84,7 @@ namespace arangodb {
 
   class Instance {
     public:
-      uint64_t _taskId;
+      string _taskId;
       size_t _aspectId;
       InstanceState _state;
       mesos::Resources _resources;
@@ -106,7 +101,7 @@ namespace arangodb {
 
   class InstanceManager {
     public:
-      unordered_map<uint64_t, Instance> _instances;
+      unordered_map<string, Instance> _instances;
   };
 
 // -----------------------------------------------------------------------------
@@ -147,7 +142,7 @@ namespace arangodb {
     public:
       virtual size_t id () const = 0;
       virtual bool isUsable () const = 0;
-      virtual string arguments (const mesos::Offer&, const OfferAnalysis&) const = 0;
+      virtual string arguments (const mesos::Offer&, const OfferAnalysis&, const string& taskId) const = 0;
       virtual bool instanceUp (const Instance&) = 0;
 
     public:
@@ -171,7 +166,7 @@ namespace arangodb {
       unordered_set<string> _startedSlaves;             // slaveId
       unordered_set<string> _preferredSlaves;           // slaveId
 
-      unordered_map<string, uint64_t> _slave2task;      // slaveId, Instance
+      unordered_map<string, string> _slave2task;        // slaveId, instanceId
 
       InstanceManager* _instanceManager;
   };
@@ -216,63 +211,47 @@ namespace arangodb {
     WAIT
   };
 
-  inline const string& toString (OfferAnalysisStatus type) {
-    static const string DYNAMIC_RESERVATION_REQUIRED = "DYNAMIC_RESERVATION_REQUIRED";
-    static const string PERSISTENT_VOLUME_REQUIRED = "PERSISTENT_VOLUME_REQUIRED";
-    static const string TOO_SMALL = "TOO_SMALL";
-    static const string USABLE = "USABLE";
-    static const string WAIT = "WAIT";
-
-    static const string UNKNOWN = "UNKNOWN";
-
+  inline string toString (OfferAnalysisStatus type) {
     switch (type) {
       case OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED:
-        return DYNAMIC_RESERVATION_REQUIRED;
+        return "DYNAMIC_RESERVATION_REQUIRED";
 
       case OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED:
-        return PERSISTENT_VOLUME_REQUIRED;
+        return "PERSISTENT_VOLUME_REQUIRED";
 
       case OfferAnalysisStatus::TOO_SMALL:
-        return TOO_SMALL;
+        return "TOO_SMALL";
 
       case OfferAnalysisStatus::USABLE:
-        return USABLE;
+        return "USABLE";
 
       case OfferAnalysisStatus::WAIT:
-        return WAIT;
+        return "WAIT";
     }
 
-    return UNKNOWN;
+    return "UNKNOWN";
   }
 
 
-  inline const string& toStringShort (OfferAnalysisStatus type) {
-    static const string DYNAMIC_RESERVATION_REQUIRED = "DYNREQ";
-    static const string PERSISTENT_VOLUME_REQUIRED = "VOLREQ";
-    static const string TOO_SMALL = "SMALL";
-    static const string USABLE = "USE";
-    static const string WAIT = "WAIT";
-
-    static const string UNKNOWN = "UNKNOWN";
-
+  inline string toStringShort (OfferAnalysisStatus type) {
     switch (type) {
       case OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED:
-        return DYNAMIC_RESERVATION_REQUIRED;
+        return "DYNREQ";
 
       case OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED:
-        return PERSISTENT_VOLUME_REQUIRED;
+        return "VOLREQ";
 
       case OfferAnalysisStatus::TOO_SMALL:
-        return TOO_SMALL;
+        return "SMALL";
 
       case OfferAnalysisStatus::USABLE:
-        return USABLE;
+        return "USE";
 
       case OfferAnalysisStatus::WAIT:
-        return WAIT;
+        return "WAIT";
     }
 
-    return UNKNOWN;
+    return "UNKNOWN";
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -402,7 +381,7 @@ namespace arangodb {
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
-      void statusUpdate (uint64_t, InstanceState);
+      void statusUpdate (const string&, InstanceState);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slave update
@@ -475,6 +454,12 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       ArangoManagerImpl* _impl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief state
+////////////////////////////////////////////////////////////////////////////////
+
+      ArangoState* _state;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatcher thread

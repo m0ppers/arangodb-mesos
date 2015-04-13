@@ -27,6 +27,8 @@
 
 #include "ArangoManager.h"
 
+#include <stout/uuid.hpp>
+
 #include <atomic>
 #include <iostream>
 #include <set>
@@ -44,30 +46,6 @@ using std::chrono::system_clock;
 // -----------------------------------------------------------------------------
 
 namespace {
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief not-a-port filter
-///////////////////////////////////////////////////////////////////////////////
-
-  bool notIsPorts (const Resource& resource) {
-    return resource.name() != "ports";
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief is-a-disk filter
-///////////////////////////////////////////////////////////////////////////////
-
-  bool isDisk (const Resource& resource) {
-    return resource.name() == "disk";
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief is-not-a-disk filter
-///////////////////////////////////////////////////////////////////////////////
-
-  bool notIsDisk (const Resource& resource) {
-    return resource.name() != "disk";
-  }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief extracts number of avaiable ports from an offer
@@ -237,7 +215,7 @@ namespace {
 
       string diskId = res.disk().persistence().id();
 
-      if (diskId.find(name + ":") != 0) {
+      if (diskId.find(name + "_") != 0) {
         continue;
       }
 
@@ -546,7 +524,8 @@ class AgencyAspects : public Aspects {
     }
 
     string arguments (const Offer& offer,
-                      const OfferAnalysis& analysis) const override {
+                      const OfferAnalysis& analysis,
+                      const string& taskId) const override {
       uint32_t p1 = analysis._ports[0];
       uint32_t p2 = analysis._ports[1];
 
@@ -611,7 +590,7 @@ namespace {
     advance(iter, d2);
 
     const string& slaveId = *iter;
-    uint64_t taskId = globalAgency->_slave2task[slaveId];
+    const string& taskId = globalAgency->_slave2task[slaveId];
 
     const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
 
@@ -627,7 +606,7 @@ namespace {
     advance(iter, d2);
 
     const string& slaveId = *iter;
-    uint64_t taskId = globalAgency->_slave2task[slaveId];
+    const string& taskId = globalAgency->_slave2task[slaveId];
 
     const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
 
@@ -651,7 +630,8 @@ class ArangoAspects : public Aspects {
 
   public:
     string arguments (const Offer& offer,
-                      const OfferAnalysis& analysis) const override {
+                      const OfferAnalysis& analysis,
+                      const string& taskId) const override {
       uint32_t p1 = analysis._ports[0];
 
       vector<string> a;
@@ -689,10 +669,8 @@ class ArangoAspects : public Aspects {
       string slaveId = offer.slave_id().value();
 
       // create a hash from the container_path and the slaveId
-      uint64_t hash = FnvHashString({ analysis._containerPath, slaveId });
-
       a.push_back("--cluster.my-local-info");
-      a.push_back(_type + ":" + to_string(hash));
+      a.push_back(_type + ":" + taskId);
 
       return join(a, "\n");
     }
@@ -796,7 +774,7 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
     void dispatch ();
     void addOffer (const Offer& offer);
     void removeOffer (const OfferID& offerId);
-    void statusUpdate (uint64_t, InstanceState);
+    void statusUpdate (const string&, InstanceState);
     void slaveInfoUpdate (const mesos::SlaveInfo& info);
     vector<OfferSummary> currentOffers ();
     vector<Instance> currentInstances ();
@@ -814,8 +792,8 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
 
     void startInstance (Aspects&, const Offer&, const OfferAnalysis&);
 
-    void taskRunning (uint64_t);
-    void taskFinished (uint64_t);
+    void taskRunning (const string&);
+    void taskFinished (const string&);
 
   public:
     const string _role;
@@ -870,7 +848,7 @@ void ArangoManagerImpl::dispatch () {
   static const int SLEEP_SEC = 10;
 
   bool init = false;
-  unordered_set<uint64_t> bootstrapped;
+  unordered_set<string> bootstrapped;
 
   while (! _stopDispatcher) {
     LOG(INFO) << "DISPATCHER checking state\n";
@@ -879,7 +857,7 @@ void ArangoManagerImpl::dispatch () {
       lock_guard<mutex> lock(_lock);
 
       for (const auto& st : _dbserver._slave2task) {
-        uint64_t ti = st.second;
+        const string& ti = st.second;
 
         if (bootstrapped.find(ti) != bootstrapped.end()) {
           continue;
@@ -896,7 +874,7 @@ void ArangoManagerImpl::dispatch () {
       }
 
       if (! init && 0 < _coordinator._runningInstances && 0 < _dbserver._runningInstances) {
-        uint64_t tc = _coordinator._slave2task.begin()->second;
+        const string& tc = _coordinator._slave2task.begin()->second;
         auto iter = _instances.find(tc);
 
         if (iter != _instances.end()) {
@@ -909,7 +887,7 @@ void ArangoManagerImpl::dispatch () {
       }
 
       for (const auto& st : _coordinator._slave2task) {
-        uint64_t ti = st.second;
+        const string& ti = st.second;
 
         if (bootstrapped.find(ti) != bootstrapped.end()) {
           continue;
@@ -1001,7 +979,7 @@ void ArangoManagerImpl::removeOffer (const OfferID& offerId) {
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::statusUpdate (uint64_t taskId,
+void ArangoManagerImpl::statusUpdate (const string& taskId,
                                       InstanceState state) {
   lock_guard<mutex> lock(_lock);
 
@@ -1043,7 +1021,7 @@ vector<OfferSummary> ArangoManagerImpl::currentOffers () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current offers for debugging
+/// @brief returns the current instances for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
 vector<Instance> ArangoManagerImpl::currentInstances () {
@@ -1108,7 +1086,7 @@ ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clusterInfo
+/// @brief adjustPlanned
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo ArangoManagerImpl::adjustPlanned (const string& name,
@@ -1274,7 +1252,7 @@ void ArangoManagerImpl::makePersistentVolume (const string& name,
 
   Resource::DiskInfo diskInfo;
 
-  diskInfo.mutable_persistence()->set_id(name + ":" + slaveId);
+  diskInfo.mutable_persistence()->set_id(name + "_" + slaveId);
 
   Volume volume;
 
@@ -1408,9 +1386,15 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   Resources resources = analysis._resources;
   resources += resourcesPorts(analysis._ports);
 
-  string arguments = aspect.arguments(offer, analysis);
+  string taskId = UUID::random().toString();
+  string arguments = aspect.arguments(offer, analysis, taskId);
 
-  uint64_t taskId = _scheduler->startInstance(aspect._name, offer, resources, arguments);
+  _scheduler->startInstance(
+    taskId,
+    "arangodb:" + aspect._name + ":" + taskId,
+    offer,
+    resources,
+    arguments);
 
   Instance desc;
 
@@ -1441,7 +1425,7 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
 /// @brief status update (runing)
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::taskRunning (uint64_t taskId) {
+void ArangoManagerImpl::taskRunning (const string& taskId) {
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -1488,7 +1472,7 @@ void ArangoManagerImpl::taskRunning (uint64_t taskId) {
 /// @brief status update (finished)
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::taskFinished (uint64_t taskId) {
+void ArangoManagerImpl::taskFinished (const string& taskId) {
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -1588,15 +1572,15 @@ void ArangoManager::removeOffer (const OfferID& offerId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief status update
+/// @brief updates status
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManager::statusUpdate (uint64_t taskId, InstanceState state) {
+void ArangoManager::statusUpdate (const string& taskId, InstanceState state) {
   _impl->statusUpdate(taskId, state);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slave update
+/// @brief updates slave
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::slaveInfoUpdate (const mesos::SlaveInfo& info) {

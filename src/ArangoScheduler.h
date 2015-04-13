@@ -106,17 +106,18 @@ namespace arangodb {
 /// @brief starts an agency with a given offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      uint64_t startInstance (const string& name,
-                              const Offer&,
-                              const Resources&,
-                              const string& arguments) const;
+      void startInstance (const string& taskId,
+                          const string& name,
+                          const Offer&,
+                          const Resources&,
+                          const string& arguments) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an instances
 ////////////////////////////////////////////////////////////////////////////////
 
       void killInstance (const string& name,
-                         uint64_t taskId) const;
+                         const string& taskId) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods

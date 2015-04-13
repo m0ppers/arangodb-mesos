@@ -44,14 +44,6 @@ using namespace mesos;
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   local variables
-// -----------------------------------------------------------------------------
-
-namespace {
-  atomic<uint64_t> NEXT_TASK_ID(1);
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                             class ArangoScheduler
 // -----------------------------------------------------------------------------
 
@@ -141,25 +133,23 @@ void ArangoScheduler::declineOffer (const OfferID& offerId) const {
 /// @brief starts an instances with a given offer and resources
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t ArangoScheduler::startInstance (const string& name,
-                                         const Offer& offer,
-                                         const Resources& resources,
-                                         const string& arguments) const {
-  uint64_t taskId = NEXT_TASK_ID.fetch_add(1);
-  string id = "ARANGODB:" + name + ":" + lexical_cast<string>(taskId);
-  const string offerId = offer.id().value();
+void ArangoScheduler::startInstance (const string& taskId,
+                                     const string& name,
+                                     const Offer& offer,
+                                     const Resources& resources,
+                                     const string& arguments) const {
+  const string& offerId = offer.id().value();
 
   LOG(INFO)
-  << "INSTANCE launching task " << taskId 
-  << " using offer " << offerId 
-  << ": " << offer.resources()
+  << "INSTANCE launching task " << name 
+  << " using offer " << offerId << ": " << offer.resources()
   << " and resources " << resources
   << " and arguments " << join(split(arguments, '\n'), " ");
 
   TaskInfo task;
 
-  task.set_name(id);
-  task.mutable_task_id()->set_value(id);
+  task.set_name(name);
+  task.mutable_task_id()->set_value(taskId);
   task.mutable_slave_id()->CopyFrom(offer.slave_id());
   task.mutable_executor()->CopyFrom(_executor);
   task.mutable_resources()->CopyFrom(resources);
@@ -170,8 +160,6 @@ uint64_t ArangoScheduler::startInstance (const string& name,
   tasks.push_back(task);
 
   _driver->launchTasks(offer.id(), tasks);
-
-  return taskId;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,14 +167,12 @@ uint64_t ArangoScheduler::startInstance (const string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::killInstance (const string& name,
-                                    uint64_t taskId) const {
-  string id = "ARANGODB:" + name + ":" + lexical_cast<string>(taskId);
-
+                                    const string& taskId) const {
   LOG(INFO)
-  << "INSTANCE kill instance " << id;
+  << "INSTANCE kill instance " << taskId;
 
   TaskID ti;
-  ti.set_value(id);
+  ti.set_value(taskId);
 
   _driver->killTask(ti);
 }
@@ -257,16 +243,7 @@ void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
 
 void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
                                     const TaskStatus& status) {
-  vector<string> taskId = split(status.task_id().value(), ':');
-
-  if (taskId.size() != 3) {
-    LOG(ERROR)
-    << "corrupt task id '"
-    << status.task_id().value() << "' received";
-    return;
-  }
-
-  uint64_t task = lexical_cast<uint64_t>(taskId[2]);
+  const string& taskId = status.task_id().value();
   auto state = status.state();
 
   LOG(INFO)
@@ -281,7 +258,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
       break;
 
     case TASK_RUNNING:
-      _manager->statusUpdate(task, InstanceState::RUNNING);
+      _manager->statusUpdate(taskId, InstanceState::RUNNING);
       break;
 
     case TASK_STARTING:
@@ -293,7 +270,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
     case TASK_KILLED:   // TERMINAL. The task was killed by the executor.
     case TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
     case TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-      _manager->statusUpdate(task, InstanceState::FINISHED);
+      _manager->statusUpdate(taskId, InstanceState::FINISHED);
       break;
   }
 }

@@ -253,7 +253,7 @@ namespace {
   picojson::object JsonInstance (const Instance& instance) {
     picojson::object o;
 
-    o["taskId"] = picojson::value((double) instance._taskId);
+    o["taskId"] = picojson::value(instance._taskId);
     o["slaveId"] = picojson::value(instance._slaveId);
     o["hostname"] = picojson::value(instance._hostname);
     o["started"] = picojson::value(toStringSystemTime(instance._started));
@@ -534,7 +534,7 @@ string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
   for (const auto& instance : instances) {
     picojson::object o;
 
-    o["taskId"] = picojson::value((double) instance._taskId);
+    o["taskId"] = picojson::value(instance._taskId);
     o["aspectId"] = picojson::value((double) instance._aspectId);
     o["state"] = picojson::value(toString(instance._state));
     o["slaveId"] = picojson::value(instance._slaveId);
