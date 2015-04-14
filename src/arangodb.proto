@@ -1,0 +1,71 @@
+import "mesos/mesos.proto";
+
+package arangodb;
+
+message Target {
+  required uint32 agencies = 1;
+  required uint32 coordinators = 2;
+  required uint32 dbservers = 3;
+}
+
+
+
+enum VolumeStatePlan {
+  VOLUME_STATE_REQUIRED = 1;
+  VOLUME_STATE_RESERVED = 2;
+  VOLUME_STATE_PERSISTENT = 3;
+  VOLUME_STATE_LOST = 4;
+}
+
+
+
+
+message VolumePlan {
+  required VolumeStatePlan state = 1;
+
+  optional mesos.SlaveID slaveId = 2;
+  optional mesos.OfferID offerId = 3;
+  optional string persistenceId = 4;
+}
+
+
+
+enum TaskPlanState {
+  TASK_STATE_REQUIRED = 1;
+  TASK_STATE_STARTED = 2;
+  TASK_STATE_RUNNING = 3;
+  TASK_STATE_KILLED = 4;
+}
+
+
+
+message TaskPlan {
+  required TaskPlanState state = 1;
+
+  optional mesos.SlaveID slaveId = 2;
+  optional mesos.TaskID taskId = 3;
+}
+
+
+
+message Plan {
+  repeated VolumePlan agencyVolumes = 1;
+  repeated VolumePlan dbserverVolumes = 2;
+
+  repeated TaskPlan agencies = 3;
+  repeated TaskPlan coordinators = 4;
+  repeated TaskPlan primaryDbservers = 5;
+  repeated TaskPlan secondaryDbservers = 6;
+}
+
+
+
+message Current {
+  repeated mesos.Resource.DiskInfo agencyVolumes = 1;
+  repeated mesos.Resource.DiskInfo dbserverVolumes = 2;
+
+  repeated mesos.TaskInfo agencies = 3;
+  repeated mesos.TaskInfo coordinators = 4;
+  repeated mesos.TaskInfo primaryDbservers = 5;
+  repeated mesos.TaskInfo secondaryDbservers = 6;
+}

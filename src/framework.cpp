@@ -31,7 +31,7 @@
 #include <string>
 
 #include "ArangoScheduler.h"
-#include "ArangoState.h"
+// #include "ArangoState.h"
 #include "HttpServer.h"
 
 #include <stout/check.hpp>
@@ -46,7 +46,7 @@
 #include "logging/logging.hpp"
 
 using namespace std;
-using namespace mesos;
+using namespace mesos::internal;
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
@@ -143,9 +143,11 @@ int main (int argc, char** argv) {
   // state
   // .............................................................................
 
+/*
   ArangoState state("arangodb");
   state.init();
   state.load();
+*/
 
   // .............................................................................
   // http server
@@ -169,8 +171,10 @@ int main (int argc, char** argv) {
   // scheduler
   // .............................................................................
 
+  string principal = "arangodb";
+
   // create the scheduler
-  ArangoScheduler scheduler(role, executor);
+  ArangoScheduler scheduler(role, principal, executor);
 
   MesosSchedulerDriver* driver;
 
@@ -194,7 +198,7 @@ int main (int argc, char** argv) {
     driver = new MesosSchedulerDriver(
         &scheduler, framework, master.get(), credential);
   } else {
-    framework.set_principal("test-framework-cpp");
+    framework.set_principal(principal);
 
     driver = new MesosSchedulerDriver(
         &scheduler, framework, master.get());

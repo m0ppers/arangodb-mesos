@@ -56,12 +56,14 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoScheduler::ArangoScheduler (const string& role,
+                                  const string& principal,
                                   const ExecutorInfo& executor)
   : _role(role),
+    _principal(principal),
     _driver(nullptr),
     _executor(executor),
     _manager(nullptr) {
-  _manager = new ArangoManager(_role, this);
+  _manager = new ArangoManager(_role, _principal, this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

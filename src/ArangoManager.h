@@ -137,7 +137,10 @@ namespace arangodb {
 
   class Aspects {
     public:
-      Aspects (const string& name, const string& role, InstanceManager*);
+      Aspects (const string& name,
+               const string& role,
+               const string& principal,
+               InstanceManager*);
 
     public:
       virtual size_t id () const = 0;
@@ -148,6 +151,7 @@ namespace arangodb {
     public:
       const string _name;
       const string _role;
+      const string _principal;
 
       mesos::Resources _minimumResources;
       mesos::Resources _additionalResources;
@@ -351,7 +355,9 @@ namespace arangodb {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ArangoManager (const string& role, ArangoScheduler*);
+      ArangoManager (const string& role,
+                     const string& principal,
+                     ArangoScheduler*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

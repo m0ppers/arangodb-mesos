@@ -159,16 +159,12 @@ namespace {
         r["role"] = picojson::value(resource.role());
       }
 
-      if (resource.has_reserver_type()) {
-        switch (resource.reserver_type()) {
-          case Resource::SLAVE:
-            r["reservationType"] = picojson::value("SLAVE");
-            break;
+      if (resource.has_reservation()) {
+        picojson::object res;
 
-          case Resource::FRAMEWORK:
-            r["reservationType"] = picojson::value("FRAMEWORK");
-            break;
-        }
+        res["principal"] = picojson::value(resource.reservation().principal());
+
+        r["reservation"] = picojson::value(res);
       }
 
       if (resource.has_disk()) {

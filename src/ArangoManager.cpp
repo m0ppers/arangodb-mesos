@@ -167,11 +167,16 @@ namespace {
                     Resources& reserved,
                     Resources& unreserved) {
     const string& role = aspect._role;
+    const string& principal = aspect._principal;
     const Resources& minimumResources = aspect._minimumResources;
 
     Resources memcpu = minimumResources.filter(notIsDisk);
     Resources resources = offer.resources();
-    Option<Resources> found = resources.find(memcpu.flatten(role, Resource::FRAMEWORK));
+
+    Resource::ReservationInfo reservation;
+    reservation.set_principal(principal);
+
+    Option<Resources> found = resources.find(memcpu.flatten(role, reservation));
 
     if (found.isNone()) {
       LOG(INFO) 
@@ -480,8 +485,11 @@ namespace {
 // --SECTION--                                                     class Aspects
 // -----------------------------------------------------------------------------
 
-Aspects::Aspects (const string& name, const string& role, InstanceManager* manager)
-  : _name(name), _role(role), _instanceManager(manager) {
+Aspects::Aspects (const string& name,
+                  const string& role,
+                  const string& principal,
+                  InstanceManager* manager)
+  : _name(name), _role(role), _principal(principal), _instanceManager(manager) {
   _startedInstances = 0;
   _runningInstances = 0;
 }
@@ -496,8 +504,10 @@ Aspects::Aspects (const string& name, const string& role, InstanceManager* manag
 
 class AgencyAspects : public Aspects {
   public:
-    AgencyAspects (const string& role, InstanceManager* manager) 
-      : Aspects("AGENCY", role, manager) {
+    AgencyAspects (const string& role,
+                   const string& principal,
+                   InstanceManager* manager)
+      : Aspects("AGENCY", role, principal, manager) {
       _minimumResources = Resources::parse("cpus:0.5;mem:100;disk:100").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -623,8 +633,9 @@ class ArangoAspects : public Aspects {
     ArangoAspects (const string& name,
                    const string& type,
                    const string& role,
+                   const string& principal,
                    InstanceManager* manager)
-      : Aspects(name, role, manager),
+      : Aspects(name, role, principal, manager),
         _type(type) {
     }
 
@@ -685,8 +696,10 @@ class ArangoAspects : public Aspects {
 
 class CoordinatorAspects : public ArangoAspects {
   public:
-    CoordinatorAspects (const string& role, InstanceManager* manager) 
-      : ArangoAspects("COORDINATOR", "coordinator", role, manager) {
+    CoordinatorAspects (const string& role,
+                        const string& principal,
+                        InstanceManager* manager)
+      : ArangoAspects("COORDINATOR", "coordinator", role, principal, manager) {
       _minimumResources = Resources::parse("cpus:1;mem:1024;disk:1024").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -716,8 +729,10 @@ class CoordinatorAspects : public ArangoAspects {
 
 class DBServerAspects : public ArangoAspects {
   public:
-    DBServerAspects (const string& role, InstanceManager* manager) 
-      : ArangoAspects("DBSERVER", "dbserver", role, manager) {
+    DBServerAspects (const string& role,
+                     const string& principal,
+                     InstanceManager* manager)
+      : ArangoAspects("DBSERVER", "dbserver", role, principal, manager) {
       _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
       _additionalResources = Resources();
       _persistentVolumeRequired = true;
@@ -768,7 +783,9 @@ class AspectInstance {
 
 class arangodb::ArangoManagerImpl : public InstanceManager {
   public:
-    ArangoManagerImpl (const string& role, ArangoScheduler* _scheduler);
+    ArangoManagerImpl (const string& role,
+                       const string& principal,
+                       ArangoScheduler* _scheduler);
 
   public:
     void dispatch ();
@@ -797,6 +814,7 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
 
   public:
     const string _role;
+    const string _principal;
     ArangoScheduler* _scheduler;
     mutex _lock;
     atomic<bool> _stopDispatcher;
@@ -821,13 +839,15 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoManagerImpl::ArangoManagerImpl (const string& role,
+                                      const string& principal,
                                       ArangoScheduler* scheduler)
   : _role(role),
+    _principal(principal),
     _scheduler(scheduler),
     _stopDispatcher(false),
-    _agency(role, this),
-    _coordinator(role, this),
-    _dbserver(role, this) {
+    _agency(role, principal, this),
+    _coordinator(role, principal, this),
+    _dbserver(role, principal, this) {
 
   // TODO(fc) how to persist & change these values
 
@@ -1281,7 +1301,11 @@ void ArangoManagerImpl::makeDynamicReservation (const string& name,
                                                 const Offer& offer,
                                                 const Resources& resources) const {
   const string& offerId = offer.id().value();
-  Resources res = resources.flatten(_role, Resource::FRAMEWORK);
+
+  Resource::ReservationInfo reservation;
+  reservation.set_principal(_principal);
+
+  Resources res = resources.flatten(_role, reservation);
 
   LOG(INFO)
   << name << " "
@@ -1531,10 +1555,12 @@ void ArangoManagerImpl::taskFinished (const string& taskId) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager::ArangoManager (const string& role, ArangoScheduler* scheduler)
+ArangoManager::ArangoManager (const string& role,
+                              const string& principal,
+                              ArangoScheduler* scheduler)
   : _impl(nullptr),
     _dispatcher(nullptr) {
-  _impl = new ArangoManagerImpl(role, scheduler);
+  _impl = new ArangoManagerImpl(role, principal, scheduler);
   _dispatcher = new thread(&ArangoManagerImpl::dispatch, _impl);
 };
 
