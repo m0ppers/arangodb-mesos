@@ -39,6 +39,8 @@
 #include <mesos/mesos.pb.h>
 
 #include "ArangoManager.h"
+#include "Caretaker.h"
+#include "Global.h"
 #include "utils.h"
 
 using namespace std;
@@ -349,6 +351,10 @@ class arangodb::HttpServerImpl {
 
     string GET_DEBUG_OFFERS (const string&);
     string GET_DEBUG_INSTANCES (const string&);
+    string GET_DEBUG_TARGET (const string&);
+    string GET_DEBUG_PLAN (const string&);
+    string GET_DEBUG_CURRENT (const string&);
+    string GET_DEBUG_OVERVIEW (const string&);
 
   private:
     ArangoManager* _manager;
@@ -546,6 +552,49 @@ string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
   return picojson::value(result).serialize();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/target
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
+  Caretaker& caretaker = Global::caretaker(name);
+
+  return caretaker.jsonTarget();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/plan
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
+  Caretaker& caretaker = Global::caretaker(name);
+
+  return caretaker.jsonPlan();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/current
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
+  Caretaker& caretaker = Global::caretaker(name);
+
+  return caretaker.jsonCurrent();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /debug/overview
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_DEBUG_OVERVIEW (const string& name) {
+  Caretaker& caretaker = Global::caretaker(name);
+
+  return "{ \"target\" : " + caretaker.jsonTarget()
+       + ", \"plan\" : " + caretaker.jsonPlan()
+       + ", \"current\" : " + caretaker.jsonCurrent() + " }";
+  
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class HttpServer
 // -----------------------------------------------------------------------------
@@ -661,6 +710,18 @@ static int answerRequest (
       }
       else if (0 == strcmp(url, "/debug/instances")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_INSTANCES;
+      }
+      else if (0 == strcmp(url, "/debug/target")) {
+        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_TARGET;
+      }
+      else if (0 == strcmp(url, "/debug/plan")) {
+        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_PLAN;
+      }
+      else if (0 == strcmp(url, "/debug/current")) {
+        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_CURRENT;
+      }
+      else if (0 == strcmp(url, "/debug/overview")) {
+        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_OVERVIEW;
       }
       else {
         conInfo->filename = "assets/";
@@ -839,8 +900,3 @@ void HttpServer::stop () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

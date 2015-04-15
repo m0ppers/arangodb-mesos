@@ -93,7 +93,7 @@ int main (int argc, char** argv) {
   flags.add(&role,
             "role",
             "Role to use when registering",
-            "*");
+            "arangodb");
 
   Option<string> master;
   flags.add(&master,

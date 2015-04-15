@@ -34,7 +34,11 @@
 #include <set>
 
 #include "ArangoScheduler.h"
+#include "Caretaker.h"
+#include "Global.h"
 #include "utils.h"
+
+#include "pbjson.hpp"
 
 using namespace mesos;
 using namespace arangodb;
@@ -166,17 +170,23 @@ namespace {
                     const Offer& offer,
                     Resources& reserved,
                     Resources& unreserved) {
+/*
     const string& role = aspect._role;
     const string& principal = aspect._principal;
+*/
     const Resources& minimumResources = aspect._minimumResources;
 
     Resources memcpu = minimumResources.filter(notIsDisk);
     Resources resources = offer.resources();
 
+/*
     Resource::ReservationInfo reservation;
     reservation.set_principal(principal);
 
     Option<Resources> found = resources.find(memcpu.flatten(role, reservation));
+*/
+
+    Option<Resources> found = resources.find(memcpu);
 
     if (found.isNone()) {
       LOG(INFO) 
@@ -188,6 +198,10 @@ namespace {
 
     reserved = found.get();
     unreserved = reserved.filter(Resources::isUnreserved);
+
+    LOG(INFO)
+    << "DEBUG " << resources << " does have "
+    << memcpu << " requirements, unreserved " << unreserved;
 
     return true;
   }
@@ -803,8 +817,8 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
     void removeOffer (const string& offerId);
 
     void checkInstances (Aspects&);
-    void makePersistentVolume (const string&, const Offer&, const Resources&) const;
-    void makeDynamicReservation(const string&, const Offer&, const Resources&) const;
+    bool makePersistentVolume (const string& name, const Offer&, const Resources&);
+    bool makeDynamicReservation(const Offer&, const Resources&);
     OfferSummary findOffer (Aspects&);
 
     void startInstance (Aspects&, const Offer&, const OfferAnalysis&);
@@ -828,6 +842,8 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
 
     unordered_map<string, mesos::SlaveInfo> _slaveInfo;
     unordered_map<string, OfferSummary> _offers;
+
+    unordered_map<string, mesos::Offer> _storedOffers;
 };
 
 // -----------------------------------------------------------------------------
@@ -871,6 +887,83 @@ void ArangoManagerImpl::dispatch () {
   unordered_set<string> bootstrapped;
 
   while (! _stopDispatcher) {
+    LOG(INFO) << "DISPATCHER checking state\n";
+
+    // .............................................................................
+    // check all outstand offers
+    // .............................................................................
+
+    unordered_map<string, mesos::Offer> next;
+    vector<pair<mesos::Offer, mesos::Resources>> dynamic;
+    vector<pair<mesos::Offer, OfferAction>> persistent;
+
+    {
+      lock_guard<mutex> lock(_lock);
+
+      Caretaker& caretaker = Global::caretaker("arangodb");
+      caretaker.updatePlan();
+
+      for (auto&& id_offer : _storedOffers) {
+        OfferAction action = caretaker.checkOffer(id_offer.second);
+
+        switch (action._state) {
+          case OfferState::MAKE_DYNAMIC_RESERVATION:
+            dynamic.push_back(make_pair(id_offer.second, action._resources));
+            break;
+
+          case OfferState::MAKE_PERSISTENT_VOLUME:
+            LOG(INFO) << "############## persist volume";
+            persistent.push_back(make_pair(id_offer.second, action));
+            break;
+
+          case OfferState::START_INSTANCE:
+            LOG(INFO) << "############## start instance";
+            break;
+
+          case OfferState::STORE_FOR_LATER:
+            LOG(INFO) << "############## store for later";
+            next[id_offer.first] = id_offer.second;
+            break;
+
+          case OfferState::IGNORE:
+            LOG(INFO) << "############## ignore";
+            break;
+        }
+      }
+
+      _storedOffers.swap(next);
+    }
+
+    bool sleep = true;
+
+    for (auto&& offer_res : dynamic) {
+      bool res = makeDynamicReservation(offer_res.first, offer_res.second);
+
+      if (res) {
+        sleep = false;
+      }
+    }
+
+    for (auto&& offer_res : persistent) {
+      bool res = makePersistentVolume(offer_res.second._name,
+                                      offer_res.first,
+                                      offer_res.second._resources);
+
+      if (res) {
+        sleep = false;
+      }
+    }
+
+    // .............................................................................
+    // wait for a little while
+    // .............................................................................
+
+    if (sleep) {
+      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+    }
+
+
+/*
     LOG(INFO) << "DISPATCHER checking state\n";
 
     {
@@ -935,8 +1028,7 @@ void ArangoManagerImpl::dispatch () {
         }
       }
     }
-
-    this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+*/
   }
 }
 
@@ -947,6 +1039,16 @@ void ArangoManagerImpl::dispatch () {
 void ArangoManagerImpl::addOffer (const Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
+  {
+    string json;
+    pbjson::pb2json(&offer, json);
+    LOG(INFO)
+    << "OFFER received: " << json;
+  }
+
+  _storedOffers[offer.id().value()] = offer;
+
+/*
   const string& id = offer.id().value();
   const string& slaveId = offer.slave_id().value();
 
@@ -983,6 +1085,7 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   }
 
   _offers.insert({ id, summary });
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1254,18 +1357,18 @@ void ArangoManagerImpl::checkInstances (Aspects& aspect) {
 /// @brief makes a persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::makePersistentVolume (const string& name,
+bool ArangoManagerImpl::makePersistentVolume (const string& name,
                                               const Offer& offer,
-                                              const Resources& resources) const {
+                                              const Resources& resources) {
   const string& offerId = offer.id().value();
   const string& slaveId = offer.slave_id().value();
 
   if (resources.empty()) {
     LOG(WARNING)
-    << name << " cannot make persistent volume from empty resource "
+    << "cannot make persistent volume from empty resource "
     << "(offered resource was " << offer.resources() << ")";
 
-    return;
+    return false;
   }
 
   Resource disk = *resources.begin();
@@ -1286,33 +1389,49 @@ void ArangoManagerImpl::makePersistentVolume (const string& name,
   persistent += disk;
 
   LOG(INFO)
-  << name << " "
+  << "DEBUG makePersistentVolume(" << name << "): "
   << "trying to make " << offerId
   << " persistent for " << persistent;
 
-  _scheduler->makePersistent(offer, persistent);
+  mesos::Resources offered = offer.resources();
+
+  if (offered.contains(persistent)) {
+    addOffer(offer);
+    return true;
+  }
+  else {
+    _scheduler->makePersistent(offer, persistent);
+    return false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::makeDynamicReservation (const string& name,
-                                                const Offer& offer,
-                                                const Resources& resources) const {
+bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
+                                                const Resources& resources) {
   const string& offerId = offer.id().value();
 
-  Resource::ReservationInfo reservation;
-  reservation.set_principal(_principal);
-
-  Resources res = resources.flatten(_role, reservation);
+  Resources res = resources; // .filter(notIsPorts);
+  res = res.flatten(Global::role(), Global::principal());
 
   LOG(INFO)
-  << name << " "
+  << "DEBUG makeDynamicReservation: "
   << "trying to reserve " << offerId
   << " with " << res;
 
-  _scheduler->reserveDynamically(offer, res);
+  Resources offered = offer.resources();
+  Resources diff = res - offered;
+
+  if (diff.empty()) {
+    addOffer(offer);
+    return true;
+  }
+  else {
+    _scheduler->reserveDynamically(offer, diff);
+    return false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1377,7 +1496,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
 
   if (iter != _offers.end()) {
     OfferSummary result = iter->second;
-    makePersistentVolume(aspect._name, result._offer, result._analysis[id]._resources);
+//    makePersistentVolume(aspect._name, result._offer, result._analysis[id]._resources);
     removeOffer(result._offer.id().value());
     return { false };
   }
@@ -1390,7 +1509,7 @@ OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
 
   if (iter != _offers.end()) {
     OfferSummary result = iter->second;
-    makeDynamicReservation(aspect._name, result._offer, result._analysis[id]._resources);
+//    makeDynamicReservation(aspect._name, result._offer, result._analysis[id]._resources);
     removeOffer(result._offer.id().value());
     return { false };
   }
@@ -1720,8 +1839,3 @@ vector<Instance> ArangoManager::currentInstances () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

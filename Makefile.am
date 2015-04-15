@@ -47,14 +47,18 @@ noinst_LIBRARIES = \
 ################################################################################
 
 lib_libarangodb_mesos_a_SOURCES = \
-	src/arangodb.pb.cc \
 	src/ArangoManager.cpp \
 	src/ArangoScheduler.cpp \
+	src/Caretaker.cpp \
+	src/Global.cpp \
 	src/HttpServer.cpp \
-	src/utils.cpp
+	src/arangodb.pb.cc \
+	src/utils.cpp \
+	3rdParty/pbjson/src/pbjson.cpp
 
 lib_libarangodb_mesos_a_CPPFLAGS = \
         -I@top_srcdir@ \
+	-I@top_srcdir@/3rdParty/pbjson/src \
         $(AM_CPPFLAGS) \
 	@MESOS_CPPFLAGS@ \
 	@MICROHTTPD_CPPFLAGS@

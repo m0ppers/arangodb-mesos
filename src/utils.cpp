@@ -201,6 +201,14 @@ bool arangodb::notIsPorts (const Resource& resource) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+/// @brief a-port filter
+///////////////////////////////////////////////////////////////////////////////
+
+bool arangodb::isPorts (const Resource& resource) {
+  return resource.name() == "ports";
+}
+
+///////////////////////////////////////////////////////////////////////////////
 /// @brief is-a-disk filter
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -216,11 +224,31 @@ bool arangodb::notIsDisk (const Resource& resource) {
   return resource.name() != "disk";
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts number of avaiable ports from an offer
+///////////////////////////////////////////////////////////////////////////////
+
+size_t arangodb::numberPorts (const mesos::Offer& offer) {
+  size_t value = 0;
+
+  for (int i = 0; i < offer.resources_size(); ++i) {
+    const auto& resource = offer.resources(i);
+
+    if (resource.name() == "ports" &&
+        resource.type() == mesos::Value::RANGES) {
+      const auto& ranges = resource.ranges();
+      
+      for (int j = 0; j < ranges.range_size(); ++j) {
+        const auto& range = ranges.range(j);
+
+        value += range.end() - range.begin() + 1;
+      }
+    }
+  }
+
+  return value;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -2,30 +2,51 @@ import "mesos/mesos.proto";
 
 package arangodb;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            TARGET
+// -----------------------------------------------------------------------------
+
+message TargetEntry {
+  required uint32 instances = 1;
+  repeated mesos.Resource minimal_resources = 2;
+  repeated mesos.Resource additional_resouces = 3;
+  required uint32 number_ports = 4;
+}
+
+
+
 message Target {
-  required uint32 agencies = 1;
-  required uint32 coordinators = 2;
-  required uint32 dbservers = 3;
+  required TargetEntry agencies = 1;
+  required TargetEntry coordinators = 2;
+  required TargetEntry dbservers = 3;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              PLAN
+// -----------------------------------------------------------------------------
+
+enum OfferStatePlan {
+  OFFER_STATE_REQUIRED = 1;
+  OFFER_STATE_TRYING_TO_RESERVE = 2;
+  OFFER_STATE_TRYING_TO_PERSIST = 3;
+  OFFER_STATE_USEABLE = 4;
+  OFFER_STATE_LOST = 5;
 }
 
 
 
-enum VolumeStatePlan {
-  VOLUME_STATE_REQUIRED = 1;
-  VOLUME_STATE_RESERVED = 2;
-  VOLUME_STATE_PERSISTENT = 3;
-  VOLUME_STATE_LOST = 4;
+message OfferPlanEntry {
+  required OfferStatePlan state = 1;
+
+  optional mesos.SlaveID slave_id = 2;
+  optional mesos.OfferID offer_id = 3;
+  optional string persistence_id = 4;
 }
 
 
 
-
-message VolumePlan {
-  required VolumeStatePlan state = 1;
-
-  optional mesos.SlaveID slaveId = 2;
-  optional mesos.OfferID offerId = 3;
-  optional string persistenceId = 4;
+message OfferPlan {
+  repeated OfferPlanEntry entries = 1;
 }
 
 
@@ -42,30 +63,50 @@ enum TaskPlanState {
 message TaskPlan {
   required TaskPlanState state = 1;
 
-  optional mesos.SlaveID slaveId = 2;
-  optional mesos.TaskID taskId = 3;
+  optional mesos.SlaveID slave_id = 2;
+  optional mesos.TaskID task_id = 3;
 }
 
 
 
 message Plan {
-  repeated VolumePlan agencyVolumes = 1;
-  repeated VolumePlan dbserverVolumes = 2;
+  required OfferPlan agency_offers = 1;
+  required OfferPlan coordinator_offers = 2;
+  required OfferPlan dbserver_offers = 3;
 
-  repeated TaskPlan agencies = 3;
-  repeated TaskPlan coordinators = 4;
-  repeated TaskPlan primaryDbservers = 5;
-  repeated TaskPlan secondaryDbservers = 6;
+  repeated TaskPlan agencies = 4;
+  repeated TaskPlan coordinators = 5;
+  repeated TaskPlan primary_dbservers = 6;
+  repeated TaskPlan secondary_dbservers = 7;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           CURRENT
+// -----------------------------------------------------------------------------
+
+message ResourcesCurrentEntry {
+  required mesos.SlaveID slave_id = 1;
+  required mesos.OfferID offer_id = 2;
+  repeated mesos.Resource resources = 3;
+}
+
+message ResourcesCurrent {
+  repeated ResourcesCurrentEntry entries = 1;
 }
 
 
 
 message Current {
-  repeated mesos.Resource.DiskInfo agencyVolumes = 1;
-  repeated mesos.Resource.DiskInfo dbserverVolumes = 2;
+  required ResourcesCurrent agency_resources = 1;
+  required ResourcesCurrent coordinator_resources = 2;
+  required ResourcesCurrent dbserver_resources = 3;
 
-  repeated mesos.TaskInfo agencies = 3;
-  repeated mesos.TaskInfo coordinators = 4;
-  repeated mesos.TaskInfo primaryDbservers = 5;
-  repeated mesos.TaskInfo secondaryDbservers = 6;
+  repeated mesos.TaskInfo agencies = 4;
+  repeated mesos.TaskInfo coordinators = 5;
+  repeated mesos.TaskInfo primaryDbservers = 6;
+  repeated mesos.TaskInfo secondaryDbservers = 7;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
