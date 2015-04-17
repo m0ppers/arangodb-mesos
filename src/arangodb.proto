@@ -25,22 +25,9 @@ message Target {
 // --SECTION--                                                              PLAN
 // -----------------------------------------------------------------------------
 
-enum OfferStatePlan {
-  OFFER_STATE_REQUIRED = 1;
-  OFFER_STATE_TRYING_TO_RESERVE = 2;
-  OFFER_STATE_TRYING_TO_PERSIST = 3;
-  OFFER_STATE_USEABLE = 4;
-  OFFER_STATE_LOST = 5;
-}
-
-
-
 message OfferPlanEntry {
-  required OfferStatePlan state = 1;
-
-  optional mesos.SlaveID slave_id = 2;
-  optional mesos.OfferID offer_id = 3;
-  optional string persistence_id = 4;
+  optional mesos.SlaveID slave_id = 1;
+  optional string persistence_id = 2;
 }
 
 
@@ -51,7 +38,7 @@ message OfferPlan {
 
 
 
-enum TaskPlanState {
+enum TasksPlanState {
   TASK_STATE_REQUIRED = 1;
   TASK_STATE_STARTED = 2;
   TASK_STATE_RUNNING = 3;
@@ -60,11 +47,17 @@ enum TaskPlanState {
 
 
 
-message TaskPlan {
-  required TaskPlanState state = 1;
+message TasksPlanEntry {
+  required TasksPlanState state = 1;
 
   optional mesos.SlaveID slave_id = 2;
   optional mesos.TaskID task_id = 3;
+}
+
+
+
+message TasksPlan {
+  repeated TasksPlanEntry entries = 1;
 }
 
 
@@ -74,24 +67,62 @@ message Plan {
   required OfferPlan coordinator_offers = 2;
   required OfferPlan dbserver_offers = 3;
 
-  repeated TaskPlan agencies = 4;
-  repeated TaskPlan coordinators = 5;
-  repeated TaskPlan primary_dbservers = 6;
-  repeated TaskPlan secondary_dbservers = 7;
+  required TasksPlan agencies = 4;
+  required TasksPlan coordinators = 5;
+  required TasksPlan primary_dbservers = 6;
+  required TasksPlan secondary_dbservers = 7;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           CURRENT
 // -----------------------------------------------------------------------------
 
-message ResourcesCurrentEntry {
-  required mesos.SlaveID slave_id = 1;
-  required mesos.OfferID offer_id = 2;
-  repeated mesos.Resource resources = 3;
+enum ResourcesCurrentState {
+  RESOURCE_STATE_REQUIRED = 1;
+  RESOURCE_STATE_TRYING_TO_RESERVE = 2;
+  RESOURCE_STATE_TRYING_TO_PERSIST = 3;
+  RESOURCE_STATE_USEABLE = 4;
+  RESOURCE_STATE_LOST = 5;
 }
+
+
+
+message ResourcesCurrentEntry {
+  required ResourcesCurrentState state = 1;
+
+  required mesos.SlaveID slave_id = 2;
+  required mesos.OfferID offer_id = 3;
+  repeated mesos.Resource resources = 4;
+  repeated uint32 ports = 5;
+  required string hostname = 6;
+  required string container_path = 7;
+}
+
+
 
 message ResourcesCurrent {
   repeated ResourcesCurrentEntry entries = 1;
+}
+
+
+
+enum InstancesCurrentState {
+  INSTANCE_STATE_UNUSED = 1;
+  INSTANCE_STATE_STARTING = 2;
+}
+
+
+
+message InstancesCurrentEntry {
+  required InstancesCurrentState state = 1;
+
+  required mesos.TaskInfo task_info = 2;
+}
+
+
+
+message InstancesCurrent {
+  repeated InstancesCurrentEntry entries = 1;
 }
 
 
@@ -101,10 +132,10 @@ message Current {
   required ResourcesCurrent coordinator_resources = 2;
   required ResourcesCurrent dbserver_resources = 3;
 
-  repeated mesos.TaskInfo agencies = 4;
-  repeated mesos.TaskInfo coordinators = 5;
-  repeated mesos.TaskInfo primaryDbservers = 6;
-  repeated mesos.TaskInfo secondaryDbservers = 7;
+  required InstancesCurrent agencies = 4;
+  required InstancesCurrent coordinators = 5;
+  required InstancesCurrent primary_dbservers = 6;
+  required InstancesCurrent secondary_dbservers = 7;
 }
 
 // -----------------------------------------------------------------------------

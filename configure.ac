@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  ArangoDB GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([arangodb-mesos], [0.2.0], [info@arangodb.com], [arangodb-mesos], [https://www.arangodb.com])
+AC_INIT([arangodb-mesos], [0.3.0], [info@arangodb.com], [arangodb-mesos], [https://www.arangodb.com])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -60,12 +60,43 @@ CFLAGS="${CFLAGS} ${WALL}"
 CXXFLAGS="${CXXFLAGS} ${WALL}"
 
 dnl ============================================================================
+dnl --SECTION--                                                          options
+dnl ============================================================================
+
+dnl ----------------------------------------------------------------------------
+dnl mesos version
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(mesos,
+  AS_HELP_STRING([--enable-mesos=version], [use specified mesos version]),
+  [MESOS_VERSION="${enableval:-0.22}"],
+  [MESOS_VERSION=mesos-reservation]
+)
+
+if test "x${MESOS_VERSION}" == x0.23;  then
+  CPPFLAGS="${CPPFLAGS} -DMESOS_DYNAMIC_RESERVATION=1"
+  CPPFLAGS="${CPPFLAGS} -DMESOS_FILTER=1"
+  CPPFLAGS="${CPPFLAGS} -DMESOS_PRINCIPAL=1"
+
+  if test "x${MESOS_VERSION}" == xmpark;  then
+    CPPFLAGS="${CPPFLAGS} -DMESOS_RESERVE_PORTS=1"
+  else
+    CPPFLAGS="${CPPFLAGS} -DMESOS_RESERVE_PORTS=0"
+  fi
+else
+  CPPFLAGS="${CPPFLAGS} -DMESOS_DYNAMIC_RESERVATION=0"
+  CPPFLAGS="${CPPFLAGS} -DMESOS_FILTER=0"
+  CPPFLAGS="${CPPFLAGS} -DMESOS_PRINCIPAL=0"
+  CPPFLAGS="${CPPFLAGS} -DMESOS_RESERVE_PORTS=0"
+fi
+
+dnl ============================================================================
 dnl --SECTION--                                               external libraries
 dnl ============================================================================
 
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 dnl pthreads
-dnl -----------------------------------------------------------------------------------------
+dnl ----------------------------------------------------------------------------
 
 AC_LANG(C)
 
@@ -137,7 +168,7 @@ dnl ----------------------------------------------------------------------------
 dnl picojson.h
 dnl ----------------------------------------------------------------------------
 
-CPPFLAGS="$CPPFLAGS -I`pwd`/${srcdir}/3rdParty/picojson"
+CPPFLAGS="${CPPFLAGS} -I`pwd`/${srcdir}/3rdParty/picojson"
 
 dnl ----------------------------------------------------------------------------
 dnl mesos
@@ -155,8 +186,8 @@ MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/leveldb -lleveldb"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/.libs -lzookeeper_mt"
 MESOS_LIBS="${MESOS_LIBS} -lprotobuf -lglog -lapr-1 -lsvn_delta-1 -lsvn_subr-1 -lcurl -lsasl2 -lz -ldl"
 
-SAVE_CPPFLAGS="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $MESOS_CPPFLAGS"
+SAVE_CPPFLAGS="${CPPFLAGS}"
+CPPFLAGS="${CPPFLAGS} ${MESOS_CPPFLAGS}"
 
 AC_CHECK_HEADERS(mesos/resources.hpp, [MESOS=yes], [MESOS=no])
 
@@ -174,7 +205,7 @@ if test "x$MESOS" = "xno";  then
   AC_MSG_ERROR([Please link mesos, i. e. 'ln -s ../mesos .'])
 fi
 
-CPPFLAGS="$SAVE_CPPFLAGS"
+CPPFLAGS="${SAVE_CPPFLAGS}"
 
 AC_SUBST(MESOS_CPPFLAGS)
 AC_SUBST(MESOS_LIBS)

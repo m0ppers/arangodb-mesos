@@ -126,7 +126,7 @@ int main (int argc, char** argv) {
   executor.mutable_command()->set_value(uri);
   executor.set_name("arangodb:executor");
   executor.set_source("arangodb");
-  *executor.mutable_resources() = Resources::parse("cpus:0.01;mem:32;disk:32").get();
+  *executor.mutable_resources() = Resources();
 
   // .............................................................................
   // framework

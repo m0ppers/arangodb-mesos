@@ -137,14 +137,16 @@ void ArangoScheduler::declineOffer (const OfferID& offerId) const {
 
 void ArangoScheduler::startInstance (const string& taskId,
                                      const string& name,
-                                     const Offer& offer,
-                                     const Resources& resources,
+                                     const mesos::SlaveID& slaveId,
+                                     const mesos::OfferID& offerId,
+                                     const mesos::Resources& resources,
                                      const string& arguments) const {
-  const string& offerId = offer.id().value();
+  const string& offerStr = offerId.value();
 
   LOG(INFO)
-  << "INSTANCE launching task " << name 
-  << " using offer " << offerId << ": " << offer.resources()
+  << "DEBUG startInstance: "
+  << "launching task " << name 
+  << " using offer " << offerStr
   << " and resources " << resources
   << " and arguments " << join(split(arguments, '\n'), " ");
 
@@ -152,7 +154,7 @@ void ArangoScheduler::startInstance (const string& taskId,
 
   task.set_name(name);
   task.mutable_task_id()->set_value(taskId);
-  task.mutable_slave_id()->CopyFrom(offer.slave_id());
+  task.mutable_slave_id()->CopyFrom(slaveId);
   task.mutable_executor()->CopyFrom(_executor);
   task.mutable_resources()->CopyFrom(resources);
 
@@ -161,7 +163,7 @@ void ArangoScheduler::startInstance (const string& taskId,
   vector<TaskInfo> tasks;
   tasks.push_back(task);
 
-  _driver->launchTasks(offer.id(), tasks);
+  _driver->launchTasks(offerId, tasks);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

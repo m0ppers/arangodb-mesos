@@ -127,86 +127,9 @@ namespace {
     return o;
   }
 
-  picojson::array JsonResources (const Resources& resources) {
-    picojson::array rs;
-
-    for (auto& resource : resources) {
-      picojson::object r;
-
-      r["type"] = picojson::value(resource.name());
-
-      if (resource.type() == Value::SCALAR) {
-        r["value"] = picojson::value(resource.scalar().value());
-      }
-      else if (resource.type() == Value::RANGES) {
-        picojson::array ras;
-
-        const auto& ranges = resource.ranges();
-
-        for (int j = 0; j < ranges.range_size(); ++j) {
-          picojson::object ra;
-
-          const auto& range = ranges.range(j);
-
-          ra["begin"] = picojson::value((double) range.begin());
-          ra["end"] = picojson::value((double) range.end());
-
-          ras.push_back(picojson::value(ra));
-        }
-
-        r["value"] = picojson::value(ras);
-      }
-
-      if (resource.has_role()) {
-        r["role"] = picojson::value(resource.role());
-      }
-
-      if (resource.has_reservation()) {
-        picojson::object res;
-
-        res["principal"] = picojson::value(resource.reservation().principal());
-
-        r["reservation"] = picojson::value(res);
-      }
-
-      if (resource.has_disk()) {
-        Resource_DiskInfo disk = resource.disk();
-        picojson::object di;
-
-        if (disk.has_persistence()) {
-          di["id"] = picojson::value(disk.persistence().id());
-        }
-
-        if (disk.has_volume()) {
-          Volume volume = disk.volume();
-          picojson::object vo;
-
-          vo["containerPath"] = picojson::value(volume.container_path());
-
-          if (volume.has_host_path()) {
-            vo["hostPath"] = picojson::value(volume.host_path());
-          }
-
-          switch (volume.mode()) {
-            case Volume::RW:
-              vo["mode"] = picojson::value("RW");
-              break;
-
-            case Volume::RO:
-              vo["mode"] = picojson::value("RO");
-              break;
-          }
-
-          di["volume"] = picojson::value(vo);
-        }
-
-        r["disk"] = picojson::value(di);
-      }
-
-      rs.push_back(picojson::value(r));
-    }
-
-    return rs;
+  picojson::array JsonResources (const mesos::Resources& resources) {
+    picojson::array result;
+    return result;
   }
 
   picojson::object JsonOffer (const Offer& offer) {

@@ -72,7 +72,7 @@ void ExecuteTask (const TaskInfo& task) {
   << " with '" << join(args, " ") << "'"
   << " and " << resources;
 
-  Resources persistent = resources.filter(Resources::isPersistentVolume);
+  Resources persistent = filterIsPersistentVolume(resources);
 
   for (const auto& volume : persistent) {
     const string& path = volume.disk().volume().container_path();

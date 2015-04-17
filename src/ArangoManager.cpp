@@ -52,31 +52,6 @@ using std::chrono::system_clock;
 namespace {
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts number of avaiable ports from an offer
-///////////////////////////////////////////////////////////////////////////////
-
-  size_t numberPorts (const Offer& offer) {
-    size_t value = 0;
-
-    for (int i = 0; i < offer.resources_size(); ++i) {
-      const auto& resource = offer.resources(i);
-
-      if (resource.name() == "ports" &&
-          resource.type() == Value::RANGES) {
-        const auto& ranges = resource.ranges();
-
-        for (int j = 0; j < ranges.range_size(); ++j) {
-          const auto& range = ranges.range(j);
-
-          value += range.end() - range.begin() + 1;
-        }
-      }
-    }
-
-    return value;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
 /// @brief finds free ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -117,253 +92,6 @@ namespace {
     }
 
     return result;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief generates resources from a list of ports
-///////////////////////////////////////////////////////////////////////////////
-
-  Resources resourcesPorts (const vector<uint32_t>& ports) {
-    Resources resources;
-
-    Resource res;
-    res.set_name("ports");
-    res.set_type(Value::RANGES);
-
-    for (uint32_t p : ports) {
-      Value_Range* range = res.mutable_ranges()->add_range();
-
-      range->set_begin(p);
-      range->set_end(p);
-    }
-
-    resources += res;
-
-    return resources;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief analyses an initial offer
-///
-/// Will either return
-/// - TOO_SMALL
-/// - DYNAMIC_RESERVATION_REQUIRED
-/// - PERSISTENT_VOLUME_REQUIRED
-/// - USABLE
-///////////////////////////////////////////////////////////////////////////////
-
-  bool checkPorts (const Aspects& aspect, const Offer& offer) {
-    if (numberPorts(offer) < aspect._requiredPorts) {
-      LOG(INFO) 
-      << "DEBUG " << offer.resources() << " does not have " 
-      << aspect._requiredPorts << " ports";
-
-      return false;
-    }
-
-    return true;
-  }
-
-
-
-  bool checkMemCpu (const Aspects& aspect,
-                    const Offer& offer,
-                    Resources& reserved,
-                    Resources& unreserved) {
-/*
-    const string& role = aspect._role;
-    const string& principal = aspect._principal;
-*/
-    const Resources& minimumResources = aspect._minimumResources;
-
-    Resources memcpu = minimumResources.filter(notIsDisk);
-    Resources resources = offer.resources();
-
-/*
-    Resource::ReservationInfo reservation;
-    reservation.set_principal(principal);
-
-    Option<Resources> found = resources.find(memcpu.flatten(role, reservation));
-*/
-
-    Option<Resources> found = resources.find(memcpu);
-
-    if (found.isNone()) {
-      LOG(INFO) 
-      << "DEBUG " << resources << " does not have " 
-      << memcpu << " requirements";
-
-      return false;
-    }
-
-    reserved = found.get();
-    unreserved = reserved.filter(Resources::isUnreserved);
-
-    LOG(INFO)
-    << "DEBUG " << resources << " does have "
-    << memcpu << " requirements, unreserved " << unreserved;
-
-    return true;
-  }
-
-
-
-  pair<bool, Resource> checkPersistentDisk (const Aspects& aspect,
-                                            const Resources& minimumDisk,
-                                            const Resources& offerDisk) {
-    const string& role = aspect._role;
-    const string& name = aspect._name;
-    size_t mds = diskspace(minimumDisk);
-
-    for (const auto& res : offerDisk) {
-      if (res.role() != role) {
-        continue;
-      }
-
-      if (diskspace(res) < mds) {
-        continue;
-      }
-
-      if (! res.has_disk()) {
-        continue;
-      }
-
-      if (! res.disk().has_persistence()) {
-        continue;
-      }
-
-      string diskId = res.disk().persistence().id();
-
-      if (diskId.find(name + "_") != 0) {
-        continue;
-      }
-
-      return { true, res };
-    }
-
-    return { false, Resource() };
-  }
-
-
-
-  pair<bool, Resource> checkReservedDisk (const Aspects& aspect,
-                                          const Resources& minimumDisk,
-                                          const Resources& offerDisk) {
-    const string& role = aspect._role;
-    size_t mds = diskspace(minimumDisk);
-
-    for (const auto& res : offerDisk) {
-      if (res.role() != role) {
-        continue;
-      }
-
-      if (diskspace(res) < mds) {
-        continue;
-      }
-
-      return { true, res };
-    }
-
-    return { false, Resource() };
-  }
-
-
-  pair<bool, Resource> checkUnreservedDisk (const Aspects& aspect,
-                                            const Resources& minimumDisk,
-                                            const Resources& offerDisk) {
-    size_t mds = diskspace(minimumDisk);
-
-    for (auto res : offerDisk) {
-      if (res.role() != "*") {
-        continue;
-      }
-
-      if (diskspace(res) < mds) {
-        continue;
-      }
-
-      return { true, res };
-    }
-
-    return { false, Resource() };
-  }
-
-
-
-  OfferAnalysis analyseInitialOffer (const Aspects& aspect, const Offer& offer) {
-    Resources resources = offer.resources();
-    string slaveId = offer.slave_id().value();
-
-    // first check the number of ports
-    if (! checkPorts(aspect, offer)) {
-      return { OfferAnalysisStatus::TOO_SMALL };
-    }
-
-    // next check non-disk parts
-    Resources reserved;
-    Resources unreserved;
-      
-    if (! checkMemCpu(aspect, offer, reserved, unreserved)) {
-      return { OfferAnalysisStatus::TOO_SMALL };
-    }
-
-    bool reservationRequired = ! unreserved.empty();
-
-    // next check the disk part
-    Resources mdisk = aspect._minimumResources.filter(isDisk);
-    Resources odisk = resources.filter(isDisk);
-
-    // first check for already persistent resources
-    auto diskres = checkPersistentDisk(aspect, mdisk, odisk);
-
-    if (diskres.first) {
-      if (reservationRequired) {
-        return {
-          OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED,
-          unreserved };
-      }
-      else {
-        string containerPath = diskres.second.disk().volume().container_path();
-        string hostPath;
-
-        if (diskres.second.disk().volume().has_host_path()) {
-          hostPath = diskres.second.disk().volume().host_path();
-        }
-
-        return {
-          OfferAnalysisStatus::USABLE,
-          reserved + diskres.second,
-          containerPath,
-          hostPath };
-      }
-    }
-
-    // next check for reserved resources
-    diskres = checkReservedDisk(aspect, mdisk, odisk);
-
-    if (diskres.first) {
-      if (reservationRequired) {
-        return {
-          OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED,
-          unreserved };
-      }
-      else {
-        return { 
-          OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED,
-          Resources() + diskres.second };
-      }
-    }
-
-    // at last, try to find an unreserved resource
-    diskres = checkUnreservedDisk(aspect, mdisk, odisk);
-
-    if (diskres.first) {
-      return {
-        OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED,
-        unreserved + mdisk };
-    }
-
-    return { OfferAnalysisStatus::TOO_SMALL };
   }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -547,33 +275,34 @@ class AgencyAspects : public Aspects {
       return ! _masters.empty();
     }
 
-    string arguments (const Offer& offer,
-                      const OfferAnalysis& analysis,
+    string arguments (const ResourcesCurrentEntry& info,
                       const string& taskId) const override {
-      uint32_t p1 = analysis._ports[0];
-      uint32_t p2 = analysis._ports[1];
+      uint32_t p1 = info.ports(0);
+      uint32_t p2 = info.ports(1);
+      string containerPath = info.container_path();
+      string hostname = info.hostname();
 
       vector<string> a;
 
       a.push_back("/usr/lib/arangodb/etcd-arango");
 
       a.push_back("--data-dir");
-      a.push_back(analysis._containerPath + "/data");
+      a.push_back(containerPath + "/data");
 
       a.push_back("--listen-peer-urls");
-      a.push_back("http://" + offer.hostname() + ":" + to_string(p1));
+      a.push_back("http://" + hostname + ":" + to_string(p1));
 
       a.push_back("--initial-advertise-peer-urls");
-      a.push_back("http://" + offer.hostname() + ":" + to_string(p1));
+      a.push_back("http://" + hostname + ":" + to_string(p1));
 
       a.push_back("--initial-cluster");
-      a.push_back("default=http://" + offer.hostname() + ":" + to_string(p1));
+      a.push_back("default=http://" + hostname + ":" + to_string(p1));
 
       a.push_back("--listen-client-urls");
-      a.push_back("http://" + offer.hostname() + ":" + to_string(p2));
+      a.push_back("http://" + hostname + ":" + to_string(p2));
 
       a.push_back("--advertise-client-urls");
-      a.push_back("http://" + offer.hostname() + ":" + to_string(p2));
+      a.push_back("http://" + hostname + ":" + to_string(p2));
 
       return join(a, "\n");
     }
@@ -654,9 +383,9 @@ class ArangoAspects : public Aspects {
     }
 
   public:
-    string arguments (const Offer& offer,
-                      const OfferAnalysis& analysis,
+    string arguments (const ResourcesCurrentEntry& info,
                       const string& taskId) const override {
+/*
       uint32_t p1 = analysis._ports[0];
 
       vector<string> a;
@@ -698,6 +427,7 @@ class ArangoAspects : public Aspects {
       a.push_back(_type + ":" + taskId);
 
       return join(a, "\n");
+*/
     }
 
   public:
@@ -819,9 +549,8 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
     void checkInstances (Aspects&);
     bool makePersistentVolume (const string& name, const Offer&, const Resources&);
     bool makeDynamicReservation(const Offer&, const Resources&);
-    OfferSummary findOffer (Aspects&);
 
-    void startInstance (Aspects&, const Offer&, const OfferAnalysis&);
+    void startInstance (Aspects&, const ResourcesCurrentEntry&);
 
     void taskRunning (const string&);
     void taskFinished (const string&);
@@ -890,7 +619,7 @@ void ArangoManagerImpl::dispatch () {
     LOG(INFO) << "DISPATCHER checking state\n";
 
     // .............................................................................
-    // check all outstand offers
+    // check all outstanding offers
     // .............................................................................
 
     unordered_map<string, mesos::Offer> next;
@@ -907,32 +636,33 @@ void ArangoManagerImpl::dispatch () {
         OfferAction action = caretaker.checkOffer(id_offer.second);
 
         switch (action._state) {
-          case OfferState::MAKE_DYNAMIC_RESERVATION:
-            dynamic.push_back(make_pair(id_offer.second, action._resources));
+          case OfferActionState::IGNORE:
+            _scheduler->declineOffer(id_offer.second.id());
             break;
 
-          case OfferState::MAKE_PERSISTENT_VOLUME:
-            LOG(INFO) << "############## persist volume";
-            persistent.push_back(make_pair(id_offer.second, action));
+          case OfferActionState::USABLE:
             break;
 
-          case OfferState::START_INSTANCE:
-            LOG(INFO) << "############## start instance";
-            break;
-
-          case OfferState::STORE_FOR_LATER:
-            LOG(INFO) << "############## store for later";
+          case OfferActionState::STORE_FOR_LATER:
             next[id_offer.first] = id_offer.second;
             break;
 
-          case OfferState::IGNORE:
-            LOG(INFO) << "############## ignore";
+          case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+            dynamic.push_back(make_pair(id_offer.second, action._resources));
+            break;
+
+          case OfferActionState::MAKE_PERSISTENT_VOLUME:
+            persistent.push_back(make_pair(id_offer.second, action));
             break;
         }
       }
 
       _storedOffers.swap(next);
     }
+
+    // .............................................................................
+    // try to make the dynamic reservations and persistent volumes
+    // .............................................................................
 
     bool sleep = true;
 
@@ -955,80 +685,44 @@ void ArangoManagerImpl::dispatch () {
     }
 
     // .............................................................................
+    // check if we can start new instances
+    // .............................................................................
+
+    vector<InstanceAction> start;
+
+    {
+      lock_guard<mutex> lock(_lock);
+
+      Caretaker& caretaker = Global::caretaker("arangodb");
+      InstanceAction action;
+
+
+      do {
+        action = caretaker.checkInstance();
+
+        switch (action._state) {
+          case::InstanceActionState::DONE:
+            break;
+
+          case::InstanceActionState::START:
+            start.push_back(action);
+            break;
+        }
+      }
+      while (action._state != InstanceActionState::DONE);
+    }
+
+    for (auto&& action : start) {
+      startInstance(_agency, action._info);
+    }
+    
+    // .............................................................................
     // wait for a little while
     // .............................................................................
 
     if (sleep) {
       this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
     }
-
-
-/*
-    LOG(INFO) << "DISPATCHER checking state\n";
-
-    {
-      lock_guard<mutex> lock(_lock);
-
-      for (const auto& st : _dbserver._slave2task) {
-        const string& ti = st.second;
-
-        if (bootstrapped.find(ti) != bootstrapped.end()) {
-          continue;
-        }
-
-        auto iter = _instances.find(ti);
-
-        if (iter != _instances.end()) {
-          const auto& instance = *iter;
-
-          bootstrapDbserver(instance.second);
-          bootstrapped.insert(ti);
-        }
-      }
-
-      if (! init && 0 < _coordinator._runningInstances && 0 < _dbserver._runningInstances) {
-        const string& tc = _coordinator._slave2task.begin()->second;
-        auto iter = _instances.find(tc);
-
-        if (iter != _instances.end()) {
-          const auto& instance = *iter;
-
-          upgradeDatabase(instance.second);
-
-          init = true;
-        }
-      }
-
-      for (const auto& st : _coordinator._slave2task) {
-        const string& ti = st.second;
-
-        if (bootstrapped.find(ti) != bootstrapped.end()) {
-          continue;
-        }
-
-        auto iter = _instances.find(ti);
-
-        if (iter != _instances.end()) {
-          const auto& instance = *iter;
-
-          bootstrapCoordinator(instance.second);
-          bootstrapped.insert(ti);
-        }
-      }
-
-      checkInstances(_agency);
-
-      if (_agency.isUsable()) {
-        discoverRoles();
-
-        checkInstances(_dbserver);
-
-        if (_dbserver.isUsable()) {
-          checkInstances(_coordinator);
-        }
-      }
-    }
-*/
   }
 }
 
@@ -1304,53 +998,6 @@ void ArangoManagerImpl::removeOffer (const string& id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::checkInstances (Aspects& aspect) {
-  size_t planned = aspect._plannedInstances;
-
-  LOG(INFO)
-  << aspect._name << " "
-  << aspect._runningInstances << " running instances, "
-  << aspect._startedInstances << " started instances, "
-  << planned << " planned instances\n";
-
-  if (planned <= aspect._runningInstances) {
-    return;
-  }
-
-  if (planned <= aspect._runningInstances + aspect._startedInstances) {
-    // TODO(fc) do we need to add a timeout?
-    return;
-  }
-
-  // TODO(fc) need to check that we always have a cluster of agencies
-  // which knows the master plan. If all instances fail, we need to restart at
-  // least an instance which has access to the persistent volume!
-
-  OfferSummary offer = findOffer(aspect);
-
-  if (! offer._usable) {
-    LOG(INFO)
-    << aspect._name << " cannot find a suitable resource";
-    return;
-  }
-
-  size_t aspectId = aspect.id();
-  OfferAnalysis& analysis = offer._analysis[aspectId];
-  analysis._ports = findFreePorts(offer._offer, aspect._requiredPorts);
-
-  // try to start a new instance
-  startInstance(aspect, offer._offer, analysis);
-
-  // block the other offers from this slave
-  const string& slaveId = offer._offer.slave_id().value();
-
-  for (auto& other : _offers) {
-    auto& offerAnalysis = other.second._analysis[aspectId];
-    const string& otherSlaveId = other.second._offer.slave_id().value();
-
-    if (slaveId == otherSlaveId && offerAnalysis._state != OfferAnalysisStatus::TOO_SMALL) {
-      offerAnalysis._state = OfferAnalysisStatus::WAIT;
-    }
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1379,7 +1026,7 @@ bool ArangoManagerImpl::makePersistentVolume (const string& name,
 
   Volume volume;
 
-  volume.set_container_path("/tmp/arangodb/" + name);
+  volume.set_container_path(name);
   volume.set_mode(Volume::RW);
 
   diskInfo.mutable_volume()->CopyFrom(volume);
@@ -1413,8 +1060,17 @@ bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
                                                 const Resources& resources) {
   const string& offerId = offer.id().value();
 
-  Resources res = resources; // .filter(notIsPorts);
+#if MESOS_RESERVE_PORTS
+  Resources res = resources;
+#else
+  Resources res = filterNotIsPorts(resources);
+#endif
+
+#if MESOS_PRINCIPAL
   res = res.flatten(Global::role(), Global::principal());
+#else
+  res = res.flatten(Global::role());
+#endif
 
   LOG(INFO)
   << "DEBUG makeDynamicReservation: "
@@ -1435,133 +1091,39 @@ bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds a suitable offer for an agency
-////////////////////////////////////////////////////////////////////////////////
-
-OfferSummary ArangoManagerImpl::findOffer (Aspects& aspect) {
-  size_t id = aspect.id();
-  const auto& preferredSlaves = aspect._preferredSlaves;
-
-  // find a usable offer on a preferred slave
-  auto iter = std::find_if(_offers.begin(), _offers.end(),
-    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      const string& slaveId = offer.second._offer.slave_id().value();
-      const auto& analysis = offer.second._analysis[id];
-
-      return preferredSlaves.find(slaveId) != preferredSlaves.end()
-          && analysis._state == OfferAnalysisStatus::USABLE;
-  });
-
-  if (iter != _offers.end()) {
-    OfferSummary result = iter->second;
-    removeOffer(result._offer.id().value());
-    return result;
-  }
-
-  // TODO(fc) panic mode: no prefered slave!
-
-  // find a usable offer on a non-preferred slave
-  iter = std::find_if(_offers.begin(), _offers.end(),
-    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      const string& slaveId = offer.second._offer.slave_id().value();
-      const auto& analysis = offer.second._analysis[id];
-
-      return preferredSlaves.find(slaveId) == preferredSlaves.end()
-          && analysis._state == OfferAnalysisStatus::USABLE;
-  });
-
-  if (iter != _offers.end()) {
-    OfferSummary result = iter->second;
-    removeOffer(result._offer.id().value());
-    return result;
-  }
-
-  // find a usable offer
-  iter = std::find_if(_offers.begin(), _offers.end(),
-    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._state == OfferAnalysisStatus::USABLE;
-  });
-
-  if (iter != _offers.end()) {
-    OfferSummary result = iter->second;
-    removeOffer(result._offer.id().value());
-    return result;
-  }
-
-  // find a persistent offer
-  iter = std::find_if(_offers.begin(), _offers.end(),
-    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._state == OfferAnalysisStatus::PERSISTENT_VOLUME_REQUIRED;
-  });
-
-  if (iter != _offers.end()) {
-    OfferSummary result = iter->second;
-//    makePersistentVolume(aspect._name, result._offer, result._analysis[id]._resources);
-    removeOffer(result._offer.id().value());
-    return { false };
-  }
-
-  // find a dynamic reservation offer
-  iter = std::find_if(_offers.begin(), _offers.end(),
-    [&] (pair<const string&, const OfferSummary&> offer) -> bool {
-      return offer.second._analysis[id]._state == OfferAnalysisStatus::DYNAMIC_RESERVATION_REQUIRED;
-  });
-
-  if (iter != _offers.end()) {
-    OfferSummary result = iter->second;
-//    makeDynamicReservation(aspect._name, result._offer, result._analysis[id]._resources);
-    removeOffer(result._offer.id().value());
-    return { false };
-  }
-
-  return { false };
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new agency
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::startInstance (Aspects& aspect,
-                                       const Offer& offer,
-                                       const OfferAnalysis& analysis) {
-  string const& slaveId = offer.slave_id().value();
-
-  Resources resources = analysis._resources;
-  resources += resourcesPorts(analysis._ports);
-
+                                       const ResourcesCurrentEntry& info) {
   string taskId = UUID::random().toString();
-  string arguments = aspect.arguments(offer, analysis, taskId);
+  string arguments = aspect.arguments(info, taskId);
 
   _scheduler->startInstance(
     taskId,
     "arangodb:" + aspect._name + ":" + taskId,
-    offer,
-    resources,
+    info.slave_id(),
+    info.offer_id(),
+    info.resources(),
     arguments);
+
+  vector<uint32_t> ports;
+
+  for (int i = 0;  i < info.ports_size();  ++i) {
+    ports.push_back(info.ports(i));
+  }
 
   Instance desc;
 
   desc._taskId = taskId;
   desc._aspectId = aspect.id();
   desc._state = InstanceState::STARTED;
-  desc._resources = resources;
-  desc._slaveId = slaveId;
-  desc._hostname = offer.hostname();
-  desc._ports = analysis._ports;
+  desc._resources = info.resources();
+  desc._slaveId = info.slave_id().value();
+  desc._hostname = info.hostname();
+  desc._ports = ports;
   desc._started = system_clock::now();
   desc._lastUpdate = system_clock::time_point();
-
-  _instances.insert({ taskId, desc });
-  aspect._startedSlaves.insert(slaveId);
-  aspect._slave2task.insert({ slaveId, taskId });
-
-  // TODO(fc) need to gc old slaves
-
-  if (aspect._preferredSlaves.size() < aspect._plannedInstances) {
-    aspect._preferredSlaves.insert(slaveId);
-  }
-
-  ++(aspect._startedInstances);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

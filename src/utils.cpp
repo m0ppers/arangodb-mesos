@@ -35,8 +35,8 @@
 #include <iostream>
 #include <sstream>
 
+using namespace arangodb;
 using namespace std;
-using namespace mesos;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -47,7 +47,7 @@ using namespace mesos;
 ///////////////////////////////////////////////////////////////////////////////
 
 static double diskspaceResource (const mesos::Resource& resource) {
-  if (resource.name() == "disk" && resource.type() == Value::SCALAR) {
+  if (resource.name() == "disk" && resource.type() == mesos::Value::SCALAR) {
     return resource.scalar().value();
   }
 
@@ -59,7 +59,7 @@ static double diskspaceResource (const mesos::Resource& resource) {
 ///////////////////////////////////////////////////////////////////////////////
 
 static double cpusResource (const mesos::Resource& resource) {
-  if (resource.name() == "cpus" && resource.type() == Value::SCALAR) {
+  if (resource.name() == "cpus" && resource.type() == mesos::Value::SCALAR) {
     return resource.scalar().value();
   }
 
@@ -71,12 +71,34 @@ static double cpusResource (const mesos::Resource& resource) {
 ///////////////////////////////////////////////////////////////////////////////
 
 static double memoryResource (const mesos::Resource& resource) {
-  if (resource.name() == "mem" && resource.type() == Value::SCALAR) {
+  if (resource.name() == "mem" && resource.type() == mesos::Value::SCALAR) {
     return resource.scalar().value();
   }
 
   return 0;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief filter function
+///////////////////////////////////////////////////////////////////////////////
+
+#if MESOS_FILTER
+#else
+
+static mesos::Resources filterResource (const mesos::Resources& resources,
+                                        bool (*pred)(const mesos::Resource&)) {
+  mesos::Resources result;
+
+  for (const auto& res : resources) {
+    if (pred(res)) {
+      result += res;
+    }
+  }
+
+  return result;
+}
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -141,7 +163,7 @@ string arangodb::join (const vector<string>& value, string separator) {
 /// @brief extracts diskspace from resources
 ///////////////////////////////////////////////////////////////////////////////
 
-double arangodb::diskspace (const Resources& resources) {
+double arangodb::diskspace (const mesos::Resources& resources) {
   double value = 0;
 
   for (const auto& resource : resources) {
@@ -155,7 +177,7 @@ double arangodb::diskspace (const Resources& resources) {
 /// @brief extracts cpus from resources
 ///////////////////////////////////////////////////////////////////////////////
 
-double arangodb::cpus (const Resources& resources) {
+double arangodb::cpus (const mesos::Resources& resources) {
   double value = 0;
 
   for (const auto& resource : resources) {
@@ -169,7 +191,7 @@ double arangodb::cpus (const Resources& resources) {
 /// @brief extracts memory from resources
 ///////////////////////////////////////////////////////////////////////////////
 
-double arangodb::memory (const Resources& resources) {
+double arangodb::memory (const mesos::Resources& resources) {
   double value = 0;
 
   for (const auto& resource : resources) {
@@ -196,7 +218,7 @@ string arangodb::toStringSystemTime (const chrono::system_clock::time_point& tp)
 /// @brief not-a-port filter
 ///////////////////////////////////////////////////////////////////////////////
 
-bool arangodb::notIsPorts (const Resource& resource) {
+bool arangodb::notIsPorts (const mesos::Resource& resource) {
   return resource.name() != "ports";
 }
 
@@ -204,7 +226,7 @@ bool arangodb::notIsPorts (const Resource& resource) {
 /// @brief a-port filter
 ///////////////////////////////////////////////////////////////////////////////
 
-bool arangodb::isPorts (const Resource& resource) {
+bool arangodb::isPorts (const mesos::Resource& resource) {
   return resource.name() == "ports";
 }
 
@@ -212,7 +234,7 @@ bool arangodb::isPorts (const Resource& resource) {
 /// @brief is-a-disk filter
 ///////////////////////////////////////////////////////////////////////////////
 
-bool arangodb::isDisk (const Resource& resource) {
+bool arangodb::isDisk (const mesos::Resource& resource) {
   return resource.name() == "disk";
 }
 
@@ -220,7 +242,7 @@ bool arangodb::isDisk (const Resource& resource) {
 /// @brief is-not-a-disk filter
 ///////////////////////////////////////////////////////////////////////////////
 
-bool arangodb::notIsDisk (const Resource& resource) {
+bool arangodb::notIsDisk (const mesos::Resource& resource) {
   return resource.name() != "disk";
 }
 
@@ -247,6 +269,54 @@ size_t arangodb::numberPorts (const mesos::Offer& offer) {
   }
 
   return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the disk resources
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::Resources arangodb::filterIsDisk (const mesos::Resources& resources) {
+#if MESOS_FILTER
+  return resources.filter(isDisk);
+#else
+  return filterResource(resources, isDisk);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the non-disk resources
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::Resources arangodb::filterNotIsDisk (const mesos::Resources& resources) {
+#if MESOS_FILTER
+  return resources.filter(notIsDisk);
+#else
+  return filterResource(resources, notIsDisk);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the persistent-volume resources
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::Resources arangodb::filterIsPersistentVolume (const mesos::Resources& resources) {
+#if MESOS_FILTER
+  return resources.filter(Resources::isPersistentVolume);
+#else
+  return filterResource(resources, mesos::Resources::isPersistentVolume);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the non-port resources
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::Resources arangodb::filterNotIsPorts (const mesos::Resources& resources) {
+#if MESOS_FILTER
+  return resources.filter(notIsPorts);
+#else
+  return filterResource(resources, notIsDisk);
+#endif
 }
 
 // -----------------------------------------------------------------------------

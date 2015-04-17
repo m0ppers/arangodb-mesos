@@ -47,6 +47,7 @@ namespace arangodb {
   class ArangoState;
   class Instance;
   class OfferAnalysis;
+  class ResourcesCurrentEntry;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                enum InstanceState
@@ -145,7 +146,7 @@ namespace arangodb {
     public:
       virtual size_t id () const = 0;
       virtual bool isUsable () const = 0;
-      virtual string arguments (const mesos::Offer&, const OfferAnalysis&, const string& taskId) const = 0;
+      virtual string arguments (const ResourcesCurrentEntry&, const string& taskId) const = 0;
       virtual bool instanceUp (const Instance&) = 0;
 
     public:

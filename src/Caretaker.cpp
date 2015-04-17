@@ -43,16 +43,18 @@ using namespace std;
 /// @brief adjusts the planned offers
 ////////////////////////////////////////////////////////////////////////////////
 
-static void adjustPlannedOffers (const string& name,
-                                 const TargetEntry& target,
-                                 OfferPlan* plan,
-                                 ResourcesCurrent* current) {
+static void adjustPlan (const string& name,
+                        const TargetEntry& target,
+                        OfferPlan* offers,
+                        TasksPlan* tasks,
+                        ResourcesCurrent* resources,
+                        InstancesCurrent* instances) {
   int t = (int) target.instances();
-  int p = plan->entries_size();
+  int p = offers->entries_size();
 
   if (t == p) {
     LOG(INFO)
-    << "DEBUG adjustPlannedOffers("  << name << "): "
+    << "DEBUG adjustPlan("  << name << "): "
     << "already reached maximal number of entries " << t;
 
     return;
@@ -60,7 +62,7 @@ static void adjustPlannedOffers (const string& name,
 
   if (t < p) {
     LOG(INFO)
-    << "DEBUG adjustPlannedOffers("  << name << "): "
+    << "DEBUG adjustPlan("  << name << "): "
     << "got too many number of entries " << p
     << ", need only " << t;
 
@@ -68,10 +70,13 @@ static void adjustPlannedOffers (const string& name,
   }
 
   for (; p < t;  ++p) {
-    OfferPlanEntry* entry = plan->add_entries();
-    entry->set_state(OFFER_STATE_REQUIRED);
+    offers->add_entries();
+    tasks->add_entries();
 
-    current->add_entries();
+    ResourcesCurrentEntry* resEntry = resources->add_entries();
+    resEntry->set_state(RESOURCE_STATE_REQUIRED);
+
+    instances->add_entries();
   }
   
   return;
@@ -98,7 +103,7 @@ static bool isSuitableOffer (const TargetEntry& target,
   if (! checkPorts(target.number_ports(), offer)) {
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
-    << "offer " << offer.id() << " does not have " 
+    << "offer " << offer.id().value() << " does not have " 
     << target.number_ports() << " ports";
 
     return false;
@@ -112,7 +117,7 @@ static bool isSuitableOffer (const TargetEntry& target,
   if (! offered.contains(minimum)) {
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
-    << "offer " << offer.id() << " does not have " 
+    << "offer " << offer.id().value() << " does not have " 
     << "minimal resource requirements " << minimum;
 
     return false;
@@ -128,12 +133,17 @@ static bool isSuitableOffer (const TargetEntry& target,
 static bool isSuitableReservedOffer (const mesos::Resources& resources,
                                      const mesos::Offer& offer) {
   mesos::Resources offered = offer.resources();
+
+#if MESOS_PRINCIPAL
   mesos::Resources required = resources.flatten(Global::role(), Global::principal());
+#else
+  mesos::Resources required = resources.flatten(Global::role());
+#endif
 
   if (! offered.contains(required)) {
     LOG(INFO) 
     << "DEBUG isSuitableReservedOffer: "
-    << "offer " << offer.id() << " [" << offer.resources()
+    << "offer " << offer.id().value() << " [" << offer.resources()
     << "] does not have minimal resource requirements "
     << required;
 
@@ -213,9 +223,10 @@ static mesos::Resources resourcesPorts (const vector<uint32_t>& ports) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static mesos::Resources resourcesForReservation (const TargetEntry& target,
-                                                 const mesos::Offer& offer) {
+                                                 const mesos::Offer& offer,
+                                                 vector<uint32_t>& ports) {
   mesos::Resources minimum = target.minimal_resources();
-  auto&& ports = findFreePorts(offer, target.number_ports());
+  ports = findFreePorts(offer, target.number_ports());
 
   minimum += resourcesPorts(ports);
 
@@ -231,11 +242,18 @@ static mesos::Resources resourcesForReservation (const TargetEntry& target,
 static mesos::Resources resourcesForPersistence (const TargetEntry& target,
                                                  const mesos::Offer& offer) {
   mesos::Resources minimum = target.minimal_resources();
-  minimum = minimum.filter(isDisk);
+  minimum = filterIsDisk(minimum);
 
   // TODO(fc) check if we could use additional resources
-  
-  return minimum.flatten(Global::role(), Global::principal());
+
+#if MESOS_PRINCIPAL
+  minimum = minimum.flatten(Global::role(), Global::principal());
+#else
+  minimum = minimum.flatten(Global::role());
+#endif  
+
+
+  return minimum;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,20 +262,26 @@ static mesos::Resources resourcesForPersistence (const TargetEntry& target,
 
 static mesos::Resources suitablePersistent (const string& name,
                                             const mesos::Resources& resources,
-                                            const mesos::Offer& offer) {
+                                            const mesos::Offer& offer,
+                                            string& persistenceId,
+                                            string& containerPath) {
   mesos::Resources offered = offer.resources();
-  mesos::Resources offerDisk = offered.filter(isDisk);
-  mesos::Resources offerNoneDisk = offered.filter(notIsDisk);
+  mesos::Resources offerDisk = filterIsDisk(offered);
+  mesos::Resources offerNoneDisk = filterNotIsDisk(offered);
 
-  mesos::Resources resourcesNoneDisk = resources.filter(notIsDisk);
-  mesos::Resources resourcesDisk = resources.filter(isDisk);
+  mesos::Resources resourcesNoneDisk = filterNotIsDisk(resources);
+  mesos::Resources resourcesDisk = filterIsDisk(resources);
 
+#if MESOS_PRINCIPAL
   mesos::Resources required = resourcesNoneDisk.flatten(Global::role(), Global::principal());
+#else
+  mesos::Resources required = resourcesNoneDisk.flatten(Global::role());
+#endif
 
   if (! offerNoneDisk.contains(required)) {
     LOG(INFO) 
     << "DEBUG suitablePersistent(" << name << "): "
-    << "offer " << offer.id() << " [" << offer.resources()
+    << "offer " << offer.id().value() << " [" << offer.resources()
     << "] does not have minimal resource requirements "
     << required;
 
@@ -291,6 +315,9 @@ static mesos::Resources suitablePersistent (const string& name,
       continue;
     }
 
+    persistenceId = diskId;
+    containerPath = res.disk().volume().container_path();
+
     return resourcesNoneDisk + res;
   }
 
@@ -308,6 +335,11 @@ static OfferAction checkResourceOffer (const string& name,
                                        ResourcesCurrent* current,
                                        const mesos::Offer& offer) {
 
+#if MESOS_DYNAMIC_RESERVATION
+#else
+  persistent = false;
+#endif
+
   string upper = name;
   for (auto& c : upper) { c = toupper(c); }
           
@@ -316,7 +348,7 @@ static OfferAction checkResourceOffer (const string& name,
   // .............................................................................
 
   if (! isSuitableOffer(target, offer)) {
-    return { OfferState::IGNORE };
+    return { OfferActionState::IGNORE };
   }
 
   // .............................................................................
@@ -329,44 +361,58 @@ static OfferAction checkResourceOffer (const string& name,
     OfferPlanEntry* entry = plan->mutable_entries(i);
     ResourcesCurrentEntry* resEntry = current->mutable_entries(i);
 
-    if (entry->slave_id() == offer.slave_id()) {
-      if (entry->state() == OFFER_STATE_TRYING_TO_RESERVE) {
+    if (entry->slave_id().value() == offer.slave_id().value()) {
+
+      // we have to check if the dynamic reservation succeeded
+      if (resEntry->state() == RESOURCE_STATE_TRYING_TO_RESERVE) {
         mesos::Resources resources = resEntry->resources();
 
         if (isSuitableReservedOffer(resources, offer)) {
-          entry->set_state(OFFER_STATE_TRYING_TO_PERSIST);
-          entry->mutable_offer_id()->CopyFrom(offer.id());
-
+#if MESOS_PRINCIPAL
           resources = resources.flatten(Global::role(), Global::principal());
+#else
+          resources = resources.flatten(Global::role());
+#endif
+
+          resEntry->set_state(RESOURCE_STATE_TRYING_TO_PERSIST);
           resEntry->mutable_offer_id()->CopyFrom(offer.id());
           resEntry->mutable_resources()->CopyFrom(resources);
 
           mesos::Resources volume = resourcesForPersistence(target, offer);
 
-          return { OfferState::MAKE_PERSISTENT_VOLUME, volume, upper };
+          return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, upper };
         }
       }
 
-      else if (entry->state() == OFFER_STATE_TRYING_TO_PERSIST) {
+      // we have to check if the persistent volume succeeded
+      else if (resEntry->state() == RESOURCE_STATE_TRYING_TO_PERSIST) {
         mesos::Resources resources = resEntry->resources();
-        mesos::Resources persistent = suitablePersistent(upper, resources, offer);
+        string persistenceId;
+        string containerPath;
+
+        mesos::Resources persistent = suitablePersistent(upper,
+                                                         resources,
+                                                         offer,
+                                                         persistenceId,
+                                                         containerPath);
 
         if (! persistent.empty()) {
-          entry->set_state(OFFER_STATE_USEABLE);
-          entry->mutable_offer_id()->CopyFrom(offer.id());
+          entry->set_persistence_id(persistenceId);
 
+          resEntry->set_state(RESOURCE_STATE_USEABLE);
           resEntry->mutable_offer_id()->CopyFrom(offer.id());
           resEntry->mutable_resources()->CopyFrom(persistent);
+          resEntry->set_container_path(containerPath);
 
-          return { OfferState::IGNORE };
+          return { OfferActionState::USABLE };
         }
       }
 
       LOG(INFO)
       << "DEBUG checkResourceOffer(" << name << "): "
-      << "already using slave " << entry->slave_id();
+      << "already using slave " << entry->slave_id().value();
 
-      return { OfferState::STORE_FOR_LATER };
+      return { OfferActionState::STORE_FOR_LATER };
     }
   }
 
@@ -377,16 +423,16 @@ static OfferAction checkResourceOffer (const string& name,
   int required = -1;
 
   for (int i = 0;  i < p;  ++i) {
-    const OfferPlanEntry& entry = plan->entries(i);
+    const ResourcesCurrentEntry& resEntry = current->entries(i);
 
-    if (entry.state() == OFFER_STATE_REQUIRED) {
+    if (resEntry.state() == RESOURCE_STATE_REQUIRED) {
       required = i;
       break;
     }
   }
 
   if (required == -1) {
-    return { OfferState::STORE_FOR_LATER };
+    return { OfferActionState::STORE_FOR_LATER };
   }
 
   // .............................................................................
@@ -396,7 +442,6 @@ static OfferAction checkResourceOffer (const string& name,
   OfferPlanEntry* entry = plan->mutable_entries(required);
 
   entry->mutable_slave_id()->CopyFrom(offer.slave_id());
-  entry->mutable_offer_id()->CopyFrom(offer.id());
 
   ResourcesCurrentEntry* resEntry = current->mutable_entries(required);
 
@@ -404,21 +449,79 @@ static OfferAction checkResourceOffer (const string& name,
   resEntry->mutable_offer_id()->CopyFrom(offer.id());
 
   if (! persistent) {
-    entry->set_state(OFFER_STATE_USEABLE);
+    vector<uint32_t> ports;
+    mesos::Resources resources = resourcesForReservation(target, offer, ports);
 
-    return { OfferState::IGNORE };
+    resEntry->clear_ports();
+
+    for (auto port : ports) {
+      resEntry->add_ports(port);
+    }
+
+    resEntry->set_state(RESOURCE_STATE_USEABLE);
+    resEntry->mutable_resources()->CopyFrom(resources);
+    resEntry->set_hostname(offer.hostname());
+
+    return { OfferActionState::USABLE };
   }
 
-  mesos::Resources resources = resourcesForReservation(target, offer);
+  vector<uint32_t> ports;
+  mesos::Resources resources = resourcesForReservation(target, offer, ports);
 
-  entry->set_state(OFFER_STATE_TRYING_TO_RESERVE);
+  resEntry->set_state(RESOURCE_STATE_TRYING_TO_RESERVE);
   resEntry->mutable_resources()->CopyFrom(resources);
+  resEntry->set_hostname(offer.hostname());
+
+  resEntry->clear_ports();
+
+  for (auto port : ports) {
+    resEntry->add_ports(port);
+  }
 
   LOG(INFO)
   << "DEBUG checkResourceOffer(" << name << "): "
   << "need to make dynamic reservation " << resources;
 
-  return { OfferState::MAKE_DYNAMIC_RESERVATION, resources };
+  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we can/should start a new instance
+////////////////////////////////////////////////////////////////////////////////
+
+static InstanceAction checkStartInstance (const string& name,
+                                          TasksPlan* plan,
+                                          ResourcesCurrent* resources,
+                                          InstancesCurrent* instances) {
+  for (int i = 0;  i < plan->entries_size();  ++i) {
+    InstancesCurrentEntry* instance = instances->mutable_entries(i);
+    bool start = false;
+
+    switch (instance->state()) {
+      case INSTANCE_STATE_UNUSED:
+        start = true;
+        break;
+
+      case INSTANCE_STATE_STARTING:
+        break;
+    }
+
+    if (start) {
+      ResourcesCurrentEntry* resEntry = resources->mutable_entries(i);
+
+      if (resEntry->state() == RESOURCE_STATE_USEABLE) {
+        instance->set_state(INSTANCE_STATE_STARTING);
+
+        mesos::OfferID offerId = resEntry->offer_id();
+        mesos::SlaveID slaveId = resEntry->slave_id();
+        mesos::Resources resources = resEntry->resources();
+
+        return { InstanceActionState::START, *resEntry };
+      }
+    }
+  }
+
+  return { InstanceActionState::DONE };
 }
 
 // -----------------------------------------------------------------------------
@@ -518,12 +621,26 @@ Caretaker::Caretaker () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Caretaker::updatePlan () {
-  adjustPlannedOffers("agency",
-                      _target.agencies(),
-                      _plan.mutable_agency_offers(),
-                      _current.mutable_agency_resources());
+  adjustPlan("agency",
+             _target.agencies(),
+             _plan.mutable_agency_offers(),
+             _plan.mutable_agencies(),
+             _current.mutable_agency_resources(),
+             _current.mutable_agencies());
 
-  // adjustPlannedOffers("dbserver", _target.dbservers(), _plan.mutable_dbserver_offers());
+  adjustPlan("dbserver",
+             _target.dbservers(),
+             _plan.mutable_dbserver_offers(),
+             _plan.mutable_primary_dbservers(),
+             _current.mutable_dbserver_resources(),
+             _current.mutable_primary_dbservers());
+
+  adjustPlan("coordinator",
+             _target.dbservers(),
+             _plan.mutable_coordinator_offers(),
+             _plan.mutable_coordinators(),
+             _current.mutable_coordinator_resources(),
+             _current.mutable_coordinators());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,37 +658,37 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
                          offer);
 
   switch (agency._state) {
-    case OfferState::MAKE_DYNAMIC_RESERVATION:
-    case OfferState::MAKE_PERSISTENT_VOLUME:
-    case OfferState::START_INSTANCE:
+    case OfferActionState::USABLE:
+    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+    case OfferActionState::MAKE_PERSISTENT_VOLUME:
       return agency;
 
-    case OfferState::STORE_FOR_LATER:
+    case OfferActionState::STORE_FOR_LATER:
       store = true;
       break;
 
-    case OfferState::IGNORE:
+    case OfferActionState::IGNORE:
       break;
   }
 
-/*
   OfferAction dbservers
     = checkResourceOffer("dbserver", true,
                          _target.dbservers(),
                          _plan.mutable_dbserver_offers(),
+                         _current.mutable_dbserver_resources(),
                          offer);
 
   switch (dbservers._state) {
-    case OfferState::MAKE_DYNAMIC_RESERVATION:
-    case OfferState::MAKE_PERSISTENT_VOLUME:
-    case OfferState::START_INSTANCE:
+    case OfferActionState::USABLE:
+    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+    case OfferActionState::MAKE_PERSISTENT_VOLUME:
       return dbservers;
 
-    case OfferState::STORE_FOR_LATER:
+    case OfferActionState::STORE_FOR_LATER:
       store = true;
       break;
 
-    case OfferState::IGNORE:
+    case OfferActionState::IGNORE:
       break;
   }
 
@@ -579,29 +696,40 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
     = checkResourceOffer("coordinator", false,
                          _target.coordinators(),
                          _plan.mutable_coordinator_offers(),
+                         _current.mutable_coordinator_resources(),
                          offer);
 
   switch (coordinators._state) {
-    case OfferState::MAKE_DYNAMIC_RESERVATION:
-    case OfferState::MAKE_PERSISTENT_VOLUME:
-    case OfferState::START_INSTANCE:
+    case OfferActionState::USABLE:
+    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+    case OfferActionState::MAKE_PERSISTENT_VOLUME:
       return coordinators;
 
-    case OfferState::STORE_FOR_LATER:
+    case OfferActionState::STORE_FOR_LATER:
       store = true;
       break;
 
-    case OfferState::IGNORE:
+    case OfferActionState::IGNORE:
       break;
   }
-*/
 
   if (store) {
-    return { OfferState::STORE_FOR_LATER };
+    return { OfferActionState::STORE_FOR_LATER };
   }
   else {
-    return { OfferState::IGNORE };
+    return { OfferActionState::IGNORE };
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if we can start an instance
+////////////////////////////////////////////////////////////////////////////////
+
+InstanceAction Caretaker::checkInstance () {
+  return checkStartInstance("agency",
+                            _plan.mutable_agencies(),
+                            _current.mutable_agency_resources(),
+                            _current.mutable_agencies());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -109,8 +109,9 @@ namespace arangodb {
 
       void startInstance (const string& taskId,
                           const string& name,
-                          const Offer&,
-                          const Resources&,
+                          const mesos::SlaveID&,
+                          const mesos::OfferID&,
+                          const mesos::Resources&,
                           const string& arguments) const;
 
 ////////////////////////////////////////////////////////////////////////////////
