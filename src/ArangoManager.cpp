@@ -98,6 +98,7 @@ namespace {
 /// @brief initializes an agency
 ///////////////////////////////////////////////////////////////////////////////
 
+  /*
   bool initializeAgency (const Instance& instance) {
     static const int SLEEP_SEC = 5;
     
@@ -121,6 +122,7 @@ namespace {
 
     return res == 0;
   }
+  */
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief discovers new coordinators and dbservers
@@ -145,6 +147,7 @@ namespace {
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 
+  /*
   void bootstrapDbserver (const Instance& instance) {
     
     // extract the hostname
@@ -167,11 +170,13 @@ namespace {
     LOG(INFO)
     << "DBSERVER " << command << " returned " << res;
   }
+  */
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief bootstraps a coordinator
 ///////////////////////////////////////////////////////////////////////////////
 
+  /*
   void bootstrapCoordinator (const Instance& instance) {
     
     // extract the hostname
@@ -194,11 +199,13 @@ namespace {
     LOG(INFO)
     << "COORDINATOR " << command << " returned " << res;
   }
+  */
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief upgrades the cluster database
 ///////////////////////////////////////////////////////////////////////////////
 
+  /*
   void upgradeDatabase (const Instance& instance) {
 
     // extract the hostname
@@ -221,19 +228,15 @@ namespace {
     LOG(INFO)
     << "COORDINATOR " << command << " returned " << res;
   }
+  */
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     class Aspects
 // -----------------------------------------------------------------------------
 
-Aspects::Aspects (const string& name,
-                  const string& role,
-                  const string& principal,
-                  InstanceManager* manager)
-  : _name(name), _role(role), _principal(principal), _instanceManager(manager) {
-  _startedInstances = 0;
-  _runningInstances = 0;
+Aspects::Aspects (const string& name)
+  : _name(name) {
 }
 
 // -----------------------------------------------------------------------------
@@ -246,33 +249,8 @@ Aspects::Aspects (const string& name,
 
 class AgencyAspects : public Aspects {
   public:
-    AgencyAspects (const string& role,
-                   const string& principal,
-                   InstanceManager* manager)
-      : Aspects("AGENCY", role, principal, manager) {
-      _minimumResources = Resources::parse("cpus:0.5;mem:100;disk:100").get();
-      _additionalResources = Resources();
-      _persistentVolumeRequired = true;
-      _requiredPorts = 2;
-
-      _minimumInstances = 1;
-      _plannedInstances = 1;
-    }
-
-  public:
-    // TODO(fc) might be much better to use taskId as key, instead
-    // of slave id - somehow need a way to "know" when an instances
-    // is initialized.
-
-    unordered_set<string> _masters; // list slave_id with usable agencies
-
-  public:
-    size_t id () const override {
-      return static_cast<size_t>(AspectsId::ID_AGENCY);
-    }
-
-    bool isUsable () const override {
-      return ! _masters.empty();
+    AgencyAspects ()
+      : Aspects("AGENCY") {
     }
 
     string arguments (const ResourcesCurrentEntry& info,
@@ -307,6 +285,7 @@ class AgencyAspects : public Aspects {
       return join(a, "\n");
     }
 
+    /*
     bool instanceUp (const Instance& instance) override {
       const string& slaveId = instance._slaveId;
 
@@ -323,6 +302,7 @@ class AgencyAspects : public Aspects {
       _masters.insert(slaveId);
       return true;
     }
+    */
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -335,6 +315,7 @@ namespace {
   AgencyAspects* globalAgency = nullptr;
 
   string findAgencyEndpoint () {
+    /*
     default_random_engine generator;
     uniform_int_distribution<int> d1(0, globalAgency->_masters.size() - 1);
     size_t d2 = d1(generator);
@@ -348,9 +329,11 @@ namespace {
     const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
 
     return "tcp://" + instance._hostname + ":" + to_string(instance._ports[1]);
+    */
   }
 
   string findAgencyAddress () {
+    /*
     default_random_engine generator;
     uniform_int_distribution<int> d1(0, globalAgency->_masters.size() - 1);
     size_t d2 = d1(generator);
@@ -364,6 +347,7 @@ namespace {
     const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
 
     return instance._hostname + ":" + to_string(instance._ports[1]);
+    */
   }
 }
 
@@ -373,13 +357,8 @@ namespace {
 
 class ArangoAspects : public Aspects {
   public:
-    ArangoAspects (const string& name,
-                   const string& type,
-                   const string& role,
-                   const string& principal,
-                   InstanceManager* manager)
-      : Aspects(name, role, principal, manager),
-        _type(type) {
+    ArangoAspects (const string& name)
+      : Aspects(name) {
     }
 
   public:
@@ -440,30 +419,8 @@ class ArangoAspects : public Aspects {
 
 class CoordinatorAspects : public ArangoAspects {
   public:
-    CoordinatorAspects (const string& role,
-                        const string& principal,
-                        InstanceManager* manager)
-      : ArangoAspects("COORDINATOR", "coordinator", role, principal, manager) {
-      _minimumResources = Resources::parse("cpus:1;mem:1024;disk:1024").get();
-      _additionalResources = Resources();
-      _persistentVolumeRequired = true;
-      _requiredPorts = 1;
-
-      _minimumInstances = 1;
-      _plannedInstances = 1;
-    }
-
-  public:
-    size_t id () const override {
-      return static_cast<size_t>(AspectsId::ID_COORDINATOR);
-    }
-
-    bool isUsable () const override {
-      return 0 < _runningInstances;
-    }
-
-    bool instanceUp (const Instance& instance) override {
-      return true;
+    CoordinatorAspects ()
+      : ArangoAspects("coordinator") {
     }
 };
 
@@ -471,32 +428,21 @@ class CoordinatorAspects : public ArangoAspects {
 // --SECTION--                                            class DBServersAspects
 // -----------------------------------------------------------------------------
 
-class DBServerAspects : public ArangoAspects {
+class DBServerAspects : public Aspects {
   public:
-    DBServerAspects (const string& role,
-                     const string& principal,
-                     InstanceManager* manager)
-      : ArangoAspects("DBSERVER", "dbserver", role, principal, manager) {
-      _minimumResources = Resources::parse("cpus:2;mem:1024;disk:2048").get();
-      _additionalResources = Resources();
-      _persistentVolumeRequired = true;
-      _requiredPorts = 1;
-
-      _minimumInstances = 1;
-      _plannedInstances = 1;
+    DBServerAspects ()
+      : Aspects("dbserver") {
     }
 
   public:
-    size_t id () const override {
-      return static_cast<size_t>(AspectsId::ID_DBSERVER);
-    }
+    string arguments (const ResourcesCurrentEntry& info,
+                      const string& taskId) const override {
+      vector<string> a;
 
-    bool isUsable () const override {
-      return 0 < _runningInstances;
-    }
+      a.push_back("/bin/sleep");
+      a.push_back("300");
 
-    bool instanceUp (const Instance& instance) override {
-      return true;
+      return join(a, "\n");
     }
 };
 
@@ -525,7 +471,7 @@ class AspectInstance {
 // --SECTION--                                           class ArangoManagerImpl
 // -----------------------------------------------------------------------------
 
-class arangodb::ArangoManagerImpl : public InstanceManager {
+class arangodb::ArangoManagerImpl {
   public:
     ArangoManagerImpl (const string& role,
                        const string& principal,
@@ -535,13 +481,13 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
     void dispatch ();
     void addOffer (const Offer& offer);
     void removeOffer (const OfferID& offerId);
-    void statusUpdate (const string&, InstanceState);
+    void statusUpdate (const string&);
     void slaveInfoUpdate (const mesos::SlaveInfo& info);
-    vector<OfferSummary> currentOffers ();
-    vector<Instance> currentInstances ();
-    ClusterInfo clusterInfo (const string& name) const;
-    ClusterInfo adjustPlanned (const string& name, const ClusterInfo&);
-    vector<arangodb::SlaveInfo> slaveInfo (const string& name) const;
+    // vector<OfferSummary> currentOffers ();
+    // vector<Instance> currentInstances ();
+    // ClusterInfo clusterInfo (const string& name) const;
+    // ClusterInfo adjustPlanned (const string& name, const ClusterInfo&);
+    // vector<arangodb::SlaveInfo> slaveInfo (const string& name) const;
 
   private:
     void removeOffer (const string& offerId);
@@ -569,8 +515,8 @@ class arangodb::ArangoManagerImpl : public InstanceManager {
   private:
     vector<Aspects*> _aspects;
 
-    unordered_map<string, mesos::SlaveInfo> _slaveInfo;
-    unordered_map<string, OfferSummary> _offers;
+    // unordered_map<string, mesos::SlaveInfo> _slaveInfo;
+    // unordered_map<string, OfferSummary> _offers;
 
     unordered_map<string, mesos::Offer> _storedOffers;
 };
@@ -590,9 +536,9 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
     _principal(principal),
     _scheduler(scheduler),
     _stopDispatcher(false),
-    _agency(role, principal, this),
-    _coordinator(role, principal, this),
-    _dbserver(role, principal, this) {
+    _agency(),
+    _coordinator(),
+    _dbserver() {
 
   // TODO(fc) how to persist & change these values
 
@@ -704,7 +650,9 @@ void ArangoManagerImpl::dispatch () {
           case::InstanceActionState::DONE:
             break;
 
-          case::InstanceActionState::START:
+          case::InstanceActionState::START_AGENCY:
+          case::InstanceActionState::START_COORDINATOR:
+          case::InstanceActionState::START_PRIMARY_DBSERVER:
             start.push_back(action);
             break;
         }
@@ -713,7 +661,22 @@ void ArangoManagerImpl::dispatch () {
     }
 
     for (auto&& action : start) {
-      startInstance(_agency, action._info);
+      switch (action._state) {
+        case::InstanceActionState::START_AGENCY:
+          startInstance(_agency, action._info);
+          break;
+
+        case::InstanceActionState::START_COORDINATOR:
+          startInstance(_coordinator, action._info);
+          break;
+
+        case::InstanceActionState::START_PRIMARY_DBSERVER:
+          startInstance(_dbserver, action._info);
+          break;
+
+        default:
+          break;
+      }
     }
     
     // .............................................................................
@@ -741,45 +704,6 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
   }
 
   _storedOffers[offer.id().value()] = offer;
-
-/*
-  const string& id = offer.id().value();
-  const string& slaveId = offer.slave_id().value();
-
-  LOG(INFO)
-  << "OFFER received: " << id << ": " << offer.resources() << "\n";
-
-  // check if offer is suitable for "something"
-  OfferSummary summary = { false, offer };
-
-  for (auto& aspect : _aspects) {
-    OfferAnalysis oa = analyseInitialOffer(*aspect, offer);
-    auto& startedSlaves = aspect->_startedSlaves;
-
-    oa._initialState = oa._state;
-
-    if (oa._state != OfferAnalysisStatus::TOO_SMALL) {
-      if (startedSlaves.find(slaveId) != startedSlaves.end()) {
-        oa._state = OfferAnalysisStatus::WAIT;
-      }
-
-      summary._usable = true;
-    }
-
-    summary._analysis[aspect->id()]= oa;
-  }
-
-  if (! summary._usable) {
-    // TODO(fc) declining the offer results in getting another offer with
-    // the same parameters over and over again. Why?
-
-    // _scheduler->declineOffer(offer.id());
-
-    return;
-  }
-
-  _offers.insert({ id, summary });
-*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -796,6 +720,7 @@ void ArangoManagerImpl::removeOffer (const OfferID& offerId) {
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 void ArangoManagerImpl::statusUpdate (const string& taskId,
                                       InstanceState state) {
   lock_guard<mutex> lock(_lock);
@@ -808,21 +733,26 @@ void ArangoManagerImpl::statusUpdate (const string& taskId,
   }
 }
 
+*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slave update
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 void ArangoManagerImpl::slaveInfoUpdate (const mesos::SlaveInfo& info) {
   LOG(INFO)
   << "DEBUG received slave info for " << info.id().value();
 
   _slaveInfo[info.id().value()] = info;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<OfferSummary> ArangoManagerImpl::currentOffers () {
   vector<OfferSummary> result;
 
@@ -836,11 +766,13 @@ vector<OfferSummary> ArangoManagerImpl::currentOffers () {
 
   return result;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current instances for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<Instance> ArangoManagerImpl::currentInstances () {
   vector<Instance> result;
 
@@ -854,11 +786,13 @@ vector<Instance> ArangoManagerImpl::currentInstances () {
 
   return result;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clusterInfo
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
   ClusterInfo info;
 
@@ -901,11 +835,13 @@ ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
 
   return info;
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjustPlanned
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 ClusterInfo ArangoManagerImpl::adjustPlanned (const string& name,
                                               const ClusterInfo& info) {
   _agency._plannedInstances = info._planned._agencies;
@@ -916,11 +852,13 @@ ClusterInfo ArangoManagerImpl::adjustPlanned (const string& name,
 
   // TODO(fc) kill old instances
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slaveInfo
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) const {
   map<string, SlaveInfo> infos;
 
@@ -966,6 +904,7 @@ vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) co
 
   return result;
 }
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -976,6 +915,7 @@ vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) co
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::removeOffer (const string& id) {
+/*
   const auto& iter = _offers.find(id);
 
   if (iter == _offers.end()) {
@@ -991,6 +931,7 @@ void ArangoManagerImpl::removeOffer (const string& id) {
 
   // must be last, because it will kill offer and slaveId
   _offers.erase(iter);
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1099,31 +1040,30 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   string taskId = UUID::random().toString();
   string arguments = aspect.arguments(info, taskId);
 
+  if (info.ports_size() != 1) {
+    LOG(WARNING)
+    << "expected one port, got " << info.ports_size();
+    return;
+  }
+
+  mesos::ContainerInfo::DockerInfo docker;
+  docker.set_image("arangodb/arangodb");
+  docker.set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
+
+  mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker.add_port_mappings();
+  mapping->set_host_port(info.ports(0));
+  mapping->set_container_port(8529);
+  mapping->set_protocol("tcp");
+
+  cout << "##################### " << info.ports(0) << " to 8529\n";
+
   _scheduler->startInstance(
     taskId,
     "arangodb:" + aspect._name + ":" + taskId,
     info.slave_id(),
     info.offer_id(),
     info.resources(),
-    arguments);
-
-  vector<uint32_t> ports;
-
-  for (int i = 0;  i < info.ports_size();  ++i) {
-    ports.push_back(info.ports(i));
-  }
-
-  Instance desc;
-
-  desc._taskId = taskId;
-  desc._aspectId = aspect.id();
-  desc._state = InstanceState::STARTED;
-  desc._resources = info.resources();
-  desc._slaveId = info.slave_id().value();
-  desc._hostname = info.hostname();
-  desc._ports = ports;
-  desc._started = system_clock::now();
-  desc._lastUpdate = system_clock::time_point();
+    docker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1131,6 +1071,7 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::taskRunning (const string& taskId) {
+/*
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -1171,6 +1112,7 @@ void ArangoManagerImpl::taskRunning (const string& taskId) {
     // TODO(fc) keep a list of killed task and try again, if now 
     // update is received within a certain time.
   }
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1178,6 +1120,7 @@ void ArangoManagerImpl::taskRunning (const string& taskId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::taskFinished (const string& taskId) {
+/*
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -1222,6 +1165,7 @@ void ArangoManagerImpl::taskFinished (const string& taskId) {
 
   // remove instances completely
   aspect->_startedSlaves.erase(slaveId);
+*/
 }
 
 // -----------------------------------------------------------------------------
@@ -1282,33 +1226,41 @@ void ArangoManager::removeOffer (const OfferID& offerId) {
 /// @brief updates status
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 void ArangoManager::statusUpdate (const string& taskId, InstanceState state) {
   _impl->statusUpdate(taskId, state);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates slave
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 void ArangoManager::slaveInfoUpdate (const mesos::SlaveInfo& info) {
   _impl->slaveInfoUpdate(info);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the configured clusters
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<ClusterInfo> ArangoManager::clusters () const {
   return { _impl->clusterInfo("arangodb") };
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information for one cluster
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 ClusterInfo ArangoManager::cluster (const string& name) const {
   return _impl->clusterInfo(name);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts the total number of servers
@@ -1332,6 +1284,7 @@ namespace {
   }
 }
 
+/*
 ClusterInfo ArangoManager::adjustServers (const string& name, int value) {
   ClusterInfo info = _impl->clusterInfo(name);
   adjustSize(info._planned._agencies, value);
@@ -1340,63 +1293,76 @@ ClusterInfo ArangoManager::adjustServers (const string& name, int value) {
 
   return _impl->adjustPlanned(name, info);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts the total number of agencies
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 ClusterInfo ArangoManager::adjustAgencies (const string& name, int value) {
   ClusterInfo info = _impl->clusterInfo(name);
   adjustSize(info._planned._agencies, value);
 
   return _impl->adjustPlanned(name, info);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts the total number of coordinators
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 ClusterInfo ArangoManager::adjustCoordinators (const string& name, int value) {
   ClusterInfo info = _impl->clusterInfo(name);
   adjustSize(info._planned._coordinators, value);
 
   return _impl->adjustPlanned(name, info);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adjusts the total number of dbservers
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 ClusterInfo ArangoManager::adjustDbservers (const string& name, int value) {
   ClusterInfo info = _impl->clusterInfo(name);
   adjustSize(info._planned._dbservers, value);
 
   return _impl->adjustPlanned(name, info);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the slaves
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<arangodb::SlaveInfo> ArangoManager::slaveInfo (const string& name) {
   return _impl->slaveInfo(name);
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current offers for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<OfferSummary> ArangoManager::currentOffers () {
   return _impl->currentOffers();
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current instances for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 vector<Instance> ArangoManager::currentInstances () {
   return _impl->currentInstances();
 }
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

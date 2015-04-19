@@ -65,12 +65,13 @@ message TasksPlan {
 message Plan {
   required OfferPlan agency_offers = 1;
   required OfferPlan coordinator_offers = 2;
-  required OfferPlan dbserver_offers = 3;
+  required OfferPlan primary_dbserver_offers = 3;
+  required OfferPlan secondary_dbserver_offers = 4;
 
-  required TasksPlan agencies = 4;
-  required TasksPlan coordinators = 5;
-  required TasksPlan primary_dbservers = 6;
-  required TasksPlan secondary_dbservers = 7;
+  required TasksPlan agencies = 5;
+  required TasksPlan coordinators = 6;
+  required TasksPlan primary_dbservers = 7;
+  required TasksPlan secondary_dbservers = 8;
 }
 
 // -----------------------------------------------------------------------------
@@ -130,12 +131,13 @@ message InstancesCurrent {
 message Current {
   required ResourcesCurrent agency_resources = 1;
   required ResourcesCurrent coordinator_resources = 2;
-  required ResourcesCurrent dbserver_resources = 3;
+  required ResourcesCurrent primary_dbserver_resources = 3;
+  required ResourcesCurrent secondary_dbserver_resources = 4;
 
-  required InstancesCurrent agencies = 4;
-  required InstancesCurrent coordinators = 5;
-  required InstancesCurrent primary_dbservers = 6;
-  required InstancesCurrent secondary_dbservers = 7;
+  required InstancesCurrent agencies = 5;
+  required InstancesCurrent coordinators = 6;
+  required InstancesCurrent primary_dbservers = 7;
+  required InstancesCurrent secondary_dbservers = 8;
 }
 
 // -----------------------------------------------------------------------------

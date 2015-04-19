@@ -32,6 +32,7 @@
 
 #include "ArangoScheduler.h"
 // #include "ArangoState.h"
+#include "Global.h"
 #include "HttpServer.h"
 
 #include <stout/check.hpp>
@@ -57,11 +58,14 @@ using namespace arangodb;
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
-static void usage (const char* argv0, const flags::FlagsBase& flags) {
-  cerr << "Usage: " << os::basename(argv0).get() << " [...]" << "\n"
+static void usage (const string& argv0, const flags::FlagsBase& flags) {
+  cerr << "Usage: " << argv0 << " [...]" << "\n"
        << "\n"
        << "Supported options:" << "\n"
-       << flags.usage();
+       << flags.usage() << "\n"
+       << "Supported environment:" << "\n"
+       << "  ARANGODB_SECRET      enable authentication & secret\n"
+       << "\n";
 }
 
 // -----------------------------------------------------------------------------
@@ -79,6 +83,8 @@ int main (int argc, char** argv) {
   // .............................................................................
 
   // find this executable's directory to locate executor
+
+  string argv0 = argv[0];
   string path = os::realpath(dirname(argv[0])).get();
   string uri = path + "/arangodb-executor";
 
@@ -89,11 +95,35 @@ int main (int argc, char** argv) {
   // parse the command line flags
   logging::Flags flags;
 
+  string mode;
+  flags.add(&mode,
+            "mode",
+            "Mode of operation (standalone)",
+            "standalone");
+
   string role;
   flags.add(&role,
             "role",
             "Role to use when registering",
             "arangodb");
+
+  string principal;
+  flags.add(&principal,
+            "principal",
+            "Principal for authentication and persistent volumes",
+            "arangodb");
+
+  string frameworkName;
+  flags.add(&frameworkName,
+            "framework-name",
+            "custom framework name",
+            "ArangoDB Framework");
+
+  double failoverTimeout;
+  flags.add(&failoverTimeout,
+            "failover-timeout",
+            "failover timeout in seconds",
+            60 * 60 * 24 * 10);
 
   Option<string> master;
   flags.add(&master,
@@ -104,7 +134,7 @@ int main (int argc, char** argv) {
 
   if (load.isError()) {
     cerr << load.error() << endl;
-    usage(argv[0], flags);
+    usage(argv0, flags);
     exit(1);
   }
 
@@ -116,15 +146,23 @@ int main (int argc, char** argv) {
 
   logging::initialize(argv[0], flags, true); // Catch signals.
 
+  if (mode == "standalone") {
+    Global::setMode(OperationMode::STANDALONE);
+  }
+  else {
+    cerr << argv0 << ": expecting mode '" << mode << "' to be "
+         << "standalone" << "\n";
+  }
+
   // .............................................................................
   // executor
   // .............................................................................
 
   // create the executors
   ExecutorInfo executor;
-  executor.mutable_executor_id()->set_value("arangodb:executor");
+  executor.mutable_executor_id()->set_value("arangodb_executor");
   executor.mutable_command()->set_value(uri);
-  executor.set_name("arangodb:executor");
+  executor.set_name("arangodb_executor");
   executor.set_source("arangodb");
   *executor.mutable_resources() = Resources();
 
@@ -135,9 +173,22 @@ int main (int argc, char** argv) {
   // create the framework
   FrameworkInfo framework;
   framework.set_user(""); // Have Mesos fill in the current user.
-  framework.set_name("ArangoDB Framework");
-  framework.set_role(role);
   framework.set_checkpoint(true);
+
+  framework.set_name(frameworkName);
+  LOG(INFO) << "framework name: " << frameworkName;
+
+  framework.set_role(role);
+  LOG(INFO) << "role: " << role;
+
+  if (0.0 < failoverTimeout) {
+    framework.set_failover_timeout(failoverTimeout);
+  }
+  else {
+    failoverTimeout = 0.0;
+  }
+
+  LOG(INFO) << "failover timeout: " << failoverTimeout;
 
   // .............................................................................
   // state
@@ -168,40 +219,34 @@ int main (int argc, char** argv) {
   }
 
   // .............................................................................
-  // scheduler
+  // global options
   // .............................................................................
 
-  string principal = "arangodb";
+  Global::setRole(role);
+  Global::setPrincipal(role);
+
+  // .............................................................................
+  // scheduler
+  // .............................................................................
 
   // create the scheduler
   ArangoScheduler scheduler(role, principal, executor);
 
   MesosSchedulerDriver* driver;
 
-  if (os::hasenv("MESOS_AUTHENTICATE")) {
+  if (os::hasenv("ARANGODB_SECRET")) {
     cout << "Enabling authentication for the framework" << endl;
 
-    if (!os::hasenv("DEFAULT_PRINCIPAL")) {
-      EXIT(1) << "Expecting authentication principal in the environment";
-    }
-
-    if (!os::hasenv("DEFAULT_SECRET")) {
-      EXIT(1) << "Expecting authentication secret in the environment";
-    }
-
     Credential credential;
-    credential.set_principal(getenv("DEFAULT_PRINCIPAL"));
-    credential.set_secret(getenv("DEFAULT_SECRET"));
+    credential.set_principal(principal);
+    credential.set_secret(getenv("ARANGODB_SECRET"));
 
-    framework.set_principal(getenv("DEFAULT_PRINCIPAL"));
-
-    driver = new MesosSchedulerDriver(
-        &scheduler, framework, master.get(), credential);
-  } else {
     framework.set_principal(principal);
-
-    driver = new MesosSchedulerDriver(
-        &scheduler, framework, master.get());
+    driver = new MesosSchedulerDriver(&scheduler, framework, master.get(), credential);
+  }
+  else {
+    framework.set_principal(principal);
+    driver = new MesosSchedulerDriver(&scheduler, framework, master.get());
   }
 
   scheduler.setDriver(driver);

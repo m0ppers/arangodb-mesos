@@ -95,6 +95,7 @@ namespace {
     return "text/plain";
   }
 
+/*
   picojson::object JsonClusterInfo (const ClusterInfo& info) {
     picojson::object o;
 
@@ -126,6 +127,7 @@ namespace {
 
     return o;
   }
+*/
 
   picojson::array JsonResources (const mesos::Resources& resources) {
     picojson::array result;
@@ -142,6 +144,7 @@ namespace {
     return o;
   }
 
+/*
   picojson::object JsonOfferSummary (const OfferSummary& summary) {
     const Offer& offer = summary._offer;
 
@@ -170,7 +173,9 @@ namespace {
 
     return o;
   }
+*/
 
+/*
   picojson::object JsonInstance (const Instance& instance) {
     picojson::object o;
 
@@ -224,7 +229,9 @@ namespace {
 
     return o;
   }
+*/
 
+/*
   picojson::object JsonSlaveInfo (const arangodb::SlaveInfo& info) {
     picojson::object o;
 
@@ -248,6 +255,7 @@ namespace {
 
     return o;
   }
+*/
 }
 
 // -----------------------------------------------------------------------------
@@ -288,6 +296,7 @@ class arangodb::HttpServerImpl {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_CLUSTER (const string&) {
+/*
   const vector<ClusterInfo> infos = _manager->clusters();
 
   picojson::object result;
@@ -300,6 +309,7 @@ string HttpServerImpl::GET_V1_CLUSTER (const string&) {
   result["clusters"] = picojson::value(list);
 
   return picojson::value(result).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,9 +317,11 @@ string HttpServerImpl::GET_V1_CLUSTER (const string&) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_CLUSTER_NAME (const string& name) {
+/*
   ClusterInfo info = _manager->cluster(name);
 
   return picojson::value(JsonClusterInfo(info)).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,6 +329,7 @@ string HttpServerImpl::GET_V1_CLUSTER_NAME (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::POST_V1_CLUSTER_NAME (const string& name, const string& body) {
+/*
   picojson::value v;
   std::string err = picojson::parse(v, body);
 
@@ -356,6 +369,7 @@ string HttpServerImpl::POST_V1_CLUSTER_NAME (const string& name, const string& b
 
   ClusterInfo info = _manager->cluster(name);
   return picojson::value(JsonClusterInfo(info)).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,6 +377,7 @@ string HttpServerImpl::POST_V1_CLUSTER_NAME (const string& name, const string& b
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_SERVERS_NAME (const string& name) {
+/*
   const vector<SlaveInfo> infos = _manager->slaveInfo(name);
 
   picojson::object result;
@@ -375,6 +390,7 @@ string HttpServerImpl::GET_V1_SERVERS_NAME (const string& name) {
   result["servers"] = picojson::value(list);
 
   return picojson::value(result).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,6 +398,7 @@ string HttpServerImpl::GET_V1_SERVERS_NAME (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_OFFERS_NAME (const string& name) {
+/*
   vector<OfferSummary> offers = _manager->currentOffers();
 
   picojson::object result;
@@ -394,6 +411,7 @@ string HttpServerImpl::GET_V1_OFFERS_NAME (const string& name) {
   result["offers"] = picojson::value(list);
 
   return picojson::value(result).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -401,6 +419,7 @@ string HttpServerImpl::GET_V1_OFFERS_NAME (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_INSTANCES_NAME (const string& name) {
+/*
   vector<Instance> instances = _manager->currentInstances();
 
   picojson::object result;
@@ -413,6 +432,7 @@ string HttpServerImpl::GET_V1_INSTANCES_NAME (const string& name) {
   result["instances"] = picojson::value(list);
 
   return picojson::value(result).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,6 +440,7 @@ string HttpServerImpl::GET_V1_INSTANCES_NAME (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
+/*
   vector<OfferSummary> offers = _manager->currentOffers();
 
   picojson::object result;
@@ -444,6 +465,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
   result["offers"] = picojson::value(list);
 
   return picojson::value(result).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,6 +473,7 @@ string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
+/*
   vector<Instance> instances = _manager->currentInstances();
 
   picojson::object result;
@@ -473,6 +496,7 @@ string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
   result["instances"] = picojson::value(list);
 
   return picojson::value(result).serialize();
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////

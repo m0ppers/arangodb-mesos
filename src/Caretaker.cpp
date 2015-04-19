@@ -485,14 +485,19 @@ static OfferAction checkResourceOffer (const string& name,
   return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static protected methods
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we can/should start a new instance
 ////////////////////////////////////////////////////////////////////////////////
 
-static InstanceAction checkStartInstance (const string& name,
-                                          TasksPlan* plan,
-                                          ResourcesCurrent* resources,
-                                          InstancesCurrent* instances) {
+InstanceAction Caretaker::checkStartInstance (const string& name,
+                                              InstanceActionState startState,
+                                              TasksPlan* plan,
+                                              ResourcesCurrent* resources,
+                                              InstancesCurrent* instances) {
   for (int i = 0;  i < plan->entries_size();  ++i) {
     InstancesCurrentEntry* instance = instances->mutable_entries(i);
     bool start = false;
@@ -516,7 +521,7 @@ static InstanceAction checkStartInstance (const string& name,
         mesos::SlaveID slaveId = resEntry->slave_id();
         mesos::Resources resources = resEntry->resources();
 
-        return { InstanceActionState::START, *resEntry };
+        return { startState, *resEntry };
       }
     }
   }
@@ -537,6 +542,7 @@ static InstanceAction checkStartInstance (const string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 Caretaker::Caretaker () {
+#if 0
   mesos::Resource* m;
 
   // AGENCY
@@ -610,6 +616,14 @@ Caretaker::Caretaker () {
   m->set_name("disk");
   m->set_type(mesos::Value::SCALAR);
   m->mutable_scalar()->set_value(1024);
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+Caretaker::~Caretaker () {
 }
 
 // -----------------------------------------------------------------------------
@@ -630,13 +644,13 @@ void Caretaker::updatePlan () {
 
   adjustPlan("dbserver",
              _target.dbservers(),
-             _plan.mutable_dbserver_offers(),
+             _plan.mutable_primary_dbserver_offers(),
              _plan.mutable_primary_dbservers(),
-             _current.mutable_dbserver_resources(),
+             _current.mutable_primary_dbserver_resources(),
              _current.mutable_primary_dbservers());
 
   adjustPlan("coordinator",
-             _target.dbservers(),
+             _target.coordinators(),
              _plan.mutable_coordinator_offers(),
              _plan.mutable_coordinators(),
              _current.mutable_coordinator_resources(),
@@ -674,8 +688,8 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
   OfferAction dbservers
     = checkResourceOffer("dbserver", true,
                          _target.dbservers(),
-                         _plan.mutable_dbserver_offers(),
-                         _current.mutable_dbserver_resources(),
+                         _plan.mutable_primary_dbserver_offers(),
+                         _current.mutable_primary_dbserver_resources(),
                          offer);
 
   switch (dbservers._state) {
@@ -719,17 +733,6 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
   else {
     return { OfferActionState::IGNORE };
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we can start an instance
-////////////////////////////////////////////////////////////////////////////////
-
-InstanceAction Caretaker::checkInstance () {
-  return checkStartInstance("agency",
-                            _plan.mutable_agencies(),
-                            _current.mutable_agency_resources(),
-                            _current.mutable_agencies());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

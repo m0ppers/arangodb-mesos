@@ -140,26 +140,34 @@ void ArangoScheduler::startInstance (const string& taskId,
                                      const mesos::SlaveID& slaveId,
                                      const mesos::OfferID& offerId,
                                      const mesos::Resources& resources,
-                                     const string& arguments) const {
+                                     const mesos::ContainerInfo::DockerInfo& docker) const {
   const string& offerStr = offerId.value();
 
   LOG(INFO)
   << "DEBUG startInstance: "
   << "launching task " << name 
   << " using offer " << offerStr
-  << " and resources " << resources
-  << " and arguments " << join(split(arguments, '\n'), " ");
+  << " and resources " << resources;
 
   TaskInfo task;
 
   task.set_name(name);
   task.mutable_task_id()->set_value(taskId);
   task.mutable_slave_id()->CopyFrom(slaveId);
-  task.mutable_executor()->CopyFrom(_executor);
   task.mutable_resources()->CopyFrom(resources);
 
-  task.set_data(arguments);
+  // command to execute
+  CommandInfo* command = task.mutable_command();
+  command->set_value("/scripts/start.sh");
 
+  // use docker to run the task
+  mesos::ContainerInfo* container = task.mutable_container();
+  container->set_type(ContainerInfo::DOCKER);
+
+  // copy the docker info
+  container->mutable_docker()->CopyFrom(docker);
+
+  // launch the tasks
   vector<TaskInfo> tasks;
   tasks.push_back(task);
 
@@ -251,7 +259,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
   auto state = status.state();
 
   LOG(INFO)
-  << "TASK '" << status.task_id().value()
+  << "TASK '" << taskId
   << "' is in state " << state
   << " with reason " << status.reason()
   << " from source " << status.source()
@@ -262,7 +270,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
       break;
 
     case TASK_RUNNING:
-      _manager->statusUpdate(taskId, InstanceState::RUNNING);
+      // XXXXXX _manager->statusUpdate(taskId, InstanceState::RUNNING);
       break;
 
     case TASK_STARTING:
@@ -274,7 +282,7 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
     case TASK_KILLED:   // TERMINAL. The task was killed by the executor.
     case TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
     case TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-      _manager->statusUpdate(taskId, InstanceState::FINISHED);
+      // XXXXXX _manager->statusUpdate(taskId, InstanceState::FINISHED);
       break;
   }
 }
@@ -290,7 +298,7 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
   mesos::SlaveInfo slaveInfo;
   slaveInfo.ParseFromString(data);
 
-  _manager->slaveInfoUpdate(slaveInfo);
+  // XXXXXX _manager->slaveInfoUpdate(slaveInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

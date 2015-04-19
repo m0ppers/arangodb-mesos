@@ -112,7 +112,7 @@ namespace arangodb {
                           const mesos::SlaveID&,
                           const mesos::OfferID&,
                           const mesos::Resources&,
-                          const string& arguments) const;
+                          const mesos::ContainerInfo::DockerInfo&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an instances
