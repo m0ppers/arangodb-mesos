@@ -113,10 +113,17 @@ void ArangoState::load () {
 /// @brief framework id
 ////////////////////////////////////////////////////////////////////////////////
 
-mesos::FrameworkID ArangoState::frameworkId () {
+mesos::FrameworkID ArangoState::frameworkId (bool& found) {
   lock_guard<mutex> lock(_lock);
 
-  return _state.framework_id();
+  found = _state.has_framework_id();
+
+  if (found) {
+    return _state.framework_id();
+  }
+  else {
+    return mesos::FrameworkID();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

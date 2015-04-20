@@ -186,7 +186,7 @@ MESOS_CPPFLAGS="-I${topdir}/mesos/include -I${topdir}/mesos/src -I${topdir}/meso
 MESOS_LIBS="-L${topdir}/mesos/build/src/.libs -lmesos_no_3rdparty"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/libprocess/.libs/ -lprocess"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/libprocess/3rdparty/libev-4.15/.libs -lev"
-MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/leveldb -lleveldb"
+MESOS_LIBS="${MESOS_LIBS} ${topdir}/mesos/build/3rdparty/leveldb/libleveldb.a"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/.libs -lzookeeper_mt"
 MESOS_LIBS="${MESOS_LIBS} -lprotobuf -lglog -lapr-1 -lsvn_delta-1 -lsvn_subr-1 -lcurl -lsasl2 -lz -ldl"
 

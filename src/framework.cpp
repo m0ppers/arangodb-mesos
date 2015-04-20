@@ -67,6 +67,7 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  MESOS_AUTHENTICATE   enable authentication\n"
        << "  ARANGODB_PRINCIPAL   principal for authentication\n"
        << "  ARANGODB_SECRET      secret for authentication\n"
+       << "  ARANGODB_WEBUI       URL of the exposed UI\n"
        << "\n"
        << "  MESOS_MASTER         overrides '--master'\n"
        << "  ARANGODB_ROLE        overrides '--role'\n"
@@ -226,18 +227,30 @@ int main (int argc, char** argv) {
 
   LOG(INFO) << "failover timeout: " << failoverTimeout;
 
-  framework.mutable_id()->CopyFrom(Global::state().frameworkId());
+  bool found;
+  mesos::FrameworkID frameworkId= Global::state().frameworkId(found);
+
+  if (found) {
+    framework.mutable_id()->CopyFrom(frameworkId);
+  }
 
   // .............................................................................
   // http server
   // .............................................................................
 
-  Try<string> hostnameTry = net::hostname();
-  string hostname = hostnameTry.get();
+  string url;
 
-  int port = 8181;
+  if (os::hasenv("ARANGODB_WEBUI")) {
+    url = getenv("ARANGODB_WEBUI");
+  }
+  else {
+    Try<string> hostnameTry = net::hostname();
+    string hostname = hostnameTry.get();
+
+    int port = 8181;
   
-  string url = "http://" + hostname + ":" + to_string(port) + "/index.html";
+    url = "http://" + hostname + ":" + to_string(port) + "/index.html";
+  }
 
   framework.set_webui_url(url);
 
