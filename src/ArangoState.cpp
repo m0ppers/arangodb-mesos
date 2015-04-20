@@ -27,142 +27,124 @@
 
 #include "ArangoState.h"
 
+#include "pbjson.hpp"
+
 #include <state/leveldb.hpp>
+#include <state/zookeeper.hpp>
+
+#include <boost/regex.hpp>
 
 using namespace arangodb;
-using namespace mesos::state;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-namespace {
-  picojson::value parseJson (const string& value) {
-    picojson::value json;
-    std::string err = picojson::parse(json, value);
-
-    if (! err.empty() || ! json.is<picojson::object>()) {
-      if (! err.empty()) {
-        LOG(FATAL)
-        << "cannot parse the stored configuration '" << value << "': " << err;
-      }
-      else {
-        LOG(FATAL)
-        << "cannot parse the stored configuration '" << value << "'";
-      }
-
-      exit(EXIT_FAILURE);
-    }
-
-    return json;
-  }
-
-
-
-  StateAgencies stateAgencies (picojson::value json) {
-    StateAgencies agencies;
-
-    if (json.is<picojson::object>()) {
-      picojson::object obj = json.get<picojson::object>();
-
-      if (obj["initialized"].is<bool>()) {
-        agencies._initialized = obj["initialized"].get<bool>();
-      }
-
-      if (obj["instances"].is<bool>()) {
-        const auto& list = obj["instances"].get<picojson::array>();
-        
-        for (const auto& l : list) {
-          agencies._instances.push_back(l.get<string>());
-        }
-      }
-    }
-
-    return agencies;
-  }
-
-
-
-  StateAgencies stateAgencies (const string& json) {
-    return stateAgencies(parseJson(json));
-  }
-
-
-
-  picojson::value asJson (const StateAgencies& state) {
-    picojson::object o;
-
-    o["initialized"] = picojson::value(state._initialized);
-
-    picojson::array a;
-
-    for (const auto& l : state._instances) {
-      a.push_back(picojson::value(l));
-    }
-
-    o["instances"] = picojson::value(a);
-
-    return picojson::value(o);
-  }
-
-
-
-  string asString (const StateAgencies& state) {
-    return asJson(state).serialize();
-  }
-
-    
-
-  void saveState (State* state, Variable& variable, const string& value) {
-    variable = variable.mutate(value);
-    state->store(variable);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class StateAgencies
-// -----------------------------------------------------------------------------
-
-void StateAgencies::dump () const {
-  cout << "StateAgencies (" << this << ")\n"
-       << "  _initialized: " << (_initialized ? "true" : "false") << "\n"
-       << "  _instances: " << _instances.size() << "\n";
-
-  for (const auto& i : _instances) {
-    cout << "    " << i << "\n";
-  }
-}
+using namespace mesos::internal::state;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class ArangoState
 // -----------------------------------------------------------------------------
 
-ArangoState::ArangoState (const string& cluster)
-  : _cluster(cluster),
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoState::ArangoState (const string& name, const string& zk)
+  : _name(name),
+    _zk(zk),
     _storage(nullptr),
-    _state(nullptr) {
+    _stateStore(nullptr) {
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize storage and state
+////////////////////////////////////////////////////////////////////////////////
 
 void ArangoState::init () {
-  _storage = new LevelDBStorage("./STATE");
-  _state = new State(_storage);
-}
-
-void ArangoState::load () {
-  string id = _cluster + ":agencies";
-  Variable variable = _state->fetch(id).get();
-
-  string value = variable.value();
-
-  if (value.empty()) {
-    _agencies = StateAgencies();
-    saveState(_state, variable, asString(_agencies));
+  if (_zk.empty()) {
+    _storage = new LevelDBStorage("./STATE_" + _name);
   }
   else {
-    _agencies = stateAgencies(value);
+    string userAndPass  = "(([^/@:]+):([^/@]*)@)";
+    string hostAndPort  = "[A-z0-9\\.-]+(:[0-9]+)?";
+    string hostAndPorts = "(" + hostAndPort + "(," + hostAndPort + ")*)";
+    string zkNode       = "[^/]+(/[^/]+)*";
+    string REGEX        = "zk://(" + userAndPass +"?" + hostAndPorts + ")(/" + zkNode + ")";
+
+    boost::regex re(REGEX);
+    boost::smatch m;
+    bool ok = boost::regex_match(_zk, m, re);
+
+    if (! ok) {
+      LOG(ERROR) << "cannot parse zookeeper '" << _zk << "'";
+      exit(EXIT_FAILURE);
+    }
+
+    _storage = new ZooKeeperStorage(m[1], Seconds(120), m[9]);
   }
 
-  _agencies.dump();
+  _stateStore = new mesos::internal::state::State(_storage);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads the state
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoState::load () {
+  Variable variable = _stateStore->fetch("state").get();
+  string value = variable.value();
+
+  if (! value.empty()) {
+    _state.ParseFromString(value);
+  }
+
+  string json;
+  pbjson::pb2json(&_state, json);
+  
+  LOG(INFO) << "current state: " << json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief framework id
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::FrameworkID ArangoState::frameworkId () {
+  lock_guard<mutex> lock(_lock);
+
+  return _state.framework_id();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the framework id
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoState::setFrameworkId (const mesos::FrameworkID& id) {
+  lock_guard<mutex> lock(_lock);
+
+  _state.mutable_framework_id()->CopyFrom(id);
+  save();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves the state
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoState::save () {
+  string value;
+  _state.SerializeToString(&value);
+
+  Variable variable = _stateStore->fetch("state").get();
+  variable = variable.mutate(value);
+  _stateStore->store(variable);
 }
 
 // -----------------------------------------------------------------------------

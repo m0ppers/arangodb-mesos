@@ -31,7 +31,7 @@
 #include <string>
 
 #include "ArangoScheduler.h"
-// #include "ArangoState.h"
+#include "ArangoState.h"
 #include "Global.h"
 #include "HttpServer.h"
 
@@ -64,7 +64,13 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "Supported options:" << "\n"
        << flags.usage() << "\n"
        << "Supported environment:" << "\n"
-       << "  ARANGODB_SECRET      enable authentication & secret\n"
+       << "  MESOS_AUTHENTICATE   enable authentication\n"
+       << "  ARANGODB_PRINCIPAL   principal for authentication\n"
+       << "  ARANGODB_SECRET      secret for authentication\n"
+       << "\n"
+       << "  MESOS_MASTER         overrides '--master'\n"
+       << "  ARANGODB_ROLE        overrides '--role'\n"
+       << "  ARANGODB_ZK          overrides '--zk'\n"
        << "\n";
 }
 
@@ -119,6 +125,12 @@ int main (int argc, char** argv) {
             "custom framework name",
             "ArangoDB Framework");
 
+  string zk;
+  flags.add(&zk,
+            "zk",
+            "zookeeper for state",
+            "");
+
   double failoverTimeout;
   flags.add(&failoverTimeout,
             "failover-timeout",
@@ -136,6 +148,18 @@ int main (int argc, char** argv) {
     cerr << load.error() << endl;
     usage(argv0, flags);
     exit(1);
+  }
+
+  if (os::hasenv("MESOS_MASTER")) {
+    master = getenv("MESOS_MASTER");
+  }
+
+  if (os::hasenv("ARANGODB_ROLE")) {
+    role = getenv("ARANGODB_ROLE");
+  }
+
+  if (os::hasenv("ARANGODB_ZK")) {
+    zk = getenv("ARANGODB_ZK");
   }
 
   if (master.isNone()) {
@@ -167,6 +191,18 @@ int main (int argc, char** argv) {
   *executor.mutable_resources() = Resources();
 
   // .............................................................................
+  // state
+  // .............................................................................
+
+  LOG(INFO) << "zookeeper: " << zk;
+
+  ArangoState state(role, zk);
+  state.init();
+  state.load();
+
+  Global::setState(&state);
+
+  // .............................................................................
   // framework
   // .............................................................................
 
@@ -190,15 +226,7 @@ int main (int argc, char** argv) {
 
   LOG(INFO) << "failover timeout: " << failoverTimeout;
 
-  // .............................................................................
-  // state
-  // .............................................................................
-
-/*
-  ArangoState state("arangodb");
-  state.init();
-  state.load();
-*/
+  framework.mutable_id()->CopyFrom(Global::state().frameworkId());
 
   // .............................................................................
   // http server
@@ -234,14 +262,22 @@ int main (int argc, char** argv) {
 
   MesosSchedulerDriver* driver;
 
-  if (os::hasenv("ARANGODB_SECRET")) {
+  if (os::hasenv("MESOS_AUTHENTICATE")) {
     cout << "Enabling authentication for the framework" << endl;
 
+    if (!os::hasenv("ARANGODB_PRINCIPAL")) {
+      EXIT(1) << "Expecting authentication principal in the environment";
+    }
+
+    if (!os::hasenv("ARANGODB_SECRET")) {
+      EXIT(1) << "Expecting authentication secret in the environment";
+    }
+
     Credential credential;
-    credential.set_principal(principal);
+    credential.set_principal(getenv("ARANGODB_PRINCIPAL"));
     credential.set_secret(getenv("ARANGODB_SECRET"));
 
-    framework.set_principal(principal);
+    framework.set_principal(getenv("ARANGODB_PRINCIPAL"));
     driver = new MesosSchedulerDriver(&scheduler, framework, master.get(), credential);
   }
   else {

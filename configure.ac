@@ -156,13 +156,17 @@ AC_LANG(C++)
 
 AC_CHECK_HEADERS(boost/lexical_cast.hpp, [BOOST=yes], [BOOST=no])
 
-AC_MSG_CHECKING([BOOST])
-
 if test "x$BOOST" = "xno";  then
   AC_MSG_ERROR([Please install 'libboost-dev'])
-else
-  AC_MSG_RESULT([found])
 fi
+
+AC_CHECK_HEADERS(boost/regex.hpp, [BOOST=yes], [BOOST=no])
+
+if test "x$BOOST" = "xno";  then
+  AC_MSG_ERROR([Please install 'libboost-regex-dev'])
+fi
+
+LIBS="${LIBS} -lboost_regex"
 
 dnl ----------------------------------------------------------------------------
 dnl picojson.h
@@ -177,7 +181,7 @@ dnl ----------------------------------------------------------------------------
 AC_LANG(C++)
 
 topdir="${ac_pwd}"
-MESOS_CPPFLAGS="-I${topdir}/mesos/include -I${topdir}/mesos/src -I${topdir}/mesos/build/include -I${topdir}/mesos/build/src -I${topdir}/mesos/3rdparty/libprocess/3rdparty/stout/include -I${topdir}/mesos/3rdparty/libprocess/include"
+MESOS_CPPFLAGS="-I${topdir}/mesos/include -I${topdir}/mesos/src -I${topdir}/mesos/build/include -I${topdir}/mesos/build/src -I${topdir}/mesos/3rdparty/libprocess/3rdparty/stout/include -I${topdir}/mesos/3rdparty/libprocess/include -I${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/include -I${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/generated"
 
 MESOS_LIBS="-L${topdir}/mesos/build/src/.libs -lmesos_no_3rdparty"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/libprocess/.libs/ -lprocess"

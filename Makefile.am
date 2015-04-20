@@ -49,6 +49,7 @@ noinst_LIBRARIES = \
 lib_libarangodb_mesos_a_SOURCES = \
 	src/ArangoManager.cpp \
 	src/ArangoScheduler.cpp \
+	src/ArangoState.cpp \
 	src/Caretaker.cpp \
 	src/CaretakerStandalone.cpp \
 	src/Global.cpp \

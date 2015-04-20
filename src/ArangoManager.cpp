@@ -548,7 +548,7 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,7 +575,7 @@ void ArangoManagerImpl::dispatch () {
     {
       lock_guard<mutex> lock(_lock);
 
-      Caretaker& caretaker = Global::caretaker("arangodb");
+      Caretaker& caretaker = Global::caretaker();
       caretaker.updatePlan();
 
       for (auto&& id_offer : _storedOffers) {
@@ -639,7 +639,7 @@ void ArangoManagerImpl::dispatch () {
     {
       lock_guard<mutex> lock(_lock);
 
-      Caretaker& caretaker = Global::caretaker("arangodb");
+      Caretaker& caretaker = Global::caretaker();
       InstanceAction action;
 
 

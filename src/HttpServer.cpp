@@ -504,7 +504,7 @@ string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
-  Caretaker& caretaker = Global::caretaker(name);
+  Caretaker& caretaker = Global::caretaker();
 
   return caretaker.jsonTarget();
 }
@@ -514,7 +514,7 @@ string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
-  Caretaker& caretaker = Global::caretaker(name);
+  Caretaker& caretaker = Global::caretaker();
 
   return caretaker.jsonPlan();
 }
@@ -524,7 +524,7 @@ string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
-  Caretaker& caretaker = Global::caretaker(name);
+  Caretaker& caretaker = Global::caretaker();
 
   return caretaker.jsonCurrent();
 }
@@ -534,7 +534,7 @@ string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_OVERVIEW (const string& name) {
-  Caretaker& caretaker = Global::caretaker(name);
+  Caretaker& caretaker = Global::caretaker();
 
   return "{ \"target\" : " + caretaker.jsonTarget()
        + ", \"plan\" : " + caretaker.jsonPlan()

@@ -27,16 +27,18 @@
 
 #include "ArangoScheduler.h"
 
-#include <boost/lexical_cast.hpp>
+#include "ArangoManager.h"
+#include "ArangoState.h"
+#include "Global.h"
+#include "utils.h"
 
 #include <atomic>
 #include <iostream>
 #include <string>
 
-#include <mesos/resources.hpp>
+#include <boost/lexical_cast.hpp>
 
-#include "ArangoManager.h"
-#include "utils.h"
+#include <mesos/resources.hpp>
 
 using namespace std;
 using namespace boost;
@@ -198,10 +200,11 @@ void ArangoScheduler::killInstance (const string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::registered (SchedulerDriver*,
-                                  const FrameworkID&,
+                                  const FrameworkID& frameworkId,
                                   const MasterInfo&) {
-  // TODO(fc) what to do?
-  LOG(INFO) << "DEBUG Registered!";
+  LOG(INFO) << "registered with id " << frameworkId.value();
+
+  Global::state().setFrameworkId(frameworkId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
