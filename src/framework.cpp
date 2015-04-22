@@ -30,8 +30,10 @@
 #include <iostream>
 #include <string>
 
+#include "ArangoManager.h"
 #include "ArangoScheduler.h"
 #include "ArangoState.h"
+#include "CaretakerStandalone.h"
 #include "Global.h"
 #include "HttpServer.h"
 
@@ -65,13 +67,15 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << flags.usage() << "\n"
        << "Supported environment:" << "\n"
        << "  MESOS_AUTHENTICATE   enable authentication\n"
-       << "  ARANGODB_PRINCIPAL   principal for authentication\n"
        << "  ARANGODB_SECRET      secret for authentication\n"
        << "\n"
+       << "  ARANGODB_PRINCIPAL   overrides '--principal'\n"
        << "  ARANGODB_HTTP_PORT   overrides '--http-port'\n"
        << "  ARANGODB_ROLE        overrides '--role'\n"
+       << "  ARANGODB_USER        overrides '--user'\n"
        << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
+       << "\n"
        << "  MESOS_MASTER         overrides '--master'\n"
        << "\n";
 }
@@ -118,20 +122,20 @@ int main (int argc, char** argv) {
   string principal;
   flags.add(&principal,
             "principal",
-            "Principal for authentication and persistent volumes",
+            "Principal for persistent volumes",
             "arangodb");
+
+  string frameworkUser;
+  flags.add(&frameworkUser,
+            "user",
+            "User for the framework",
+            "");
 
   string frameworkName;
   flags.add(&frameworkName,
             "framework-name",
             "custom framework name",
             "ArangoDB Framework");
-
-  string zk;
-  flags.add(&zk,
-            "zk",
-            "zookeeper for state",
-            "");
 
   string webui;
   flags.add(&webui,
@@ -151,10 +155,18 @@ int main (int argc, char** argv) {
             "failover timeout in seconds",
             60 * 60 * 24 * 10);
 
-  Option<string> master;
+  // address of master and zookeeper
+  string master;
   flags.add(&master,
             "master",
-            "ip:port of master to connect");
+            "ip:port of master to connect",
+            "");
+
+  string zk;
+  flags.add(&zk,
+            "zk",
+            "zookeeper for state",
+            "");
 
   Try<Nothing> load = flags.load(None(), argc, argv);
 
@@ -172,6 +184,10 @@ int main (int argc, char** argv) {
     role = getenv("ARANGODB_ROLE");
   }
 
+  if (os::hasenv("ARANGODB_USER")) {
+    frameworkUser = getenv("ARANGODB_user");
+  }
+
   if (os::hasenv("ARANGODB_ZK")) {
     zk = getenv("ARANGODB_ZK");
   }
@@ -184,8 +200,12 @@ int main (int argc, char** argv) {
     webuiPort = atoi(getenv("ARANGODB_HTTP_PORT"));
   }
 
-  if (master.isNone()) {
-    cerr << "Missing flag '--master'" << endl;
+  if (os::hasenv("ARANGODB_PRINCIPAL")) {
+    principal = getenv("ARANGODB_PRINCIPAL");
+  }
+
+  if (master.empty()) {
+    cerr << "Missing master, either use flag '--master' or set 'MESOS_MASTER'" << endl;
     usage(argv[0], flags);
     exit(1);
   }
@@ -230,7 +250,7 @@ int main (int argc, char** argv) {
 
   // create the framework
   FrameworkInfo framework;
-  framework.set_user(""); // Have Mesos fill in the current user.
+  framework.set_user(frameworkUser);
   framework.set_checkpoint(true);
 
   framework.set_name(frameworkName);
@@ -271,8 +291,7 @@ int main (int argc, char** argv) {
   framework.set_webui_url(webui);
 
   if (os::hasenv("MESOS_CHECKPOINT")) {
-    framework.set_checkpoint(
-        numify<bool>(os::getenv("MESOS_CHECKPOINT")).get());
+    framework.set_checkpoint(numify<bool>(os::getenv("MESOS_CHECKPOINT")).get());
   }
 
   // .............................................................................
@@ -280,7 +299,27 @@ int main (int argc, char** argv) {
   // .............................................................................
 
   Global::setRole(role);
-  Global::setPrincipal(role);
+  Global::setPrincipal(principal);
+
+  // .............................................................................
+  // Caretaker
+  // .............................................................................
+
+  unique_ptr<Caretaker> caretaker;
+
+  switch (Global::mode()) {
+    case OperationMode::STANDALONE:
+      caretaker.reset(new CaretakerStandalone);
+  }
+
+  Global::setCaretaker(caretaker.get());
+
+  // .............................................................................
+  // manager
+  // .............................................................................
+
+  ArangoManager manager(role, principal);
+  Global::setManager(&manager);
 
   // .............................................................................
   // scheduler
@@ -294,7 +333,7 @@ int main (int argc, char** argv) {
   if (os::hasenv("MESOS_AUTHENTICATE")) {
     cout << "Enabling authentication for the framework" << endl;
 
-    if (!os::hasenv("ARANGODB_PRINCIPAL")) {
+    if (principal.empty()) {
       EXIT(1) << "Expecting authentication principal in the environment";
     }
 
@@ -303,25 +342,27 @@ int main (int argc, char** argv) {
     }
 
     Credential credential;
-    credential.set_principal(getenv("ARANGODB_PRINCIPAL"));
+    credential.set_principal(principal);
     credential.set_secret(getenv("ARANGODB_SECRET"));
 
-    framework.set_principal(getenv("ARANGODB_PRINCIPAL"));
-    driver = new MesosSchedulerDriver(&scheduler, framework, master.get(), credential);
+    framework.set_principal(principal);
+    driver = new MesosSchedulerDriver(&scheduler, framework, master, credential);
   }
   else {
     framework.set_principal(principal);
-    driver = new MesosSchedulerDriver(&scheduler, framework, master.get());
+    driver = new MesosSchedulerDriver(&scheduler, framework, master);
   }
 
   scheduler.setDriver(driver);
+
+  Global::setScheduler(&scheduler);
 
   // .............................................................................
   // run
   // .............................................................................
 
   // and the http server
-  HttpServer http(scheduler.manager());
+  HttpServer http;
 
   // start and wait
   LOG(INFO) << "http port: " << webuiPort;

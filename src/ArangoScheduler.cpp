@@ -63,9 +63,7 @@ ArangoScheduler::ArangoScheduler (const string& role,
   : _role(role),
     _principal(principal),
     _driver(nullptr),
-    _executor(executor),
-    _manager(nullptr) {
-  _manager = new ArangoManager(_role, _principal, this);
+    _executor(executor) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,20 +71,11 @@ ArangoScheduler::ArangoScheduler (const string& role,
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoScheduler::~ArangoScheduler () {
-  delete _manager;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the manager
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoManager* ArangoScheduler::manager () const {
-  return _manager;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the driver
@@ -236,7 +225,7 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
     LOG(INFO)
     << "DEBUG offer received " << offer.id().value();
 
-    _manager->addOffer(offer);
+    Global::manager().addOffer(offer);
   }
 }
 
@@ -249,7 +238,7 @@ void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
   LOG(INFO)
   << "DEBUG offer rescinded " << offerId.value();
 
-  _manager->removeOffer(offerId);
+  Global::manager().removeOffer(offerId);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

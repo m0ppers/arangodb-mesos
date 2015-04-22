@@ -473,9 +473,7 @@ class AspectInstance {
 
 class arangodb::ArangoManagerImpl {
   public:
-    ArangoManagerImpl (const string& role,
-                       const string& principal,
-                       ArangoScheduler* _scheduler);
+    ArangoManagerImpl (const string& role, const string& principal);
 
   public:
     void dispatch ();
@@ -504,7 +502,6 @@ class arangodb::ArangoManagerImpl {
   public:
     const string _role;
     const string _principal;
-    ArangoScheduler* _scheduler;
     mutex _lock;
     atomic<bool> _stopDispatcher;
 
@@ -530,11 +527,9 @@ class arangodb::ArangoManagerImpl {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoManagerImpl::ArangoManagerImpl (const string& role,
-                                      const string& principal,
-                                      ArangoScheduler* scheduler)
+                                      const string& principal)
   : _role(role),
     _principal(principal),
-    _scheduler(scheduler),
     _stopDispatcher(false),
     _agency(),
     _coordinator(),
@@ -583,7 +578,7 @@ void ArangoManagerImpl::dispatch () {
 
         switch (action._state) {
           case OfferActionState::IGNORE:
-            _scheduler->declineOffer(id_offer.second.id());
+            Global::scheduler().declineOffer(id_offer.second.id());
             break;
 
           case OfferActionState::USABLE:
@@ -988,7 +983,7 @@ bool ArangoManagerImpl::makePersistentVolume (const string& name,
     return true;
   }
   else {
-    _scheduler->makePersistent(offer, persistent);
+    Global::scheduler().makePersistent(offer, persistent);
     return false;
   }
 }
@@ -1026,7 +1021,7 @@ bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
     return true;
   }
   else {
-    _scheduler->reserveDynamically(offer, diff);
+    Global::scheduler().reserveDynamically(offer, diff);
     return false;
   }
 }
@@ -1057,7 +1052,7 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
 
   cout << "##################### " << info.ports(0) << " to 8529\n";
 
-  _scheduler->startInstance(
+  Global::scheduler().startInstance(
     taskId,
     "arangodb:" + aspect._name + ":" + taskId,
     info.slave_id(),
@@ -1180,12 +1175,10 @@ void ArangoManagerImpl::taskFinished (const string& taskId) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager::ArangoManager (const string& role,
-                              const string& principal,
-                              ArangoScheduler* scheduler)
+ArangoManager::ArangoManager (const string& role, const string& principal)
   : _impl(nullptr),
     _dispatcher(nullptr) {
-  _impl = new ArangoManagerImpl(role, principal, scheduler);
+  _impl = new ArangoManagerImpl(role, principal);
   _dispatcher = new thread(&ArangoManagerImpl::dispatch, _impl);
 };
 

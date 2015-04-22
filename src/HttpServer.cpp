@@ -268,11 +268,6 @@ namespace {
 
 class arangodb::HttpServerImpl {
   public:
-    HttpServerImpl (ArangoManager* manager) 
-      : _manager(manager) {
-    }
-
-  public:
     string GET_V1_CLUSTER (const string&);
     string GET_V1_CLUSTER_NAME (const string&);
     string POST_V1_CLUSTER_NAME (const string&, const string&);
@@ -286,9 +281,6 @@ class arangodb::HttpServerImpl {
     string GET_DEBUG_PLAN (const string&);
     string GET_DEBUG_CURRENT (const string&);
     string GET_DEBUG_OVERVIEW (const string&);
-
-  private:
-    ArangoManager* _manager;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,10 +792,9 @@ static int answerRequest (
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer (ArangoManager* manager) 
-  : _daemon(nullptr),
-    _manager(manager) {
-  _impl = new HttpServerImpl(manager);
+HttpServer::HttpServer () 
+  : _daemon(nullptr) {
+  _impl = new HttpServerImpl();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
