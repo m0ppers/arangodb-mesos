@@ -67,11 +67,12 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  MESOS_AUTHENTICATE   enable authentication\n"
        << "  ARANGODB_PRINCIPAL   principal for authentication\n"
        << "  ARANGODB_SECRET      secret for authentication\n"
-       << "  ARANGODB_WEBUI       URL of the exposed UI\n"
        << "\n"
-       << "  MESOS_MASTER         overrides '--master'\n"
+       << "  ARANGODB_HTTP_PORT   overrides '--http-port'\n"
        << "  ARANGODB_ROLE        overrides '--role'\n"
+       << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
+       << "  MESOS_MASTER         overrides '--master'\n"
        << "\n";
 }
 
@@ -132,6 +133,18 @@ int main (int argc, char** argv) {
             "zookeeper for state",
             "");
 
+  string webui;
+  flags.add(&webui,
+            "webui",
+            "URL to advertise for external access to the UI",
+            "");
+
+  int webuiPort;
+  flags.add(&webuiPort,
+            "http-port",
+            "HTTP port to open for UI",
+            8181);
+
   double failoverTimeout;
   flags.add(&failoverTimeout,
             "failover-timeout",
@@ -161,6 +174,14 @@ int main (int argc, char** argv) {
 
   if (os::hasenv("ARANGODB_ZK")) {
     zk = getenv("ARANGODB_ZK");
+  }
+
+  if (os::hasenv("ARANGODB_WEBUI")) {
+    webui = getenv("ARANGODB_WEBUI");
+  }
+
+  if (os::hasenv("ARANGODB_HTTP_PORT")) {
+    webuiPort = atoi(getenv("ARANGODB_HTTP_PORT"));
   }
 
   if (master.isNone()) {
@@ -238,21 +259,16 @@ int main (int argc, char** argv) {
   // http server
   // .............................................................................
 
-  string url;
-
-  if (os::hasenv("ARANGODB_WEBUI")) {
-    url = getenv("ARANGODB_WEBUI");
-  }
-  else {
+  if (webui.empty()) {
     Try<string> hostnameTry = net::hostname();
     string hostname = hostnameTry.get();
 
-    int port = 8181;
-  
-    url = "http://" + hostname + ":" + to_string(port) + "/index.html";
+    webui = "http://" + hostname + ":" + to_string(webuiPort) + "/index.html";
   }
 
-  framework.set_webui_url(url);
+  LOG(INFO) << "webui url: " << webui;
+
+  framework.set_webui_url(webui);
 
   if (os::hasenv("MESOS_CHECKPOINT")) {
     framework.set_checkpoint(
@@ -308,7 +324,8 @@ int main (int argc, char** argv) {
   HttpServer http(scheduler.manager());
 
   // start and wait
-  http.start(port);
+  LOG(INFO) << "http port: " << webuiPort;
+  http.start(webuiPort);
 
   int status = driver->run() == DRIVER_STOPPED ? 0 : 1;
 
