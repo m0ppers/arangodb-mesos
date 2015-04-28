@@ -66,6 +66,8 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "Supported options:" << "\n"
        << flags.usage() << "\n"
        << "Supported environment:" << "\n"
+       << "  MESOS_MASTER         overrides '--master'\n"
+       << "\n"
        << "  MESOS_AUTHENTICATE   enable authentication\n"
        << "  ARANGODB_SECRET      secret for authentication\n"
        << "\n"
@@ -75,8 +77,6 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_USER        overrides '--user'\n"
        << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
-       << "\n"
-       << "  MESOS_MASTER         overrides '--master'\n"
        << "\n";
 }
 
@@ -135,7 +135,7 @@ int main (int argc, char** argv) {
   flags.add(&frameworkName,
             "framework-name",
             "custom framework name",
-            "ArangoDB Framework");
+            "arangodb");
 
   string webui;
   flags.add(&webui,
@@ -219,6 +219,8 @@ int main (int argc, char** argv) {
     cerr << argv0 << ": expecting mode '" << mode << "' to be "
          << "standalone" << "\n";
   }
+
+  Global::setFrameworkName(frameworkName);
 
   // .............................................................................
   // executor

@@ -131,7 +131,8 @@ void ArangoScheduler::startInstance (const string& taskId,
                                      const mesos::SlaveID& slaveId,
                                      const mesos::OfferID& offerId,
                                      const mesos::Resources& resources,
-                                     const mesos::ContainerInfo::DockerInfo& docker) const {
+                                     const mesos::ContainerInfo::DockerInfo& docker,
+                                     const string& startCommand) const {
   const string& offerStr = offerId.value();
 
   LOG(INFO)
@@ -149,7 +150,8 @@ void ArangoScheduler::startInstance (const string& taskId,
 
   // command to execute
   CommandInfo* command = task.mutable_command();
-  command->set_value("/scripts/start.sh");
+  command->set_value(startCommand);
+  command->set_shell(false);
 
   // use docker to run the task
   mesos::ContainerInfo* container = task.mutable_container();
@@ -157,6 +159,12 @@ void ArangoScheduler::startInstance (const string& taskId,
 
   // copy the docker info
   container->mutable_docker()->CopyFrom(docker);
+
+  // volume
+  mesos::Volume* volume = container->add_volumes();
+  volume->set_container_path("/data");
+  volume->set_host_path("/tmp/XYZPATH");
+  volume->set_mode(Volume::RW);
 
   // launch the tasks
   vector<TaskInfo> tasks;
@@ -191,7 +199,7 @@ void ArangoScheduler::killInstance (const string& name,
 void ArangoScheduler::registered (SchedulerDriver*,
                                   const FrameworkID& frameworkId,
                                   const MasterInfo&) {
-  LOG(INFO) << "registered with id " << frameworkId.value();
+  LOG(INFO) << "registered with framework id " << frameworkId.value();
 
   Global::state().setFrameworkId(frameworkId);
 }

@@ -67,7 +67,11 @@ ArangoState::ArangoState (const string& name, const string& zk)
 
 void ArangoState::init () {
   if (_zk.empty()) {
-    _storage = new LevelDBStorage("./STATE_" + _name);
+    string path = "./STATE_" + _name;
+
+    LOG(INFO) << "using level at " << path;
+
+    _storage = new LevelDBStorage(path);
   }
   else {
     string userAndPass  = "(([^/@:]+):([^/@]*)@)";

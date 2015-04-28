@@ -34,6 +34,7 @@
 #include <set>
 
 #include "ArangoScheduler.h"
+#include "ArangoState.h"
 #include "Caretaker.h"
 #include "Global.h"
 #include "utils.h"
@@ -557,7 +558,13 @@ void ArangoManagerImpl::dispatch () {
   unordered_set<string> bootstrapped;
 
   while (! _stopDispatcher) {
-    LOG(INFO) << "DISPATCHER checking state\n";
+    bool found;
+    Global::state().frameworkId(found);
+
+    if (! found) {
+      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+      continue;
+    }
 
     // .............................................................................
     // check all outstanding offers
@@ -1042,7 +1049,7 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   }
 
   mesos::ContainerInfo::DockerInfo docker;
-  docker.set_image("arangodb/arangodb");
+  docker.set_image("arangodb/arangodb-mesos");
   docker.set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
 
   mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker.add_port_mappings();
@@ -1050,15 +1057,14 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   mapping->set_container_port(8529);
   mapping->set_protocol("tcp");
 
-  cout << "##################### " << info.ports(0) << " to 8529\n";
-
   Global::scheduler().startInstance(
     taskId,
-    "arangodb:" + aspect._name + ":" + taskId,
+    Global::frameworkName() + ":" + aspect._name + ":" + taskId,
     info.slave_id(),
     info.offer_id(),
     info.resources(),
-    docker);
+    docker,
+    "standalone");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
