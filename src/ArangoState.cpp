@@ -39,6 +39,35 @@ using namespace mesos::internal::state;
 using namespace std;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill in TaskStatus
+////////////////////////////////////////////////////////////////////////////////
+
+void fillTaskStatus (vector<mesos::TaskStatus>& result,
+                     const InstancesCurrent& instances) {
+  for (int i = 0;  i < instances.entries_size();  ++i) {
+    const InstancesCurrentEntry& entry = instances.entries(i);
+
+    switch (entry.state()) {
+      case INSTANCE_STATE_UNUSED:
+        break;
+
+      case INSTANCE_STATE_STARTING:
+      case INSTANCE_STATE_RUNNING:
+      case INSTANCE_STATE_STOPPED:
+        if (entry.has_task_status()) {
+          result.push_back(entry.task_status());
+        }
+
+        break;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 class ArangoState
 // -----------------------------------------------------------------------------
 
@@ -69,7 +98,7 @@ void ArangoState::init () {
   if (_zk.empty()) {
     string path = "./STATE_" + _name;
 
-    LOG(INFO) << "using level at " << path;
+    LOG(INFO) << "using leveldb at " << path;
 
     _storage = new LevelDBStorage(path);
   }
@@ -99,10 +128,6 @@ void ArangoState::init () {
   _state.mutable_target()->mutable_coordinators()->set_number_ports(0);
 
   _state.mutable_plan();
-  _state.mutable_plan()->mutable_agency_offers();
-  _state.mutable_plan()->mutable_coordinator_offers();
-  _state.mutable_plan()->mutable_primary_dbserver_offers();
-  _state.mutable_plan()->mutable_secondary_dbserver_offers();
   _state.mutable_plan()->mutable_agencies();
   _state.mutable_plan()->mutable_coordinators();
   _state.mutable_plan()->mutable_primary_dbservers();
@@ -265,6 +290,23 @@ string ArangoState::jsonCurrent () {
   string result;
   pbjson::pb2json(&_state.current(), result);
   
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all known TaskStatus
+////////////////////////////////////////////////////////////////////////////////
+
+vector<mesos::TaskStatus> ArangoState::knownTaskStatus () {
+  lock_guard<mutex> lock(_lock);
+
+  vector<mesos::TaskStatus> result;
+
+  fillTaskStatus(result, _state.current().agencies());
+  fillTaskStatus(result, _state.current().coordinators());
+  fillTaskStatus(result, _state.current().primary_dbservers());
+  fillTaskStatus(result, _state.current().secondary_dbservers());
+
   return result;
 }
 

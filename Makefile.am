@@ -21,8 +21,7 @@ PROTOCFLAGS = -I$(top_srcdir)/src -I$(srcdir) -I$(top_srcdir)/mesos/include
 ################################################################################
 
 bin_PROGRAMS = \
-	bin/arangodb-framework \
-	bin/arangodb-executor
+	bin/arangodb-framework
 
 ################################################################################
 ### @brief auxiliary programs
@@ -86,27 +85,6 @@ bin_arangodb_framework_LDADD = \
 	lib/libarangodb-mesos.a \
 	@MESOS_LIBS@ \
 	@MICROHTTPD_LIBS@ \
-	$(LIBS)
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                          executor
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief source files
-################################################################################
-
-bin_arangodb_executor_SOURCES = \
-	src/executor.cpp
-
-bin_arangodb_executor_CPPFLAGS = \
-        -I@top_srcdir@ \
-        $(AM_CPPFLAGS) \
-	@MESOS_CPPFLAGS@
-
-bin_arangodb_executor_LDADD = \
-	lib/libarangodb-mesos.a \
-	@MESOS_LIBS@ \
 	$(LIBS)
 
 ## -----------------------------------------------------------------------------

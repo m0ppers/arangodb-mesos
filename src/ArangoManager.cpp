@@ -128,25 +128,6 @@ namespace {
   */
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief discovers new coordinators and dbservers
-///////////////////////////////////////////////////////////////////////////////
-
-  string findAgencyAddress ();
-
-  void discoverRoles () {
-    string command
-      = "./bin/discover.sh " + findAgencyAddress();
-
-    LOG(INFO)
-    << "DISCOVERY about to start: " << command;
-
-    int res = system(command.c_str());
-
-    LOG(INFO)
-    << "DISCOVERY " << command << " returned " << res;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -235,242 +216,6 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     class Aspects
-// -----------------------------------------------------------------------------
-
-Aspects::Aspects (const string& name)
-  : _name(name) {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class AgencyAspects
-// -----------------------------------------------------------------------------
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief AgencyAspects
-///////////////////////////////////////////////////////////////////////////////
-
-class AgencyAspects : public Aspects {
-  public:
-    AgencyAspects ()
-      : Aspects("AGENCY") {
-    }
-
-    string arguments (const ResourcesCurrentEntry& info,
-                      const string& taskId) const override {
-      uint32_t p1 = info.ports(0);
-      uint32_t p2 = info.ports(1);
-      string containerPath = info.container_path();
-      string hostname = info.hostname();
-
-      vector<string> a;
-
-      a.push_back("/usr/lib/arangodb/etcd-arango");
-
-      a.push_back("--data-dir");
-      a.push_back(containerPath + "/data");
-
-      a.push_back("--listen-peer-urls");
-      a.push_back("http://" + hostname + ":" + to_string(p1));
-
-      a.push_back("--initial-advertise-peer-urls");
-      a.push_back("http://" + hostname + ":" + to_string(p1));
-
-      a.push_back("--initial-cluster");
-      a.push_back("default=http://" + hostname + ":" + to_string(p1));
-
-      a.push_back("--listen-client-urls");
-      a.push_back("http://" + hostname + ":" + to_string(p2));
-
-      a.push_back("--advertise-client-urls");
-      a.push_back("http://" + hostname + ":" + to_string(p2));
-
-      return join(a, "\n");
-    }
-
-    /*
-    bool instanceUp (const Instance& instance) override {
-      const string& slaveId = instance._slaveId;
-
-      if (_masters.find(slaveId) != _masters.end()) {
-        return true;
-      }
-
-      bool ok = initializeAgency(instance);
-
-      if (! ok) {
-        return false;
-      }
-
-      _masters.insert(slaveId);
-      return true;
-    }
-    */
-};
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief finds an agency endpoint
-///////////////////////////////////////////////////////////////////////////////
-
-namespace {
-
-  // TODO(fc) do not use a global variable
-  AgencyAspects* globalAgency = nullptr;
-
-  string findAgencyEndpoint () {
-    /*
-    default_random_engine generator;
-    uniform_int_distribution<int> d1(0, globalAgency->_masters.size() - 1);
-    size_t d2 = d1(generator);
-
-    auto iter = globalAgency->_masters.begin();
-    advance(iter, d2);
-
-    const string& slaveId = *iter;
-    const string& taskId = globalAgency->_slave2task[slaveId];
-
-    const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
-
-    return "tcp://" + instance._hostname + ":" + to_string(instance._ports[1]);
-    */
-  }
-
-  string findAgencyAddress () {
-    /*
-    default_random_engine generator;
-    uniform_int_distribution<int> d1(0, globalAgency->_masters.size() - 1);
-    size_t d2 = d1(generator);
-
-    auto iter = globalAgency->_masters.begin();
-    advance(iter, d2);
-
-    const string& slaveId = *iter;
-    const string& taskId = globalAgency->_slave2task[slaveId];
-
-    const Instance& instance = globalAgency->_instanceManager->_instances[taskId];
-
-    return instance._hostname + ":" + to_string(instance._ports[1]);
-    */
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ArangoAspects
-// -----------------------------------------------------------------------------
-
-class ArangoAspects : public Aspects {
-  public:
-    ArangoAspects (const string& name)
-      : Aspects(name) {
-    }
-
-  public:
-    string arguments (const ResourcesCurrentEntry& info,
-                      const string& taskId) const override {
-/*
-      uint32_t p1 = analysis._ports[0];
-
-      vector<string> a;
-
-      a.push_back("/usr/sbin/arangod");
-
-      a.push_back("--database.directory");
-      a.push_back(analysis._containerPath + "/data");
-
-      a.push_back("--log.file");
-      a.push_back(analysis._containerPath + "/logs/" + _type + ".log");
-      // a.push_back("-");
-
-      a.push_back("--log.level");
-      // a.push_back("trace");
-      // a.push_back("debug");
-      a.push_back("info");
-
-      a.push_back("--javascript.app-path");
-      a.push_back(analysis._containerPath + "/apps");
-
-      string serverEndpoint = "tcp://" + offer.hostname() + ":" + to_string(p1);
-
-      a.push_back("--server.endpoint");
-      a.push_back(serverEndpoint);
-
-      string agency = findAgencyEndpoint();
-
-      a.push_back("--cluster.agency-endpoint");
-      a.push_back(agency);
-
-      a.push_back("--cluster.my-address");
-      a.push_back(serverEndpoint);
-
-      string slaveId = offer.slave_id().value();
-
-      // create a hash from the container_path and the slaveId
-      a.push_back("--cluster.my-local-info");
-      a.push_back(_type + ":" + taskId);
-
-      return join(a, "\n");
-*/
-    }
-
-  public:
-    const string _type;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class CoordinatorAspects
-// -----------------------------------------------------------------------------
-
-class CoordinatorAspects : public ArangoAspects {
-  public:
-    CoordinatorAspects ()
-      : ArangoAspects("coordinator") {
-    }
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class DBServersAspects
-// -----------------------------------------------------------------------------
-
-class DBServerAspects : public Aspects {
-  public:
-    DBServerAspects ()
-      : Aspects("dbserver") {
-    }
-
-  public:
-    string arguments (const ResourcesCurrentEntry& info,
-                      const string& taskId) const override {
-      vector<string> a;
-
-      a.push_back("/bin/sleep");
-      a.push_back("300");
-
-      return join(a, "\n");
-    }
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class AspectInstanceStatus
-// -----------------------------------------------------------------------------
-
-enum class AspectInstanceStatus {
-  DYNAMIC_RESERVATION_REQUESTED,
-  PERSISTENT_VOLUME_REQUESTED,
-  TASK_STARTED
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class AspectInstance
-// -----------------------------------------------------------------------------
-
-class AspectInstance {
-  public:
-    AspectInstanceStatus _state;
-    mesos::OfferID _offerId;
-    chrono::system_clock::time_point _started;
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                           class ArangoManagerImpl
 // -----------------------------------------------------------------------------
 
@@ -485,41 +230,24 @@ class arangodb::ArangoManagerImpl {
     void taskStatusUpdate (const mesos::TaskStatus& status);
 
   public:
-    void slaveInfoUpdate (const mesos::SlaveInfo& info);
-    // vector<OfferSummary> currentOffers ();
-    // vector<Instance> currentInstances ();
-    // ClusterInfo clusterInfo (const string& name) const;
-    // ClusterInfo adjustPlanned (const string& name, const ClusterInfo&);
-    // vector<arangodb::SlaveInfo> slaveInfo (const string& name) const;
-
-  private:
-    void removeOffer (const string& offerId);
-
-    void checkInstances (Aspects&);
-    bool makePersistentVolume (const string& name, const mesos::Offer&, const mesos::Resources&);
-    bool makeDynamicReservation(const mesos::Offer&, const mesos::Resources&);
-
-    void startInstance (Aspects&, const ResourcesCurrentEntry&, const AspectPosition&);
-
-  public:
-    const string _role;
-    const string _principal;
-    mutex _lock;
     atomic<bool> _stopDispatcher;
 
-    AgencyAspects _agency;
-    CoordinatorAspects _coordinator;
-    DBServerAspects _dbserver;
+  private:
+    void applyStatusUpdates ();
+    bool checkOutstandOffers ();
+    void startNewInstances ();
+    bool makePersistentVolume (const string& name, const mesos::Offer&, const mesos::Resources&);
+    bool makeDynamicReservation (const mesos::Offer&, const mesos::Resources&);
 
-    unordered_map<string, AspectPosition> _task2position;
+    void startInstance (InstanceActionState, const ResourcesCurrentEntry&, const AspectPosition&);
+    void fillKnownInstances (AspectType, const InstancesCurrent&);
 
   private:
-    vector<Aspects*> _aspects;
+    mutex _lock;
 
-    // unordered_map<string, mesos::SlaveInfo> _slaveInfo;
-    // unordered_map<string, OfferSummary> _offers;
-
+    unordered_map<string, AspectPosition> _task2position;
     unordered_map<string, mesos::Offer> _storedOffers;
+    vector<mesos::TaskStatus> _taskStatusUpdates;
 };
 
 // -----------------------------------------------------------------------------
@@ -532,18 +260,18 @@ class arangodb::ArangoManagerImpl {
 
 ArangoManagerImpl::ArangoManagerImpl (const string& role,
                                       const string& principal)
-  : _role(role),
-    _principal(principal),
-    _stopDispatcher(false),
-    _agency(),
-    _coordinator(),
-    _dbserver() {
+  : _stopDispatcher(false),
+    _lock(),
+    _task2position(),
+    _storedOffers(),
+    _taskStatusUpdates() {
 
-  // TODO(fc) how to persist & change these values
+  Current current = Global::state().current();
 
-  _aspects = { &_agency, &_coordinator, &_dbserver };
-
-  globalAgency = &_agency;
+  fillKnownInstances(AspectType::AGENCY, current.agencies());
+  fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
+  fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.primary_dbservers());
+  fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());
 }
 
 // -----------------------------------------------------------------------------
@@ -557,7 +285,6 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
 void ArangoManagerImpl::dispatch () {
   static const int SLEEP_SEC = 10;
 
-  bool init = false;
   unordered_set<string> bootstrapped;
 
   while (! _stopDispatcher) {
@@ -569,124 +296,16 @@ void ArangoManagerImpl::dispatch () {
       continue;
     }
 
-    // .............................................................................
+    // apply received status updates
+    applyStatusUpdates();
+
     // check all outstanding offers
-    // .............................................................................
+    bool sleep = checkOutstandOffers();
 
-    unordered_map<string, mesos::Offer> next;
-    vector<pair<mesos::Offer, mesos::Resources>> dynamic;
-    vector<pair<mesos::Offer, OfferAction>> persistent;
-
-    {
-      lock_guard<mutex> lock(_lock);
-
-      Caretaker& caretaker = Global::caretaker();
-      caretaker.updatePlan();
-
-      for (auto&& id_offer : _storedOffers) {
-        OfferAction action = caretaker.checkOffer(id_offer.second);
-
-        switch (action._state) {
-          case OfferActionState::IGNORE:
-            Global::scheduler().declineOffer(id_offer.second.id());
-            break;
-
-          case OfferActionState::USABLE:
-            break;
-
-          case OfferActionState::STORE_FOR_LATER:
-            next[id_offer.first] = id_offer.second;
-            break;
-
-          case OfferActionState::MAKE_DYNAMIC_RESERVATION:
-            dynamic.push_back(make_pair(id_offer.second, action._resources));
-            break;
-
-          case OfferActionState::MAKE_PERSISTENT_VOLUME:
-            persistent.push_back(make_pair(id_offer.second, action));
-            break;
-        }
-      }
-
-      _storedOffers.swap(next);
-    }
-
-    // .............................................................................
-    // try to make the dynamic reservations and persistent volumes
-    // .............................................................................
-
-    bool sleep = true;
-
-    for (auto&& offer_res : dynamic) {
-      bool res = makeDynamicReservation(offer_res.first, offer_res.second);
-
-      if (res) {
-        sleep = false;
-      }
-    }
-
-    for (auto&& offer_res : persistent) {
-      bool res = makePersistentVolume(offer_res.second._name,
-                                      offer_res.first,
-                                      offer_res.second._resources);
-
-      if (res) {
-        sleep = false;
-      }
-    }
-
-    // .............................................................................
     // check if we can start new instances
-    // .............................................................................
+    startNewInstances();
 
-    vector<InstanceAction> start;
-
-    {
-      lock_guard<mutex> lock(_lock);
-
-      Caretaker& caretaker = Global::caretaker();
-      InstanceAction action;
-
-      do {
-        action = caretaker.checkInstance();
-
-        switch (action._state) {
-          case::InstanceActionState::DONE:
-            break;
-
-          case::InstanceActionState::START_AGENCY:
-          case::InstanceActionState::START_COORDINATOR:
-          case::InstanceActionState::START_PRIMARY_DBSERVER:
-            start.push_back(action);
-            break;
-        }
-      }
-      while (action._state != InstanceActionState::DONE);
-    }
-
-    for (auto&& action : start) {
-      switch (action._state) {
-        case::InstanceActionState::START_AGENCY:
-          startInstance(_agency, action._info, action._pos);
-          break;
-
-        case::InstanceActionState::START_COORDINATOR:
-          startInstance(_coordinator, action._info, action._pos);
-          break;
-
-        case::InstanceActionState::START_PRIMARY_DBSERVER:
-          startInstance(_dbserver, action._info, action._pos);
-          break;
-
-        default:
-          break;
-      }
-    }
-    
-    // .............................................................................
     // wait for a little while
-    // .............................................................................
-
     if (sleep) {
       this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
     }
@@ -717,7 +336,12 @@ void ArangoManagerImpl::addOffer (const mesos::Offer& offer) {
 void ArangoManagerImpl::removeOffer (const mesos::OfferID& offerId) {
   lock_guard<mutex> lock(_lock);
 
-  removeOffer(offerId.value());
+  string id = offerId.value();
+
+  LOG(INFO)
+  << "OFFER removed: " << id;
+  
+  _storedOffers.erase(id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -727,217 +351,172 @@ void ArangoManagerImpl::removeOffer (const mesos::OfferID& offerId) {
 void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
   lock_guard<mutex> lock(_lock);
 
-  mesos::TaskID taskId = status.task_id();
-  const AspectPosition& pos = _task2position[taskId.value()];
+  _taskStatusUpdates.push_back(status);
+}
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief applies status updates
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::applyStatusUpdates () {
   Caretaker& caretaker = Global::caretaker();
-  caretaker.setTaskStatus(pos, status);
+
+  lock_guard<mutex> lock(_lock);
+
+  for (auto&& status : _taskStatusUpdates) {
+    mesos::TaskID taskId = status.task_id();
+    const AspectPosition& pos = _task2position[taskId.value()];
+
+    caretaker.setTaskStatus(pos, status);
+
+    switch (status.state()) {
+      case mesos::TASK_STAGING:
+        break;
+
+      case mesos::TASK_RUNNING:
+        caretaker.setInstanceState(pos, INSTANCE_STATE_RUNNING);
+        break;
+
+      case mesos::TASK_STARTING:
+        // do nothing
+        break;
+
+      case mesos::TASK_FINISHED: // TERMINAL. The task finished successfully.
+      case mesos::TASK_FAILED:   // TERMINAL. The task failed to finish successfully.
+      case mesos::TASK_KILLED:   // TERMINAL. The task was killed by the executor.
+      case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
+      case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
+        caretaker.setInstanceState(pos, INSTANCE_STATE_STOPPED);
+        caretaker.freeResourceForInstance(pos);
+        break;
+    }
+  }
+
+  _taskStatusUpdates.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slave update
+/// @brief checks available offers
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-void ArangoManagerImpl::slaveInfoUpdate (const mesos::SlaveInfo& info) {
-  LOG(INFO)
-  << "DEBUG received slave info for " << info.id().value();
+bool ArangoManagerImpl::checkOutstandOffers () {
+  Caretaker& caretaker = Global::caretaker();
 
-  _slaveInfo[info.id().value()] = info;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current offers for debugging
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-vector<OfferSummary> ArangoManagerImpl::currentOffers () {
-  vector<OfferSummary> result;
+  unordered_map<string, mesos::Offer> next;
+  vector<pair<mesos::Offer, mesos::Resources>> dynamic;
+  vector<pair<mesos::Offer, OfferAction>> persistent;
+  vector<mesos::Offer> declined;
 
   {
     lock_guard<mutex> lock(_lock);
 
-    for (const auto& offer : _offers) {
-      result.push_back(offer.second);
+    caretaker.updatePlan();
+
+    for (auto&& id_offer : _storedOffers) {
+      OfferAction action = caretaker.checkOffer(id_offer.second);
+
+      switch (action._state) {
+        case OfferActionState::IGNORE:
+          declined.push_back(id_offer.second);
+          break;
+
+        case OfferActionState::USABLE:
+          break;
+
+        case OfferActionState::STORE_FOR_LATER:
+          declined.push_back(id_offer.second);
+
+          // TODO(fc) do we need to keep the offer for a while?
+          // next[id_offer.first] = id_offer.second;
+
+          break;
+
+        case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+          dynamic.push_back(make_pair(id_offer.second, action._resources));
+          break;
+
+        case OfferActionState::MAKE_PERSISTENT_VOLUME:
+          persistent.push_back(make_pair(id_offer.second, action));
+          break;
+      }
+    }
+
+    _storedOffers.swap(next);
+  }
+
+  // .............................................................................
+  // decline unusable offers
+  // .............................................................................
+
+  for (auto&& offer : declined) {
+    Global::scheduler().declineOffer(offer.id());
+  }
+
+  // .............................................................................
+  // try to make the dynamic reservations and persistent volumes
+  // .............................................................................
+
+  bool sleep = true;
+
+  for (auto&& offer_res : dynamic) {
+    bool res = makeDynamicReservation(offer_res.first, offer_res.second);
+
+    if (res) {
+      sleep = false;
     }
   }
 
-  return result;
+  for (auto&& offer_res : persistent) {
+    bool res = makePersistentVolume(offer_res.second._name,
+                                    offer_res.first,
+                                    offer_res.second._resources);
+
+    if (res) {
+      sleep = false;
+    }
+  }
+
+  return sleep;
 }
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current instances for debugging
+/// @brief starts new instances
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-vector<Instance> ArangoManagerImpl::currentInstances () {
-  vector<Instance> result;
+void ArangoManagerImpl::startNewInstances () {
+  vector<InstanceAction> start;
 
   {
     lock_guard<mutex> lock(_lock);
 
-    for (const auto& instance : _instances) {
-      result.push_back(instance.second);
+    Caretaker& caretaker = Global::caretaker();
+    InstanceAction action;
+
+    do {
+      action = caretaker.checkInstance();
+
+      switch (action._state) {
+        case::InstanceActionState::DONE:
+          break;
+
+        case::InstanceActionState::START_AGENCY:
+        case::InstanceActionState::START_COORDINATOR:
+        case::InstanceActionState::START_PRIMARY_DBSERVER:
+        case::InstanceActionState::START_SECONDARY_DBSERVER:
+          start.push_back(action);
+          break;
+      }
     }
+    while (action._state != InstanceActionState::DONE);
   }
 
-  return result;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clusterInfo
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-ClusterInfo ArangoManagerImpl::clusterInfo (const string& name) const {
-  ClusterInfo info;
-
-  info._name = name;
-
-  info._planned._agencies = _agency._plannedInstances;
-  info._planned._coordinators = _coordinator._plannedInstances;
-  info._planned._dbservers = _dbserver._plannedInstances;
-
-  info._running._agencies = _agency._runningInstances;
-  info._running._coordinators = _coordinator._runningInstances;
-  info._running._dbservers = _dbserver._runningInstances;
-
-  for (auto aspect : _aspects) {
-    info._planned._servers += aspect->_plannedInstances;
-    info._running._servers += aspect->_runningInstances;
-
-    double c = cpus(aspect->_minimumResources);
-    info._planned._cpus += aspect->_plannedInstances * c;
-    info._running._cpus += aspect->_runningInstances * c;
-
-    double m = memory(aspect->_minimumResources);
-    info._planned._memory += aspect->_plannedInstances * m * 1024 * 1024;
-    info._running._memory += aspect->_runningInstances * m * 1024 * 1024;
-
-    double d = diskspace(aspect->_minimumResources);
-    info._planned._disk += aspect->_plannedInstances * d * 1024 * 1024;
-    info._running._disk += aspect->_runningInstances * d * 1024 * 1024;
+  for (auto&& action : start) {
+    startInstance(action._state, action._info, action._pos);
   }
-
-  info._planned._servers = round(info._planned._servers * 1000.0) / 1000.0;
-  info._planned._cpus = round(info._planned._cpus * 1000.0) / 1000.0;
-  info._planned._memory = round(info._planned._memory * 1000.0) / 1000.0;
-  info._planned._disk = round(info._planned._disk * 1000.0) / 1000.0;
-
-  info._running._servers = round(info._running._servers * 1000.0) / 1000.0;
-  info._running._cpus = round(info._running._cpus * 1000.0) / 1000.0;
-  info._running._memory = round(info._running._memory * 1000.0) / 1000.0;
-  info._running._disk = round(info._running._disk * 1000.0) / 1000.0;
-
-  return info;
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjustPlanned
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-ClusterInfo ArangoManagerImpl::adjustPlanned (const string& name,
-                                              const ClusterInfo& info) {
-  _agency._plannedInstances = info._planned._agencies;
-  _coordinator._plannedInstances = info._planned._coordinators;
-  _dbserver._plannedInstances = info._planned._dbservers;
-
-  return clusterInfo(info._name);
-
-  // TODO(fc) kill old instances
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief slaveInfo
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-vector<arangodb::SlaveInfo> ArangoManagerImpl::slaveInfo (const string& name) const {
-  map<string, SlaveInfo> infos;
-
-  for (auto& i : _instances) {
-    auto& instance = i.second;
-
-    if (instance._state != InstanceState::STARTED && instance._state != InstanceState::RUNNING) {
-      continue;
-    }
-
-    auto& info = infos[instance._slaveId];
-
-    info._used._cpus += cpus(instance._resources);
-    info._used._memory += memory(instance._resources) * 1024 * 1024;
-    info._used._disk += diskspace(instance._resources) * 1024 * 1024;
-  }
-
-  for (auto& i : infos) {
-    auto& info = i.second;
-
-    info._name = i.first;
-
-    info._available._cpus = info._used._cpus * 2;
-    info._available._memory = info._used._memory * 2;
-    info._available._disk = info._used._disk * 2;
-  }
-
-  for (auto& i : _slaveInfo) {
-    auto& slave = i.second;
-    auto& info = infos[i.first];
-    Resources resources = slave.resources();
-
-    info._available._cpus = cpus(resources);
-    info._available._memory = memory(resources) * 1024 * 1024;
-    info._available._disk = diskspace(resources) * 1024 * 1024;
-  }
-
-  vector<SlaveInfo> result;
-
-  for (auto& i : infos) {
-    result.push_back(i.second);
-  }
-
-  return result;
-}
-*/
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an offer
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManagerImpl::removeOffer (const string& id) {
-/*
-  const auto& iter = _offers.find(id);
-
-  if (iter == _offers.end()) {
-    return;
-  }
-
-  const Offer& offer = iter->second._offer;
-  const string& slaveId = offer.slave_id().value();
-
-  LOG(INFO)
-  << "DEBUG removed offer " << id
-  << " for slave " << slaveId;
-
-  // must be last, because it will kill offer and slaveId
-  _offers.erase(iter);
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if need to start a new agency instance
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManagerImpl::checkInstances (Aspects& aspect) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1033,13 +612,12 @@ bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
 /// @brief starts a new agency
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::startInstance (Aspects& aspect,
+void ArangoManagerImpl::startInstance (InstanceActionState aspect,
                                        const ResourcesCurrentEntry& info,
                                        const AspectPosition& pos) {
   lock_guard<mutex> lock(_lock);
 
   string taskId = UUID::random().toString();
-  string arguments = aspect.arguments(info, taskId);
 
   if (info.ports_size() != 1) {
     LOG(WARNING)
@@ -1068,7 +646,7 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   mapping->set_protocol("tcp");
 
   // volume
-  string path = "arangodb_standalone_" + Global::frameworkName();
+  string path = "arangodb_" + Global::frameworkName() + "_standalone";
 
   mesos::Volume* volume = container.add_volumes();
   volume->set_container_path("/data");
@@ -1078,7 +656,7 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
   // and start
   mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
     taskId,
-    Global::frameworkName() + ":" + aspect._name + ":" + taskId,
+    path + "_" + taskId,
     info,
     container,
     command);
@@ -1090,106 +668,19 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief status update (runing)
+/// @brief recover task mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-void ArangoManagerImpl::taskRunning (const string& taskId) {
-  const auto& iter = _instances.find(taskId);
+void ArangoManagerImpl::fillKnownInstances (AspectType type,
+                                            const InstancesCurrent& instances) {
+  for (int i = 0;  i < instances.entries_size();  ++i) {
+    const InstancesCurrentEntry& entry = instances.entries(i);
 
-  if (iter == _instances.end()) {
-    return;
-  }
-
-  Instance& instance = iter->second;
-
-  if (instance._state == InstanceState::RUNNING) {
-    return;
-  }
-
-  if (instance._state != InstanceState::STARTED) {
-    LOG(WARNING)
-    << "INSTANCE is not STARTED, but got RUNNING (for "
-    << taskId << "), ignoring";
-
-    return;
-  }
-
-  Aspects* aspect = _aspects[instance._aspectId];
-
-  LOG(INFO)
-  << aspect->_name << " changing state from "
-  << toString(instance._state)
-  << " to RUNNING for " << taskId;
-
-  instance._state = InstanceState::RUNNING;
-
-  --(aspect->_startedInstances);
-  ++(aspect->_runningInstances);
-
-  bool ok = aspect->instanceUp(instance);
-
-  if (! ok) {
-    _scheduler->killInstance(aspect->_name, instance._taskId);
-
-    // TODO(fc) keep a list of killed task and try again, if now 
-    // update is received within a certain time.
-  }
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief status update (finished)
-////////////////////////////////////////////////////////////////////////////////
-
-/*
-void ArangoManagerImpl::taskFinished (const string& taskId) {
-  const auto& iter = _instances.find(taskId);
-
-  if (iter == _instances.end()) {
-    return;
-  }
-
-  Instance& instance = iter->second;
-  InstanceState state = instance._state;
-
-  if (state != InstanceState::STARTED && state != InstanceState::RUNNING) {
-    return;
-  }
-
-  size_t aspectId = instance._aspectId;
-  Aspects* aspect = _aspects[aspectId];
-
-  LOG(INFO)
-  << aspect->_name << " changing state from "
-  << toString(instance._state)
-  << " to FINISHED for " << taskId << "\n";
-
-  // update statistics
-  if (state == InstanceState::STARTED && 0 < aspect->_startedInstances) {
-    --(aspect->_startedInstances);
-  }
-  else if (state == InstanceState::RUNNING && 0 < aspect->_runningInstances) {
-    --(aspect->_runningInstances);
-  }
-
-  instance._state = InstanceState::FINISHED;
-
-  // change waiting offers
-  const string& slaveId = instance._slaveId;
-
-  for (auto& offer : _offers) {
-    auto& analysis = offer.second._analysis[aspectId];
-
-    if (analysis._state == OfferAnalysisStatus::WAIT) {
-      analysis._state = analysis._initialState;
+    if (entry.has_task_info()) {
+      _task2position[entry.task_info().task_id().value()] = { type, (size_t) i };
     }
   }
-
-  // remove instances completely
-  aspect->_startedSlaves.erase(slaveId);
 }
-*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager

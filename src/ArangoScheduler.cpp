@@ -192,6 +192,12 @@ void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
 
   vector<mesos::TaskStatus> status;
   driver->reconcileTasks(status);
+
+  status = Global::state().knownTaskStatus();
+
+  if (! status.empty()) {
+    driver->reconcileTasks(status);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

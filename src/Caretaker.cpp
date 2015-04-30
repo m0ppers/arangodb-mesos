@@ -46,12 +46,11 @@ using namespace std;
 
 static void adjustPlan (const string& name,
                         const TargetEntry& target,
-                        OfferPlan* offers,
                         TasksPlan* tasks,
                         ResourcesCurrent* resources,
                         InstancesCurrent* instances) {
   int t = (int) target.instances();
-  int p = offers->entries_size();
+  int p = tasks->entries_size();
 
   if (t == p) {
     /*
@@ -73,7 +72,6 @@ static void adjustPlan (const string& name,
   }
 
   for (; p < t;  ++p) {
-    offers->add_entries();
     tasks->add_entries();
 
     ResourcesCurrentEntry* resEntry = resources->add_entries();
@@ -118,12 +116,10 @@ static bool isSuitableOffer (const TargetEntry& target,
   mesos::Resources minimum = target.minimal_resources();
 
   if (! offered.contains(minimum)) {
-    /*
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
     << "offer " << offer.id().value() << " does not have " 
     << "minimal resource requirements " << minimum;
-    */
 
     return false;
   }
@@ -336,7 +332,7 @@ static mesos::Resources suitablePersistent (const string& name,
 static OfferAction checkResourceOffer (const string& name,
                                        bool persistent,
                                        const TargetEntry& target,
-                                       OfferPlan* plan,
+                                       TasksPlan* plan,
                                        ResourcesCurrent* current,
                                        const mesos::Offer& offer) {
 
@@ -356,20 +352,33 @@ static OfferAction checkResourceOffer (const string& name,
     return { OfferActionState::IGNORE };
   }
 
+  int p = plan->entries_size();
+
+  if (p == 0) {
+    return { OfferActionState::IGNORE };
+  }
+
   // .............................................................................
   // we do not want to start two instance on the same slave
   // .............................................................................
 
-  int p = plan->entries_size();
-  
+  int required = -1;
+
   for (int i = 0;  i < p;  ++i) {
-    OfferPlanEntry* entry = plan->mutable_entries(i);
+    TasksPlanEntry* entry = plan->mutable_entries(i);
     ResourcesCurrentEntry* resEntry = current->mutable_entries(i);
 
     if (entry->slave_id().value() == offer.slave_id().value()) {
+      auto state = resEntry->state();
+
+      // we do not need a reservation
+      if (state == RESOURCE_STATE_REQUIRED) {
+        required = i;
+        break;
+      }
 
       // we have to check if the dynamic reservation succeeded
-      if (resEntry->state() == RESOURCE_STATE_TRYING_TO_RESERVE) {
+      else if (state == RESOURCE_STATE_TRYING_TO_RESERVE) {
         mesos::Resources resources = resEntry->resources();
 
         if (isSuitableReservedOffer(resources, offer)) {
@@ -390,7 +399,7 @@ static OfferAction checkResourceOffer (const string& name,
       }
 
       // we have to check if the persistent volume succeeded
-      else if (resEntry->state() == RESOURCE_STATE_TRYING_TO_PERSIST) {
+      else if (state == RESOURCE_STATE_TRYING_TO_PERSIST) {
         mesos::Resources resources = resEntry->resources();
         string persistenceId;
         string containerPath;
@@ -413,11 +422,11 @@ static OfferAction checkResourceOffer (const string& name,
         }
       }
 
-/*
+      /*
       LOG(INFO)
       << "DEBUG checkResourceOffer(" << name << "): "
       << "already using slave " << entry->slave_id().value();
-*/
+      */
 
       return { OfferActionState::STORE_FOR_LATER };
     }
@@ -427,14 +436,14 @@ static OfferAction checkResourceOffer (const string& name,
   // check if we have a free slot
   // .............................................................................
 
-  int required = -1;
+  if (required == -1) {
+    for (int i = 0;  i < p;  ++i) {
+      const ResourcesCurrentEntry& resEntry = current->entries(i);
 
-  for (int i = 0;  i < p;  ++i) {
-    const ResourcesCurrentEntry& resEntry = current->entries(i);
-
-    if (resEntry.state() == RESOURCE_STATE_REQUIRED) {
-      required = i;
-      break;
+      if (resEntry.state() == RESOURCE_STATE_REQUIRED) {
+        required = i;
+        break;
+      }
     }
   }
 
@@ -446,7 +455,7 @@ static OfferAction checkResourceOffer (const string& name,
   // make a reservation
   // .............................................................................
 
-  OfferPlanEntry* entry = plan->mutable_entries(required);
+  TasksPlanEntry* entry = plan->mutable_entries(required);
 
   entry->mutable_slave_id()->CopyFrom(offer.slave_id());
 
@@ -493,7 +502,7 @@ static OfferAction checkResourceOffer (const string& name,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   class Caretaker
+// --Section--                                                   class Caretaker
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -604,21 +613,18 @@ void Caretaker::updatePlan () {
 
   adjustPlan("agency",
              target.agencies(),
-             plan.mutable_agency_offers(),
              plan.mutable_agencies(),
              current.mutable_agency_resources(),
              current.mutable_agencies());
 
   adjustPlan("dbserver",
              target.dbservers(),
-             plan.mutable_primary_dbserver_offers(),
              plan.mutable_primary_dbservers(),
              current.mutable_primary_dbserver_resources(),
              current.mutable_primary_dbservers());
 
   adjustPlan("coordinator",
              target.coordinators(),
-             plan.mutable_coordinator_offers(),
              plan.mutable_coordinators(),
              current.mutable_coordinator_resources(),
              current.mutable_coordinators());
@@ -638,76 +644,52 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  OfferAction agency
-    = checkResourceOffer("agency", true,
-                         target.agencies(),
-                         plan.mutable_agency_offers(),
-                         current.mutable_agency_resources(),
-                         offer);
+  for (size_t i = 0;  i < 3;  ++i) {
+    OfferAction action;
 
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
+    switch (i) {
+      case 0:
+        action = checkResourceOffer("agency", true,
+                                    target.agencies(),
+                                    plan.mutable_agencies(),
+                                    current.mutable_agency_resources(),
+                                    offer);
+        break;
 
-  switch (agency._state) {
-    case OfferActionState::USABLE:
-    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
-    case OfferActionState::MAKE_PERSISTENT_VOLUME:
-      return agency;
 
-    case OfferActionState::STORE_FOR_LATER:
-      store = true;
-      break;
+      case 1:
+        action = checkResourceOffer("dbserver", true,
+                                    target.dbservers(),
+                                    plan.mutable_primary_dbservers(),
+                                    current.mutable_primary_dbserver_resources(),
+                                    offer);
+        break;
 
-    case OfferActionState::IGNORE:
-      break;
-  }
+      case 2:
+        action = checkResourceOffer("coordinator", false,
+                                    target.coordinators(),
+                                    plan.mutable_coordinators(),
+                                    current.mutable_coordinator_resources(),
+                                    offer);
+        break;
+    }
 
-  OfferAction dbservers
-    = checkResourceOffer("dbserver", true,
-                         target.dbservers(),
-                         plan.mutable_primary_dbserver_offers(),
-                         current.mutable_primary_dbserver_resources(),
-                         offer);
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
 
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
+    switch (action._state) {
+      case OfferActionState::USABLE:
+      case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+      case OfferActionState::MAKE_PERSISTENT_VOLUME:
+        return action;
 
-  switch (dbservers._state) {
-    case OfferActionState::USABLE:
-    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
-    case OfferActionState::MAKE_PERSISTENT_VOLUME:
-      return dbservers;
+      case OfferActionState::STORE_FOR_LATER:
+        store = true;
+        break;
 
-    case OfferActionState::STORE_FOR_LATER:
-      store = true;
-      break;
-
-    case OfferActionState::IGNORE:
-      break;
-  }
-
-  OfferAction coordinators
-    = checkResourceOffer("coordinator", false,
-                         target.coordinators(),
-                         plan.mutable_coordinator_offers(),
-                         current.mutable_coordinator_resources(),
-                         offer);
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-
-  switch (coordinators._state) {
-    case OfferActionState::USABLE:
-    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
-    case OfferActionState::MAKE_PERSISTENT_VOLUME:
-      return coordinators;
-
-    case OfferActionState::STORE_FOR_LATER:
-      store = true;
-      break;
-
-    case OfferActionState::IGNORE:
-      break;
+      case OfferActionState::IGNORE:
+        break;
+    }
   }
 
   if (store) {
@@ -760,6 +742,45 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
   Global::state().setCurrent(current);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the instance state
+////////////////////////////////////////////////////////////////////////////////
+
+void Caretaker::setInstanceState (const AspectPosition& pos,
+                                  InstancesCurrentState state) {
+  Current current = Global::state().current();
+  int p = pos._pos;
+
+  switch (pos._type) {
+    case AspectType::PRIMARY_DBSERVER:
+      current.mutable_primary_dbservers()
+        ->mutable_entries(p)
+        ->set_state(state);
+      break;
+  }
+
+  Global::state().setCurrent(current);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees the resource for an instance
+////////////////////////////////////////////////////////////////////////////////
+
+void Caretaker::freeResourceForInstance (const AspectPosition& pos) {
+  Current current = Global::state().current();
+  int p = pos._pos;
+
+  switch (pos._type) {
+    case AspectType::PRIMARY_DBSERVER:
+      current.mutable_primary_dbserver_resources()
+        ->mutable_entries(p)
+        ->set_state(RESOURCE_STATE_REQUIRED);
+      break;
+  }
+
+  Global::state().setCurrent(current);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
 // -----------------------------------------------------------------------------
@@ -780,10 +801,12 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
 
     switch (instance->state()) {
       case INSTANCE_STATE_UNUSED:
+      case INSTANCE_STATE_STOPPED:
         start = true;
         break;
 
       case INSTANCE_STATE_STARTING:
+      case INSTANCE_STATE_RUNNING:
         break;
     }
 
@@ -792,6 +815,7 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
 
       if (resEntry->state() == RESOURCE_STATE_USEABLE) {
         instance->set_state(INSTANCE_STATE_STARTING);
+        resEntry->set_state(RESOURCE_STATE_USED);
 
         mesos::OfferID offerId = resEntry->offer_id();
         mesos::SlaveID slaveId = resEntry->slave_id();

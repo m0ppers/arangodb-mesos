@@ -44,25 +44,6 @@ namespace arangodb {
   class ResourcesCurrentEntry;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                     class Aspects
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Aspects
-////////////////////////////////////////////////////////////////////////////////
-
-  class Aspects {
-    public:
-      Aspects (const std::string& name);
-
-    public:
-      virtual string arguments (const ResourcesCurrentEntry&, const string& taskId) const = 0;
-
-    public:
-      const string _name;
-  };
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager
 // -----------------------------------------------------------------------------
 

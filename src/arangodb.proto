@@ -25,34 +25,9 @@ message Target {
 // --SECTION--                                                              PLAN
 // -----------------------------------------------------------------------------
 
-message OfferPlanEntry {
+message TasksPlanEntry {
   optional mesos.SlaveID slave_id = 1;
   optional string persistence_id = 2;
-}
-
-
-
-message OfferPlan {
-  repeated OfferPlanEntry entries = 1;
-}
-
-
-
-enum TasksPlanState {
-  TASK_STATE_UNUSED = 1;
-  TASK_STATE_REQUIRED = 2;
-  TASK_STATE_STARTED = 3;
-  TASK_STATE_RUNNING = 4;
-  TASK_STATE_KILLED = 5;
-}
-
-
-
-message TasksPlanEntry {
-  optional TasksPlanState state = 1 [default = TASK_STATE_UNUSED];
-
-  optional mesos.SlaveID slave_id = 2;
-  optional mesos.TaskID task_id = 3;
 }
 
 
@@ -64,11 +39,6 @@ message TasksPlan {
 
 
 message Plan {
-  required OfferPlan agency_offers = 1;
-  required OfferPlan coordinator_offers = 2;
-  required OfferPlan primary_dbserver_offers = 3;
-  required OfferPlan secondary_dbserver_offers = 4;
-
   required TasksPlan agencies = 5;
   required TasksPlan coordinators = 6;
   required TasksPlan primary_dbservers = 7;
@@ -85,7 +55,8 @@ enum ResourcesCurrentState {
   RESOURCE_STATE_TRYING_TO_RESERVE = 3;
   RESOURCE_STATE_TRYING_TO_PERSIST = 4;
   RESOURCE_STATE_USEABLE = 5;
-  RESOURCE_STATE_LOST = 6;
+  RESOURCE_STATE_USED = 6;
+  RESOURCE_STATE_LOST = 7;
 }
 
 
@@ -112,6 +83,8 @@ message ResourcesCurrent {
 enum InstancesCurrentState {
   INSTANCE_STATE_UNUSED = 1;
   INSTANCE_STATE_STARTING = 2;
+  INSTANCE_STATE_RUNNING = 3;
+  INSTANCE_STATE_STOPPED = 4;
 }
 
 

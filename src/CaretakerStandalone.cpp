@@ -54,15 +54,17 @@ CaretakerStandalone::CaretakerStandalone () {
   // AGENCY
   TargetEntry* agency = target.mutable_agencies();
   agency->set_instances(0);
+  agency->clear_minimal_resources();
 
   // COORDINATOR
   TargetEntry* coordinator = target.mutable_coordinators();
   coordinator->set_instances(0);
+  coordinator->clear_minimal_resources();
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
-
   dbserver->set_instances(1);
+  dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
 
   m = dbserver->add_minimal_resources();
