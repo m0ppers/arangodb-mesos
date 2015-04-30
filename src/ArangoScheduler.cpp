@@ -42,7 +42,6 @@
 
 using namespace std;
 using namespace boost;
-using namespace mesos;
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
@@ -58,12 +57,10 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoScheduler::ArangoScheduler (const string& role,
-                                  const string& principal,
-                                  const ExecutorInfo& executor)
+                                  const string& principal)
   : _role(role),
     _principal(principal),
-    _driver(nullptr),
-    _executor(executor) {
+    _driver(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +78,7 @@ ArangoScheduler::~ArangoScheduler () {
 /// @brief sets the driver
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::setDriver (SchedulerDriver* driver) {
+void ArangoScheduler::setDriver (mesos::SchedulerDriver* driver) {
   _driver = driver;
 }
 
@@ -89,10 +86,10 @@ void ArangoScheduler::setDriver (SchedulerDriver* driver) {
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::reserveDynamically (const Offer& offer,
-                                          const Resources& resources) const {
-  Offer::Operation reserve;
-  reserve.set_type(Offer::Operation::RESERVE);
+void ArangoScheduler::reserveDynamically (const mesos::Offer& offer,
+                                          const mesos::Resources& resources) const {
+  mesos::Offer::Operation reserve;
+  reserve.set_type(mesos::Offer::Operation::RESERVE);
   reserve.mutable_reserve()->mutable_resources()->CopyFrom(resources);
 
   _driver->acceptOffers({offer.id()}, {reserve});
@@ -102,10 +99,10 @@ void ArangoScheduler::reserveDynamically (const Offer& offer,
 /// @brief creates a persistent disk
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::makePersistent (const Offer& offer,
-                                      const Resources& resources) const {
-  Offer::Operation reserve;
-  reserve.set_type(Offer::Operation::CREATE);
+void ArangoScheduler::makePersistent (const mesos::Offer& offer,
+                                      const mesos::Resources& resources) const {
+  mesos::Offer::Operation reserve;
+  reserve.set_type(mesos::Offer::Operation::CREATE);
   reserve.mutable_create()->mutable_volumes()->CopyFrom(resources);
 
   _driver->acceptOffers({offer.id()}, {reserve});
@@ -115,7 +112,7 @@ void ArangoScheduler::makePersistent (const Offer& offer,
 /// @brief declines an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::declineOffer (const OfferID& offerId) const {
+void ArangoScheduler::declineOffer (const mesos::OfferID& offerId) const {
   LOG(INFO)
   << "DEBUG declining offer " << offerId.value();
 
@@ -126,13 +123,15 @@ void ArangoScheduler::declineOffer (const OfferID& offerId) const {
 /// @brief starts an instances with a given offer and resources
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::startInstance (const string& taskId,
-                                     const string& name,
-                                     const mesos::SlaveID& slaveId,
-                                     const mesos::OfferID& offerId,
-                                     const mesos::Resources& resources,
-                                     const mesos::ContainerInfo::DockerInfo& docker,
-                                     const string& startCommand) const {
+mesos::TaskInfo ArangoScheduler::startInstance (
+    const string& taskId,
+    const string& name,
+    const ResourcesCurrentEntry& info,
+    const mesos::ContainerInfo& container,
+    const mesos::CommandInfo& command) const {
+  const mesos::SlaveID& slaveId = info.slave_id();
+  const mesos::OfferID& offerId = info.offer_id();
+  const mesos::Resources& resources = info.resources();
   const string& offerStr = offerId.value();
 
   LOG(INFO)
@@ -141,36 +140,22 @@ void ArangoScheduler::startInstance (const string& taskId,
   << " using offer " << offerStr
   << " and resources " << resources;
 
-  TaskInfo task;
+  mesos::TaskInfo task;
 
   task.set_name(name);
   task.mutable_task_id()->set_value(taskId);
   task.mutable_slave_id()->CopyFrom(slaveId);
   task.mutable_resources()->CopyFrom(resources);
-
-  // command to execute
-  CommandInfo* command = task.mutable_command();
-  command->set_value(startCommand);
-  command->set_shell(false);
-
-  // use docker to run the task
-  mesos::ContainerInfo* container = task.mutable_container();
-  container->set_type(ContainerInfo::DOCKER);
-
-  // copy the docker info
-  container->mutable_docker()->CopyFrom(docker);
-
-  // volume
-  mesos::Volume* volume = container->add_volumes();
-  volume->set_container_path("/data");
-  volume->set_host_path("/tmp/XYZPATH");
-  volume->set_mode(Volume::RW);
+  task.mutable_container()->CopyFrom(container);
+  task.mutable_command()->CopyFrom(command);
 
   // launch the tasks
-  vector<TaskInfo> tasks;
+  vector<mesos::TaskInfo> tasks;
   tasks.push_back(task);
 
   _driver->launchTasks(offerId, tasks);
+
+  return task;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +167,7 @@ void ArangoScheduler::killInstance (const string& name,
   LOG(INFO)
   << "INSTANCE kill instance " << taskId;
 
-  TaskID ti;
+  mesos::TaskID ti;
   ti.set_value(taskId);
 
   _driver->killTask(ti);
@@ -196,29 +181,37 @@ void ArangoScheduler::killInstance (const string& name,
 /// @brief callback when scheduler has been register
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::registered (SchedulerDriver*,
-                                  const FrameworkID& frameworkId,
-                                  const MasterInfo&) {
-  LOG(INFO) << "registered with framework id " << frameworkId.value();
+void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
+                                  const mesos::FrameworkID& frameworkId,
+                                  const mesos::MasterInfo& master) {
+  LOG(INFO)
+  << "registered with framework-id " << frameworkId.value()
+  << " at master " << master.id();
 
   Global::state().setFrameworkId(frameworkId);
+
+  vector<mesos::TaskStatus> status;
+  driver->reconcileTasks(status);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when scheduler has been re-register
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::reregistered (SchedulerDriver*,
-                                    const MasterInfo& masterInfo) {
-  // TODO(fc) what to do?
-  LOG(INFO) << "DEBUG Re-Registered!";
+void ArangoScheduler::reregistered (mesos::SchedulerDriver* driver,
+                                    const mesos::MasterInfo& master) {
+  LOG(INFO)
+  << "re-registered at new master: " << master.id();
+
+  vector<mesos::TaskStatus> status;
+  driver->reconcileTasks(status);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when scheduler has been disconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::disconnected (SchedulerDriver* driver) {
+void ArangoScheduler::disconnected (mesos::SchedulerDriver* driver) {
   // TODO(fc) what to do?
   LOG(INFO) << "DEBUG Disconnected!";
 }
@@ -227,8 +220,8 @@ void ArangoScheduler::disconnected (SchedulerDriver* driver) {
 /// @brief callback when new resources are available
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
-                                      const vector<Offer>& offers) {
+void ArangoScheduler::resourceOffers (mesos::SchedulerDriver* driver,
+                                      const vector<mesos::Offer>& offers) {
   for (auto& offer : offers) {
     LOG(INFO)
     << "DEBUG offer received " << offer.id().value();
@@ -241,8 +234,8 @@ void ArangoScheduler::resourceOffers (SchedulerDriver* driver,
 /// @brief callback when new resources becomes unavailable
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
-                                      const OfferID& offerId) {
+void ArangoScheduler::offerRescinded (mesos::SchedulerDriver* driver,
+                                      const mesos::OfferID& offerId) {
   LOG(INFO)
   << "DEBUG offer rescinded " << offerId.value();
 
@@ -253,10 +246,11 @@ void ArangoScheduler::offerRescinded (SchedulerDriver* driver,
 /// @brief callback when task changes
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
-                                    const TaskStatus& status) {
+void ArangoScheduler::statusUpdate (mesos::SchedulerDriver* driver,
+                                    const mesos::TaskStatus& status) {
   const string& taskId = status.task_id().value();
   auto state = status.state();
+  auto& manager = Global::manager();
 
   LOG(INFO)
   << "TASK '" << taskId
@@ -265,24 +259,26 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
   << " from source " << status.source()
   << " with message '" << status.message() << "'";
 
+  manager.taskStatusUpdate(status);
+
   switch (state) {
-    case TASK_STAGING:
+    case mesos::TASK_STAGING:
       break;
 
-    case TASK_RUNNING:
-      // XXXXXX _manager->statusUpdate(taskId, InstanceState::RUNNING);
+    case mesos::TASK_RUNNING:
+      // manager->statusUpdate(taskId, TASK_STATE_RUNNING);
       break;
 
-    case TASK_STARTING:
+    case mesos::TASK_STARTING:
       // do nothing
       break;
 
-    case TASK_FINISHED: // TERMINAL. The task finished successfully.
-    case TASK_FAILED:   // TERMINAL. The task failed to finish successfully.
-    case TASK_KILLED:   // TERMINAL. The task was killed by the executor.
-    case TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
-    case TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-      // XXXXXX _manager->statusUpdate(taskId, InstanceState::FINISHED);
+    case mesos::TASK_FINISHED: // TERMINAL. The task finished successfully.
+    case mesos::TASK_FAILED:   // TERMINAL. The task failed to finish successfully.
+    case mesos::TASK_KILLED:   // TERMINAL. The task was killed by the executor.
+    case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
+    case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
+      // manager->statusUpdate(taskId, InstanceState::FINISHED);
       break;
   }
 }
@@ -291,9 +287,9 @@ void ArangoScheduler::statusUpdate (SchedulerDriver* driver,
 /// @brief callback for messages from executor
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
-                                        const ExecutorID& executorId,
-                                        const SlaveID& slaveId,
+void ArangoScheduler::frameworkMessage (mesos::SchedulerDriver* driver,
+                                        const mesos::ExecutorID& executorId,
+                                        const mesos::SlaveID& slaveId,
                                         const string& data) {
   mesos::SlaveInfo slaveInfo;
   slaveInfo.ParseFromString(data);
@@ -305,8 +301,8 @@ void ArangoScheduler::frameworkMessage (SchedulerDriver* driver,
 /// @brief callback for slave is down
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::slaveLost (SchedulerDriver* driver,
-                                 const SlaveID& sid) {
+void ArangoScheduler::slaveLost (mesos::SchedulerDriver* driver,
+                                 const mesos::SlaveID& sid) {
   // TODO(fc) what to do?
   LOG(INFO) << "Slave Lost!";
 }
@@ -315,9 +311,9 @@ void ArangoScheduler::slaveLost (SchedulerDriver* driver,
 /// @brief callback for executor goes down
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::executorLost (SchedulerDriver* driver,
-                                    const ExecutorID& executorID,
-                                    const SlaveID& slaveID,
+void ArangoScheduler::executorLost (mesos::SchedulerDriver* driver,
+                                    const mesos::ExecutorID& executorID,
+                                    const mesos::SlaveID& slaveID,
                                     int status) {
   // TODO(fc) what to do?
   LOG(INFO) << "Executor Lost!";
@@ -327,17 +323,11 @@ void ArangoScheduler::executorLost (SchedulerDriver* driver,
 /// @brief error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::error (SchedulerDriver* driver,
+void ArangoScheduler::error (mesos::SchedulerDriver* driver,
                              const string& message) {
-  // TODO(fc) what to do?
   LOG(ERROR) << "ERROR " << message;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

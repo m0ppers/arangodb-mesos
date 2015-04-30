@@ -39,16 +39,17 @@ message OfferPlan {
 
 
 enum TasksPlanState {
-  TASK_STATE_REQUIRED = 1;
-  TASK_STATE_STARTED = 2;
-  TASK_STATE_RUNNING = 3;
-  TASK_STATE_KILLED = 4;
+  TASK_STATE_UNUSED = 1;
+  TASK_STATE_REQUIRED = 2;
+  TASK_STATE_STARTED = 3;
+  TASK_STATE_RUNNING = 4;
+  TASK_STATE_KILLED = 5;
 }
 
 
 
 message TasksPlanEntry {
-  required TasksPlanState state = 1;
+  optional TasksPlanState state = 1 [default = TASK_STATE_UNUSED];
 
   optional mesos.SlaveID slave_id = 2;
   optional mesos.TaskID task_id = 3;
@@ -79,24 +80,25 @@ message Plan {
 // -----------------------------------------------------------------------------
 
 enum ResourcesCurrentState {
-  RESOURCE_STATE_REQUIRED = 1;
-  RESOURCE_STATE_TRYING_TO_RESERVE = 2;
-  RESOURCE_STATE_TRYING_TO_PERSIST = 3;
-  RESOURCE_STATE_USEABLE = 4;
-  RESOURCE_STATE_LOST = 5;
+  RESOURCE_STATE_UNKNOWN = 1;
+  RESOURCE_STATE_REQUIRED = 2;
+  RESOURCE_STATE_TRYING_TO_RESERVE = 3;
+  RESOURCE_STATE_TRYING_TO_PERSIST = 4;
+  RESOURCE_STATE_USEABLE = 5;
+  RESOURCE_STATE_LOST = 6;
 }
 
 
 
 message ResourcesCurrentEntry {
-  required ResourcesCurrentState state = 1;
+  optional ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
 
-  required mesos.SlaveID slave_id = 2;
-  required mesos.OfferID offer_id = 3;
+  optional mesos.SlaveID slave_id = 2;
+  optional mesos.OfferID offer_id = 3;
   repeated mesos.Resource resources = 4;
   repeated uint32 ports = 5;
-  required string hostname = 6;
-  required string container_path = 7;
+  optional string hostname = 6;
+  optional string container_path = 7;
 }
 
 
@@ -115,9 +117,10 @@ enum InstancesCurrentState {
 
 
 message InstancesCurrentEntry {
-  required InstancesCurrentState state = 1;
+  optional InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
 
-  required mesos.TaskInfo task_info = 2;
+  optional mesos.TaskInfo task_info = 2;
+  optional mesos.TaskStatus task_status = 3;
 }
 
 
@@ -146,6 +149,9 @@ message Current {
 
 message State {
   optional mesos.FrameworkID framework_id = 1;
+  required Target target = 2;
+  required Plan plan = 3;
+  required Current current = 4;
 }
 
 // -----------------------------------------------------------------------------

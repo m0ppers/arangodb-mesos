@@ -93,6 +93,30 @@ void ArangoState::init () {
   }
 
   _stateStore = new mesos::internal::state::State(_storage);
+
+  _state.mutable_target();
+  _state.mutable_target()->mutable_agencies()->set_number_ports(0);
+  _state.mutable_target()->mutable_coordinators()->set_number_ports(0);
+
+  _state.mutable_plan();
+  _state.mutable_plan()->mutable_agency_offers();
+  _state.mutable_plan()->mutable_coordinator_offers();
+  _state.mutable_plan()->mutable_primary_dbserver_offers();
+  _state.mutable_plan()->mutable_secondary_dbserver_offers();
+  _state.mutable_plan()->mutable_agencies();
+  _state.mutable_plan()->mutable_coordinators();
+  _state.mutable_plan()->mutable_primary_dbservers();
+  _state.mutable_plan()->mutable_secondary_dbservers();
+
+  _state.mutable_current();
+  _state.mutable_current()->mutable_agencies();
+  _state.mutable_current()->mutable_coordinators();
+  _state.mutable_current()->mutable_primary_dbservers();
+  _state.mutable_current()->mutable_secondary_dbservers();
+  _state.mutable_current()->mutable_agency_resources();
+  _state.mutable_current()->mutable_coordinator_resources();
+  _state.mutable_current()->mutable_primary_dbserver_resources();
+  _state.mutable_current()->mutable_secondary_dbserver_resources();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,6 +124,8 @@ void ArangoState::init () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoState::load () {
+  lock_guard<mutex> lock(_lock);
+
   Variable variable = _stateStore->fetch("state").get();
   string value = variable.value();
 
@@ -141,6 +167,107 @@ void ArangoState::setFrameworkId (const mesos::FrameworkID& id) {
   save();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the target
+////////////////////////////////////////////////////////////////////////////////
+
+Target ArangoState::target () {
+  lock_guard<mutex> lock(_lock);
+
+  return _state.target();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the target
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoState::setTarget (const Target& target) {
+  lock_guard<mutex> lock(_lock);
+
+  _state.mutable_target()->CopyFrom(target);
+  save();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief target as json string
+////////////////////////////////////////////////////////////////////////////////
+
+string ArangoState::jsonTarget () {
+  lock_guard<mutex> lock(_lock);
+
+  string result;
+  pbjson::pb2json(&_state.target(), result);
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the plan
+////////////////////////////////////////////////////////////////////////////////
+
+Plan ArangoState::plan () {
+  lock_guard<mutex> lock(_lock);
+
+  return _state.plan();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the plan
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoState::setPlan (const Plan& plan) {
+  lock_guard<mutex> lock(_lock);
+
+  _state.mutable_plan()->CopyFrom(plan);
+  save();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief plan as json string
+////////////////////////////////////////////////////////////////////////////////
+
+string ArangoState::jsonPlan () {
+  lock_guard<mutex> lock(_lock);
+
+  string result;
+  pbjson::pb2json(&_state.plan(), result);
+  
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the current
+////////////////////////////////////////////////////////////////////////////////
+
+Current ArangoState::current () {
+  lock_guard<mutex> lock(_lock);
+  return _state.current();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the current
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoState::setCurrent (const Current& current) {
+  lock_guard<mutex> lock(_lock);
+
+  _state.mutable_current()->CopyFrom(current);
+  save();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current as json string
+////////////////////////////////////////////////////////////////////////////////
+
+string ArangoState::jsonCurrent () {
+  lock_guard<mutex> lock(_lock);
+
+  string result;
+  pbjson::pb2json(&_state.current(), result);
+  
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -161,8 +288,3 @@ void ArangoState::save () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

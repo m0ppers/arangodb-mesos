@@ -28,13 +28,9 @@
 #ifndef ARANGO_MANAGER_H
 #define ARANGO_MANAGER_H 1
 
-#include <chrono>
 #include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 #include <mesos/resources.hpp>
 #include <mesos/scheduler.hpp>
@@ -57,7 +53,7 @@ namespace arangodb {
 
   class Aspects {
     public:
-      Aspects (const string& name);
+      Aspects (const std::string& name);
 
     public:
       virtual string arguments (const ResourcesCurrentEntry&, const string& taskId) const = 0;
@@ -89,6 +85,18 @@ namespace arangodb {
       ArangoManager (const string& role, const string& principal);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief copy constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      ArangoManager (const ArangoManager&) = delete;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assignment constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      ArangoManager& operator= (const ArangoManager&) = delete;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,7 +124,7 @@ namespace arangodb {
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
-      void statusUpdate (const string&);
+      void taskStatusUpdate (const mesos::TaskStatus& status);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slave update

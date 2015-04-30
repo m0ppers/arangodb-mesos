@@ -27,6 +27,11 @@
 
 #include "CaretakerStandalone.h"
 
+#include "ArangoState.h"
+#include "Global.h"
+
+#include "arangodb.pb.h"
+
 using namespace arangodb;
 
 // -----------------------------------------------------------------------------
@@ -44,16 +49,18 @@ using namespace arangodb;
 CaretakerStandalone::CaretakerStandalone () {
   mesos::Resource* m;
 
+  Target target = Global::state().target();
+
   // AGENCY
-  TargetEntry* agency = _target.mutable_agencies();
+  TargetEntry* agency = target.mutable_agencies();
   agency->set_instances(0);
 
   // COORDINATOR
-  TargetEntry* coordinator = _target.mutable_coordinators();
+  TargetEntry* coordinator = target.mutable_coordinators();
   coordinator->set_instances(0);
 
   // DBSERVER
-  TargetEntry* dbserver = _target.mutable_dbservers();
+  TargetEntry* dbserver = target.mutable_dbservers();
 
   dbserver->set_instances(1);
   dbserver->set_number_ports(1);
@@ -75,6 +82,8 @@ CaretakerStandalone::CaretakerStandalone () {
   m->set_name("disk");
   m->set_type(mesos::Value::SCALAR);
   m->mutable_scalar()->set_value(1024);
+
+  Global::state().setTarget(target);
 }
 
 // -----------------------------------------------------------------------------
@@ -86,11 +95,22 @@ CaretakerStandalone::CaretakerStandalone () {
 ////////////////////////////////////////////////////////////////////////////////
 
 InstanceAction CaretakerStandalone::checkInstance () {
-  return checkStartInstance("dbserver",
-                            InstanceActionState::START_PRIMARY_DBSERVER,
-                            _plan.mutable_primary_dbservers(),
-                            _current.mutable_primary_dbserver_resources(),
-                            _current.mutable_primary_dbservers());
+  Target target = Global::state().target();
+  Plan plan = Global::state().plan();
+  Current current = Global::state().current();
+
+  auto res = checkStartInstance(
+    "dbserver",
+    AspectType::PRIMARY_DBSERVER,
+    InstanceActionState::START_PRIMARY_DBSERVER,
+    plan.primary_dbservers(),
+    current.mutable_primary_dbserver_resources(),
+    current.mutable_primary_dbservers());
+
+  Global::state().setPlan(plan);
+  Global::state().setCurrent(current);
+
+  return res;
 }
 
 // -----------------------------------------------------------------------------

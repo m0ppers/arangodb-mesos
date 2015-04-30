@@ -27,6 +27,12 @@
 
 #include "HttpServer.h"
 
+#include "ArangoManager.h"
+#include "ArangoState.h"
+#include "Caretaker.h"
+#include "Global.h"
+#include "utils.h"
+
 #include <string.h>
 #include <picojson.h>
 
@@ -37,11 +43,6 @@
 #include <string>
 
 #include <mesos/mesos.pb.h>
-
-#include "ArangoManager.h"
-#include "Caretaker.h"
-#include "Global.h"
-#include "utils.h"
 
 using namespace std;
 using namespace mesos;
@@ -496,9 +497,7 @@ string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
-  Caretaker& caretaker = Global::caretaker();
-
-  return caretaker.jsonTarget();
+  return Global::state().jsonTarget();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,9 +505,7 @@ string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
-  Caretaker& caretaker = Global::caretaker();
-
-  return caretaker.jsonPlan();
+  return Global::state().jsonPlan();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -516,9 +513,7 @@ string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
-  Caretaker& caretaker = Global::caretaker();
-
-  return caretaker.jsonCurrent();
+  return Global::state().jsonCurrent();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -526,11 +521,11 @@ string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_OVERVIEW (const string& name) {
-  Caretaker& caretaker = Global::caretaker();
+  ArangoState& state = Global::state();
 
-  return "{ \"target\" : " + caretaker.jsonTarget()
-       + ", \"plan\" : " + caretaker.jsonPlan()
-       + ", \"current\" : " + caretaker.jsonCurrent() + " }";
+  return "{ \"target\" : " + state.jsonTarget()
+       + ", \"plan\" : " + state.jsonPlan()
+       + ", \"current\" : " + state.jsonCurrent() + " }";
   
 }
 

@@ -28,6 +28,8 @@
 #ifndef ARANGO_SCHEDULER_H
 #define ARANGO_SCHEDULER_H 1
 
+#include "arangodb.pb.h"
+
 #include <mesos/resources.hpp>
 #include <mesos/scheduler.hpp>
 
@@ -36,8 +38,6 @@
 // -----------------------------------------------------------------------------
 
 namespace arangodb {
-  using namespace mesos;
-  using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler class
@@ -55,9 +55,8 @@ namespace arangodb {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ArangoScheduler (const string& role,
-                       const string& principal,
-                       const ExecutorInfo&);
+      ArangoScheduler (const std::string& role,
+                       const std::string& principal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -75,44 +74,44 @@ namespace arangodb {
 /// @brief sets the driver
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setDriver (SchedulerDriver*);
+      void setDriver (mesos::SchedulerDriver*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-      void reserveDynamically (const Offer&, const Resources&) const;
+      void reserveDynamically (const mesos::Offer&,
+                               const mesos::Resources&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a persistent disk
 ////////////////////////////////////////////////////////////////////////////////
 
-      void makePersistent (const Offer&, const Resources&) const;
+      void makePersistent (const mesos::Offer&,
+                           const mesos::Resources&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief declines an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      void declineOffer (const OfferID&) const;
+      void declineOffer (const mesos::OfferID&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an agency with a given offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      void startInstance (const string& taskId,
-                          const string& name,
-                          const mesos::SlaveID&,
-                          const mesos::OfferID&,
-                          const mesos::Resources&,
-                          const mesos::ContainerInfo::DockerInfo&,
-                          const string& startCommand) const;
+      mesos::TaskInfo startInstance (const std::string& taskId,
+                                     const std::string& name,
+                                     const ResourcesCurrentEntry&,
+                                     const mesos::ContainerInfo&,
+                                     const mesos::CommandInfo&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an instances
 ////////////////////////////////////////////////////////////////////////////////
 
-      void killInstance (const string& name,
-                         const string& taskId) const;
+      void killInstance (const std::string& name,
+                         const std::string& taskId) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods
@@ -124,75 +123,75 @@ namespace arangodb {
 /// @brief callback when scheduler has been register
 ////////////////////////////////////////////////////////////////////////////////
 
-      void registered (SchedulerDriver*,
-                       const FrameworkID&,
-                       const MasterInfo&) override;
+      void registered (mesos::SchedulerDriver*,
+                       const mesos::FrameworkID&,
+                       const mesos::MasterInfo&) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when scheduler has been re-register
 ////////////////////////////////////////////////////////////////////////////////
 
-      void reregistered (SchedulerDriver*,
-                         const MasterInfo&) override;
+      void reregistered (mesos::SchedulerDriver*,
+                         const mesos::MasterInfo&) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when scheduler has been disconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-      void disconnected (SchedulerDriver*) override;
+      void disconnected (mesos::SchedulerDriver*) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when new resources are available
 ////////////////////////////////////////////////////////////////////////////////
 
-      void resourceOffers (SchedulerDriver*,
-                           const vector<Offer>&) override;
+      void resourceOffers (mesos::SchedulerDriver*,
+                           const std::vector<mesos::Offer>&) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when new resources become unavailable
 ////////////////////////////////////////////////////////////////////////////////
 
-      void offerRescinded (SchedulerDriver*,
-                           const OfferID&) override;
+      void offerRescinded (mesos::SchedulerDriver*,
+                           const mesos::OfferID&) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback when task changes
 ////////////////////////////////////////////////////////////////////////////////
 
-      void statusUpdate (SchedulerDriver*,
-                         const TaskStatus&) override;
+      void statusUpdate (mesos::SchedulerDriver*,
+                         const mesos::TaskStatus&) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for messages from executor
 ////////////////////////////////////////////////////////////////////////////////
 
-      void frameworkMessage (SchedulerDriver*,
-                             const ExecutorID&,
-                             const SlaveID&,
-                             const string& data) override;
+      void frameworkMessage (mesos::SchedulerDriver*,
+                             const mesos::ExecutorID&,
+                             const mesos::SlaveID&,
+                             const std::string& data) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for slave is down
 ////////////////////////////////////////////////////////////////////////////////
 
-      void slaveLost (SchedulerDriver*,
-                      const SlaveID&) override;
+      void slaveLost (mesos::SchedulerDriver*,
+                      const mesos::SlaveID&) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for executor goes down
 ////////////////////////////////////////////////////////////////////////////////
 
-      void executorLost (SchedulerDriver*,
-                         const ExecutorID&,
-                         const SlaveID&,
+      void executorLost (mesos::SchedulerDriver*,
+                         const mesos::ExecutorID&,
+                         const mesos::SlaveID&,
                          int status) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error handling
 ////////////////////////////////////////////////////////////////////////////////
 
-      void error (SchedulerDriver*,
-                  const string& message) override;
+      void error (mesos::SchedulerDriver*,
+                  const std::string& message) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -204,25 +203,19 @@ namespace arangodb {
 /// @brief role
 ////////////////////////////////////////////////////////////////////////////////
 
-      string _role;
+      std::string _role;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief principal
 ////////////////////////////////////////////////////////////////////////////////
 
-      string _principal;
+      std::string _principal;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler driver
 ////////////////////////////////////////////////////////////////////////////////
 
-      SchedulerDriver* _driver;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executor info
-////////////////////////////////////////////////////////////////////////////////
-
-      const ExecutorInfo _executor;
+      mesos::SchedulerDriver* _driver;
   };
 }
 
@@ -231,8 +224,3 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -227,12 +227,12 @@ int main (int argc, char** argv) {
   // .............................................................................
 
   // create the executors
-  ExecutorInfo executor;
+  mesos::ExecutorInfo executor;
   executor.mutable_executor_id()->set_value("arangodb_executor");
   executor.mutable_command()->set_value(uri);
   executor.set_name("arangodb_executor");
   executor.set_source("arangodb");
-  *executor.mutable_resources() = Resources();
+  *executor.mutable_resources() = mesos::Resources();
 
   // .............................................................................
   // state
@@ -251,7 +251,7 @@ int main (int argc, char** argv) {
   // .............................................................................
 
   // create the framework
-  FrameworkInfo framework;
+  mesos::FrameworkInfo framework;
   framework.set_user(frameworkUser);
   framework.set_checkpoint(true);
 
@@ -328,9 +328,9 @@ int main (int argc, char** argv) {
   // .............................................................................
 
   // create the scheduler
-  ArangoScheduler scheduler(role, principal, executor);
+  ArangoScheduler scheduler(role, principal);
 
-  MesosSchedulerDriver* driver;
+  mesos::MesosSchedulerDriver* driver;
 
   if (os::hasenv("MESOS_AUTHENTICATE")) {
     cout << "Enabling authentication for the framework" << endl;
@@ -343,16 +343,16 @@ int main (int argc, char** argv) {
       EXIT(1) << "Expecting authentication secret in the environment";
     }
 
-    Credential credential;
+    mesos::Credential credential;
     credential.set_principal(principal);
     credential.set_secret(getenv("ARANGODB_SECRET"));
 
     framework.set_principal(principal);
-    driver = new MesosSchedulerDriver(&scheduler, framework, master, credential);
+    driver = new mesos::MesosSchedulerDriver(&scheduler, framework, master, credential);
   }
   else {
     framework.set_principal(principal);
-    driver = new MesosSchedulerDriver(&scheduler, framework, master);
+    driver = new mesos::MesosSchedulerDriver(&scheduler, framework, master);
   }
 
   scheduler.setDriver(driver);
@@ -370,7 +370,7 @@ int main (int argc, char** argv) {
   LOG(INFO) << "http port: " << webuiPort;
   http.start(webuiPort);
 
-  int status = driver->run() == DRIVER_STOPPED ? 0 : 1;
+  int status = driver->run() == mesos::DRIVER_STOPPED ? 0 : 1;
 
   http.stop();
 
@@ -385,8 +385,3 @@ int main (int argc, char** argv) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

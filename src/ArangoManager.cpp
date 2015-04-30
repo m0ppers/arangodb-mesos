@@ -27,12 +27,6 @@
 
 #include "ArangoManager.h"
 
-#include <stout/uuid.hpp>
-
-#include <atomic>
-#include <iostream>
-#include <set>
-
 #include "ArangoScheduler.h"
 #include "ArangoState.h"
 #include "Caretaker.h"
@@ -41,8 +35,16 @@
 
 #include "pbjson.hpp"
 
-using namespace mesos;
+#include <stout/uuid.hpp>
+
+#include <atomic>
+#include <iostream>
+#include <set>
+#include <unordered_set>
+#include <unordered_map>
+
 using namespace arangodb;
+using namespace std;
 
 using std::chrono::system_clock;
 
@@ -56,17 +58,17 @@ namespace {
 /// @brief finds free ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
-  vector<uint32_t> findFreePorts (const Offer& offer, size_t len) {
+  vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
     static const size_t MAX_ITERATIONS = 1000;
 
     vector<uint32_t> result;
-    vector<Value::Range> resources;
+    vector<mesos::Value::Range> resources;
 
     for (int i = 0; i < offer.resources_size(); ++i) {
       const auto& resource = offer.resources(i);
 
       if (resource.name() == "ports" &&
-          resource.type() == Value::RANGES) {
+          resource.type() == mesos::Value::RANGES) {
         const auto& ranges = resource.ranges();
 
         for (int j = 0; j < ranges.range_size(); ++j) {
@@ -464,7 +466,7 @@ enum class AspectInstanceStatus {
 class AspectInstance {
   public:
     AspectInstanceStatus _state;
-    OfferID _offerId;
+    mesos::OfferID _offerId;
     chrono::system_clock::time_point _started;
 };
 
@@ -478,9 +480,11 @@ class arangodb::ArangoManagerImpl {
 
   public:
     void dispatch ();
-    void addOffer (const Offer& offer);
-    void removeOffer (const OfferID& offerId);
-    void statusUpdate (const string&);
+    void addOffer (const mesos::Offer& offer);
+    void removeOffer (const mesos::OfferID& offerId);
+    void taskStatusUpdate (const mesos::TaskStatus& status);
+
+  public:
     void slaveInfoUpdate (const mesos::SlaveInfo& info);
     // vector<OfferSummary> currentOffers ();
     // vector<Instance> currentInstances ();
@@ -492,13 +496,10 @@ class arangodb::ArangoManagerImpl {
     void removeOffer (const string& offerId);
 
     void checkInstances (Aspects&);
-    bool makePersistentVolume (const string& name, const Offer&, const Resources&);
-    bool makeDynamicReservation(const Offer&, const Resources&);
+    bool makePersistentVolume (const string& name, const mesos::Offer&, const mesos::Resources&);
+    bool makeDynamicReservation(const mesos::Offer&, const mesos::Resources&);
 
-    void startInstance (Aspects&, const ResourcesCurrentEntry&);
-
-    void taskRunning (const string&);
-    void taskFinished (const string&);
+    void startInstance (Aspects&, const ResourcesCurrentEntry&, const AspectPosition&);
 
   public:
     const string _role;
@@ -509,6 +510,8 @@ class arangodb::ArangoManagerImpl {
     AgencyAspects _agency;
     CoordinatorAspects _coordinator;
     DBServerAspects _dbserver;
+
+    unordered_map<string, AspectPosition> _task2position;
 
   private:
     vector<Aspects*> _aspects;
@@ -644,7 +647,6 @@ void ArangoManagerImpl::dispatch () {
       Caretaker& caretaker = Global::caretaker();
       InstanceAction action;
 
-
       do {
         action = caretaker.checkInstance();
 
@@ -665,15 +667,15 @@ void ArangoManagerImpl::dispatch () {
     for (auto&& action : start) {
       switch (action._state) {
         case::InstanceActionState::START_AGENCY:
-          startInstance(_agency, action._info);
+          startInstance(_agency, action._info, action._pos);
           break;
 
         case::InstanceActionState::START_COORDINATOR:
-          startInstance(_coordinator, action._info);
+          startInstance(_coordinator, action._info, action._pos);
           break;
 
         case::InstanceActionState::START_PRIMARY_DBSERVER:
-          startInstance(_dbserver, action._info);
+          startInstance(_dbserver, action._info, action._pos);
           break;
 
         default:
@@ -695,7 +697,7 @@ void ArangoManagerImpl::dispatch () {
 /// @brief adds an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::addOffer (const Offer& offer) {
+void ArangoManagerImpl::addOffer (const mesos::Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
   {
@@ -712,7 +714,7 @@ void ArangoManagerImpl::addOffer (const Offer& offer) {
 /// @brief removes an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::removeOffer (const OfferID& offerId) {
+void ArangoManagerImpl::removeOffer (const mesos::OfferID& offerId) {
   lock_guard<mutex> lock(_lock);
 
   removeOffer(offerId.value());
@@ -722,20 +724,15 @@ void ArangoManagerImpl::removeOffer (const OfferID& offerId) {
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-void ArangoManagerImpl::statusUpdate (const string& taskId,
-                                      InstanceState state) {
+void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
   lock_guard<mutex> lock(_lock);
 
-  if (state == InstanceState::RUNNING) {
-    taskRunning(taskId);
-  }
-  else if (state == InstanceState::FINISHED) {
-    taskFinished(taskId);
-  }
-}
+  mesos::TaskID taskId = status.task_id();
+  const AspectPosition& pos = _task2position[taskId.value()];
 
-*/
+  Caretaker& caretaker = Global::caretaker();
+  caretaker.setTaskStatus(pos, status);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slave update
@@ -948,8 +945,8 @@ void ArangoManagerImpl::checkInstances (Aspects& aspect) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ArangoManagerImpl::makePersistentVolume (const string& name,
-                                              const Offer& offer,
-                                              const Resources& resources) {
+                                              const mesos::Offer& offer,
+                                              const mesos::Resources& resources) {
   const string& offerId = offer.id().value();
   const string& slaveId = offer.slave_id().value();
 
@@ -961,21 +958,20 @@ bool ArangoManagerImpl::makePersistentVolume (const string& name,
     return false;
   }
 
-  Resource disk = *resources.begin();
-
-  Resource::DiskInfo diskInfo;
+  mesos::Resource disk = *resources.begin();
+  mesos::Resource::DiskInfo diskInfo;
 
   diskInfo.mutable_persistence()->set_id(name + "_" + slaveId);
 
-  Volume volume;
+  mesos::Volume volume;
 
   volume.set_container_path(name);
-  volume.set_mode(Volume::RW);
+  volume.set_mode(mesos::Volume::RW);
 
   diskInfo.mutable_volume()->CopyFrom(volume);
   disk.mutable_disk()->CopyFrom(diskInfo);
 
-  Resources persistent;
+  mesos::Resources persistent;
   persistent += disk;
 
   LOG(INFO)
@@ -999,14 +995,14 @@ bool ArangoManagerImpl::makePersistentVolume (const string& name,
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
-                                                const Resources& resources) {
+bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
+                                                const mesos::Resources& resources) {
   const string& offerId = offer.id().value();
 
 #if MESOS_RESERVE_PORTS
-  Resources res = resources;
+  mesos::Resources res = resources;
 #else
-  Resources res = filterNotIsPorts(resources);
+  mesos::Resources res = filterNotIsPorts(resources);
 #endif
 
 #if MESOS_PRINCIPAL
@@ -1020,8 +1016,8 @@ bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
   << "trying to reserve " << offerId
   << " with " << res;
 
-  Resources offered = offer.resources();
-  Resources diff = res - offered;
+  mesos::Resources offered = offer.resources();
+  mesos::Resources diff = res - offered;
 
   if (diff.empty()) {
     addOffer(offer);
@@ -1038,7 +1034,10 @@ bool ArangoManagerImpl::makeDynamicReservation (const Offer& offer,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::startInstance (Aspects& aspect,
-                                       const ResourcesCurrentEntry& info) {
+                                       const ResourcesCurrentEntry& info,
+                                       const AspectPosition& pos) {
+  lock_guard<mutex> lock(_lock);
+
   string taskId = UUID::random().toString();
   string arguments = aspect.arguments(info, taskId);
 
@@ -1048,31 +1047,54 @@ void ArangoManagerImpl::startInstance (Aspects& aspect,
     return;
   }
 
-  mesos::ContainerInfo::DockerInfo docker;
-  docker.set_image("arangodb/arangodb-mesos");
-  docker.set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
+  // use docker to run the task
+  mesos::ContainerInfo container;
+  container.set_type(mesos::ContainerInfo::DOCKER);
 
-  mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker.add_port_mappings();
+  // command to execute
+  mesos::CommandInfo command;
+  command.set_value("standalone");
+  command.set_shell(false);
+
+  // docker info
+  mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
+  docker->set_image("arangodb/arangodb-mesos");
+  docker->set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
+
+  // port mapping
+  mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker->add_port_mappings();
   mapping->set_host_port(info.ports(0));
   mapping->set_container_port(8529);
   mapping->set_protocol("tcp");
 
-  Global::scheduler().startInstance(
+  // volume
+  string path = "arangodb_standalone_" + Global::frameworkName();
+
+  mesos::Volume* volume = container.add_volumes();
+  volume->set_container_path("/data");
+  volume->set_host_path("/tmp/" + path);
+  volume->set_mode(mesos::Volume::RW);
+
+  // and start
+  mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
     taskId,
     Global::frameworkName() + ":" + aspect._name + ":" + taskId,
-    info.slave_id(),
-    info.offer_id(),
-    info.resources(),
-    docker,
-    "standalone");
+    info,
+    container,
+    command);
+
+  _task2position[taskId] = pos;
+
+  Caretaker& caretaker = Global::caretaker();
+  caretaker.setTaskInfo(pos, taskInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status update (runing)
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::taskRunning (const string& taskId) {
 /*
+void ArangoManagerImpl::taskRunning (const string& taskId) {
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -1113,15 +1135,15 @@ void ArangoManagerImpl::taskRunning (const string& taskId) {
     // TODO(fc) keep a list of killed task and try again, if now 
     // update is received within a certain time.
   }
-*/
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status update (finished)
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::taskFinished (const string& taskId) {
 /*
+void ArangoManagerImpl::taskFinished (const string& taskId) {
   const auto& iter = _instances.find(taskId);
 
   if (iter == _instances.end()) {
@@ -1166,8 +1188,8 @@ void ArangoManagerImpl::taskFinished (const string& taskId) {
 
   // remove instances completely
   aspect->_startedSlaves.erase(slaveId);
-*/
 }
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager
@@ -1209,7 +1231,7 @@ ArangoManager::~ArangoManager () {
 /// @brief checks and adds an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManager::addOffer (const Offer& offer) {
+void ArangoManager::addOffer (const mesos::Offer& offer) {
   _impl->addOffer(offer);
 }
 
@@ -1217,7 +1239,7 @@ void ArangoManager::addOffer (const Offer& offer) {
 /// @brief removes an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManager::removeOffer (const OfferID& offerId) {
+void ArangoManager::removeOffer (const mesos::OfferID& offerId) {
   _impl->removeOffer(offerId);
 }
 
@@ -1225,11 +1247,9 @@ void ArangoManager::removeOffer (const OfferID& offerId) {
 /// @brief updates status
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-void ArangoManager::statusUpdate (const string& taskId, InstanceState state) {
-  _impl->statusUpdate(taskId, state);
+void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
+  _impl->taskStatusUpdate(status);
 }
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates slave

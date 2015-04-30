@@ -35,6 +35,27 @@
 namespace arangodb {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             enum class AspectType
+// -----------------------------------------------------------------------------
+
+  enum class AspectType {
+    AGENCY,
+    COORDINATOR,
+    PRIMARY_DBSERVER,
+    SECONDARY_DBSEREVR
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class AspectPosition
+// -----------------------------------------------------------------------------
+
+  class AspectPosition {
+    public:
+      AspectType _type;
+      size_t _pos;
+  };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                       enum class OfferActionState
 // -----------------------------------------------------------------------------
 
@@ -77,6 +98,7 @@ namespace arangodb {
     public:
       InstanceActionState _state;
       ResourcesCurrentEntry _info;
+      AspectPosition _pos;
   };
 
 // -----------------------------------------------------------------------------
@@ -132,28 +154,24 @@ namespace arangodb {
       void updatePlan ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we can use a resource offer
+/// @brief checks if we can use a resource offer
 ////////////////////////////////////////////////////////////////////////////////
 
       OfferAction checkOffer (const mesos::Offer&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief target as json string
+/// @brief sets the task info
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string jsonTarget () const;
+      void setTaskInfo (const AspectPosition&,
+                        const mesos::TaskInfo&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief plan as json string
+/// @brief sets the task status
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string jsonPlan () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current as json string
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string jsonCurrent () const;
+      void setTaskStatus (const AspectPosition&,
+                          const mesos::TaskStatus&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
@@ -166,36 +184,13 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       static InstanceAction checkStartInstance (const std::string& name,
+                                                AspectType,
                                                 InstanceActionState,
-                                                TasksPlan* plan,
-                                                ResourcesCurrent* resources,
-                                                InstancesCurrent* instances);
+                                                const TasksPlan&,
+                                                ResourcesCurrent*,
+                                                InstancesCurrent*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-    protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief target
-////////////////////////////////////////////////////////////////////////////////
-
-      Target _target;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief plan
-////////////////////////////////////////////////////////////////////////////////
-
-      Plan _plan;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current
-////////////////////////////////////////////////////////////////////////////////
-
-      Current _current;
   };
-
 }
 
 #endif
