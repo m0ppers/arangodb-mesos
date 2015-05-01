@@ -36,13 +36,115 @@
 #include <iostream>
 #include <string>
 
-#include <boost/lexical_cast.hpp>
+#include <boost/algorithm/string.hpp>
+#include <curl/curl.h>
 
 #include <mesos/resources.hpp>
 
 using namespace std;
 using namespace boost;
 using namespace arangodb;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the master version
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void *userp) {
+  size_t realsize = size * nmemb;
+  string* mem = (string*) userp;
+ 
+  mem->append((char*) contents, realsize);
+
+  return realsize;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the master version
+////////////////////////////////////////////////////////////////////////////////
+
+static void checkVersion (string hostname, int port) {
+  CURL *curl;
+  CURLcode res;
+ 
+  curl = curl_easy_init();
+
+  if (curl) {
+    string url = "http://" + hostname + ":" + to_string(port) + "/state.json";
+    string body;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &body);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+      LOG(WARNING)
+      << "cannot connect to " << url;
+    }
+    else {
+      picojson::value s;
+      std::string err = picojson::parse(s, body);
+
+      if (err.empty()) {
+        if (s.is<picojson::object>()) {
+          auto& o = s.get<picojson::object>();
+          auto& v = o["version"];
+
+          if (v.is<string>()) {
+            string version = v.get<string>();
+
+            if (! version.empty()) {
+              vector<string> vv;
+              boost::split(vv, version, boost::is_any_of("."));
+
+              int major = 0;
+              int minor = 0;
+
+              if (vv.size() >= 2) {
+                major = stoi(vv[0]);
+                minor = stoi(vv[1]);
+
+                if (major == 0 && minor < 22) {
+                  err = "version '" + version + "' is not suitable";
+                }
+                else {
+                  LOG(INFO)
+                  << "version '" << version << "' is suitable";
+                }
+              }
+              else {
+                err = "version '" + version + "' is corrupt";
+              }
+            }
+            else {
+              err = "version field is empty";
+            }
+          }
+          else {
+            err = "version field is not a string";
+          }
+        }
+        else {
+          err = "state is not a json object";
+        }
+      }
+
+      if (! err.empty()) {
+        LOG(WARNING)
+        << "malformed state object from master: " << err;
+      }
+    }
+ 
+    curl_easy_cleanup(curl);
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class ArangoScheduler
@@ -198,6 +300,8 @@ void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
   if (! status.empty()) {
     driver->reconcileTasks(status);
   }
+
+  checkVersion(master.hostname(), master.port());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
