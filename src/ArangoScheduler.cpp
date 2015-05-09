@@ -62,10 +62,6 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
   return realsize;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the master version
-////////////////////////////////////////////////////////////////////////////////
-
 static void checkVersion (string hostname, int port) {
   CURL *curl;
   CURLcode res;
@@ -275,6 +271,51 @@ void ArangoScheduler::killInstance (const string& name,
   _driver->killTask(ti);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief posts an request to the master
+////////////////////////////////////////////////////////////////////////////////
+
+string ArangoScheduler::postRequest (const string& command,
+                                     const string& body) const {
+  string url = Global::masterUrl() + command;
+
+  string result;
+
+  CURL *curl;
+  CURLcode res;
+ 
+  curl = curl_easy_init();
+
+  if (curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &result);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+    curl_easy_setopt(curl, CURLOPT_POST, 1);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+      LOG(WARNING)
+      << "cannot connect to " << url;
+    }
+
+    curl_easy_cleanup(curl);
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the driver
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::stop () {
+  _driver->stop();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods
 // -----------------------------------------------------------------------------
@@ -302,6 +343,8 @@ void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
   }
 
   checkVersion(master.hostname(), master.port());
+
+  Global::setMasterUrl("http://" + master.hostname() + ":" + to_string(master.port()) + "/");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -322,8 +365,7 @@ void ArangoScheduler::reregistered (mesos::SchedulerDriver* driver,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::disconnected (mesos::SchedulerDriver* driver) {
-  // TODO(fc) what to do?
-  LOG(INFO) << "DEBUG Disconnected!";
+  LOG(INFO) << "DEBUG Disconnected! Waiting for reconnect.";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,27 +412,6 @@ void ArangoScheduler::statusUpdate (mesos::SchedulerDriver* driver,
   << " with message '" << status.message() << "'";
 
   manager.taskStatusUpdate(status);
-
-  switch (state) {
-    case mesos::TASK_STAGING:
-      break;
-
-    case mesos::TASK_RUNNING:
-      // manager->statusUpdate(taskId, TASK_STATE_RUNNING);
-      break;
-
-    case mesos::TASK_STARTING:
-      // do nothing
-      break;
-
-    case mesos::TASK_FINISHED: // TERMINAL. The task finished successfully.
-    case mesos::TASK_FAILED:   // TERMINAL. The task failed to finish successfully.
-    case mesos::TASK_KILLED:   // TERMINAL. The task was killed by the executor.
-    case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
-    case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-      // manager->statusUpdate(taskId, InstanceState::FINISHED);
-      break;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -401,10 +422,6 @@ void ArangoScheduler::frameworkMessage (mesos::SchedulerDriver* driver,
                                         const mesos::ExecutorID& executorId,
                                         const mesos::SlaveID& slaveId,
                                         const string& data) {
-  mesos::SlaveInfo slaveInfo;
-  slaveInfo.ParseFromString(data);
-
-  // XXXXXX _manager->slaveInfoUpdate(slaveInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

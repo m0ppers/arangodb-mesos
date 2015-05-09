@@ -269,12 +269,14 @@ namespace {
 
 class arangodb::HttpServerImpl {
   public:
+    string POST_V1_CLUSTER_NAME (const string&, const string&);
+    string POST_V1_DESTROY (const string&, const string&);
+
     string GET_V1_CLUSTER (const string&);
     string GET_V1_CLUSTER_NAME (const string&);
-    string POST_V1_CLUSTER_NAME (const string&, const string&);
     string GET_V1_SERVERS_NAME (const string&);
     string GET_V1_OFFERS_NAME (const string&);
-    string GET_V1_INSTANCES_NAME (const string&);
+    string GET_V1_MODE (const string&);
 
     string GET_DEBUG_OFFERS (const string&);
     string GET_DEBUG_INSTANCES (const string&);
@@ -366,6 +368,20 @@ string HttpServerImpl::POST_V1_CLUSTER_NAME (const string& name, const string& b
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief POST /v1/destroy
+////////////////////////////////////////////////////////////////////////////////
+
+
+string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) {
+  Global::manager().destroy();
+
+  picojson::object result;
+  result["destroy"] = picojson::value(true);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief GET /v1/servers/<name>
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -408,24 +424,22 @@ string HttpServerImpl::GET_V1_OFFERS_NAME (const string& name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/instances/<name>
+/// @brief GET /v1/mode
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_INSTANCES_NAME (const string& name) {
-/*
-  vector<Instance> instances = _manager->currentInstances();
+string HttpServerImpl::GET_V1_MODE (const string&) {
+  string mode = "unknown";
 
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& instance : instances) {
-    list.push_back(picojson::value(JsonInstance(instance)));
+  switch (Global::mode()) {
+    case OperationMode::STANDALONE:
+      mode = "standalone";
+      break;
   }
 
-  result["instances"] = picojson::value(list);
+  picojson::object result;
+  result["mode"] = picojson::value(mode);
 
   return picojson::value(result).serialize();
-*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,6 +637,9 @@ static int answerRequest (
       if (0 == strcmp(url, "/v1/cluster")) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER;
       }
+      else if (0 == strcmp(url, "/v1/mode.json")) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_MODE;
+      }
       else if (0 == strncmp(url, "/v1/cluster/", 12)) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
         conInfo->prefix = url + 12;
@@ -634,10 +651,6 @@ static int answerRequest (
       else if (0 == strncmp(url, "/v1/offers/", 11)) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_OFFERS_NAME;
         conInfo->prefix = url + 11;
-      }
-      else if (0 == strncmp(url, "/v1/instances/", 14)) {
-        conInfo->getMethod = &HttpServerImpl::GET_V1_INSTANCES_NAME;
-        conInfo->prefix = url + 14;
       }
       else if (0 == strcmp(url, "/debug/offers")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
@@ -674,6 +687,9 @@ static int answerRequest (
       if (0 == strncmp(url, "/v1/cluster/", 12)) {
         conInfo->postMethod = &HttpServerImpl::POST_V1_CLUSTER_NAME;
         conInfo->prefix = url + 12;
+      }
+      else if (0 == strcmp(url, "/v1/destroy.json")) {
+        conInfo->postMethod = &HttpServerImpl::POST_V1_DESTROY;
       }
     }
 

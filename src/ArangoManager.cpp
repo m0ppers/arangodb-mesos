@@ -37,7 +37,6 @@
 
 #include <stout/uuid.hpp>
 
-#include <atomic>
 #include <iostream>
 #include <set>
 #include <unordered_set>
@@ -49,53 +48,51 @@ using namespace std;
 using std::chrono::system_clock;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-namespace {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief finds free ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
-  vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
-    static const size_t MAX_ITERATIONS = 1000;
+vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
+  static const size_t MAX_ITERATIONS = 1000;
 
-    vector<uint32_t> result;
-    vector<mesos::Value::Range> resources;
+  vector<uint32_t> result;
+  vector<mesos::Value::Range> resources;
 
-    for (int i = 0; i < offer.resources_size(); ++i) {
-      const auto& resource = offer.resources(i);
+  for (int i = 0; i < offer.resources_size(); ++i) {
+    const auto& resource = offer.resources(i);
 
-      if (resource.name() == "ports" &&
-          resource.type() == mesos::Value::RANGES) {
-        const auto& ranges = resource.ranges();
+    if (resource.name() == "ports" &&
+        resource.type() == mesos::Value::RANGES) {
+      const auto& ranges = resource.ranges();
 
-        for (int j = 0; j < ranges.range_size(); ++j) {
-          const auto& range = ranges.range(j);
+      for (int j = 0; j < ranges.range_size(); ++j) {
+        const auto& range = ranges.range(j);
 
-          resources.push_back(range);
-        }
+        resources.push_back(range);
       }
     }
-
-    default_random_engine generator;
-    uniform_int_distribution<int> d1(0, resources.size() - 1);
-
-    for (size_t i = 0;  i < MAX_ITERATIONS;  ++i) {
-      if (result.size() == len) {
-        return result;
-      }
-
-      const auto& resource = resources.at(d1(generator));
-
-      uniform_int_distribution<uint32_t> d2(resource.begin(), resource.end());
-
-      result.push_back(d2(generator));
-    }
-
-    return result;
   }
+
+  default_random_engine generator;
+  uniform_int_distribution<int> d1(0, resources.size() - 1);
+
+  for (size_t i = 0;  i < MAX_ITERATIONS;  ++i) {
+    if (result.size() == len) {
+      return result;
+    }
+
+    const auto& resource = resources.at(d1(generator));
+
+    uniform_int_distribution<uint32_t> d2(resource.begin(), resource.end());
+
+    result.push_back(d2(generator));
+  }
+
+  return result;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief initializes an agency
@@ -213,37 +210,35 @@ namespace {
     << "COORDINATOR " << command << " returned " << res;
   }
   */
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class ArangoManagerImpl
 // -----------------------------------------------------------------------------
 
-class arangodb::ArangoManagerImpl {
+class ArangoManagerImpl : public ArangoManager {
   public:
-    ArangoManagerImpl (const string& role, const string& principal);
+    ArangoManagerImpl ();
+    ~ArangoManagerImpl ();
 
   public:
-    void dispatch ();
-    void addOffer (const mesos::Offer& offer);
-    void removeOffer (const mesos::OfferID& offerId);
-    void taskStatusUpdate (const mesos::TaskStatus& status);
-
-  public:
-    atomic<bool> _stopDispatcher;
+    void addOffer (const mesos::Offer& offer) override;
+    void removeOffer (const mesos::OfferID& offerId) override;
+    void taskStatusUpdate (const mesos::TaskStatus& status) override;
+    void destroy () override;
 
   private:
+    void dispatch ();
     void applyStatusUpdates ();
     bool checkOutstandOffers ();
     void startNewInstances ();
     bool makePersistentVolume (const string& name, const mesos::Offer&, const mesos::Resources&);
     bool makeDynamicReservation (const mesos::Offer&, const mesos::Resources&);
-
     void startInstance (InstanceActionState, const ResourcesCurrentEntry&, const AspectPosition&);
     void fillKnownInstances (AspectType, const InstancesCurrent&);
 
   private:
     mutex _lock;
+    thread* _dispatcher;
 
     unordered_map<string, AspectPosition> _task2position;
     unordered_map<string, mesos::Offer> _storedOffers;
@@ -258,13 +253,14 @@ class arangodb::ArangoManagerImpl {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManagerImpl::ArangoManagerImpl (const string& role,
-                                      const string& principal)
-  : _stopDispatcher(false),
-    _lock(),
+ArangoManagerImpl::ArangoManagerImpl ()
+  : _lock(),
+    _dispatcher(nullptr),
     _task2position(),
     _storedOffers(),
     _taskStatusUpdates() {
+
+  _dispatcher = new thread(&ArangoManagerImpl::dispatch, this);
 
   Current current = Global::state().current();
 
@@ -274,43 +270,20 @@ ArangoManagerImpl::ArangoManagerImpl (const string& role,
   fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManagerImpl::~ArangoManagerImpl () {
+  _stopDispatcher = true;
+  _dispatcher->join();
+
+  delete _dispatcher;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief main dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManagerImpl::dispatch () {
-  static const int SLEEP_SEC = 10;
-
-  unordered_set<string> bootstrapped;
-
-  while (! _stopDispatcher) {
-    bool found;
-    Global::state().frameworkId(found);
-
-    if (! found) {
-      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
-      continue;
-    }
-
-    // apply received status updates
-    applyStatusUpdates();
-
-    // check all outstanding offers
-    bool sleep = checkOutstandOffers();
-
-    // check if we can start new instances
-    startNewInstances();
-
-    // wait for a little while
-    if (sleep) {
-      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
-    }
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an offer
@@ -354,9 +327,56 @@ void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
   _taskStatusUpdates.push_back(status);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys the cluster
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::destroy () {
+  Global::state().destroy();
+
+  string body = "frameworkId=" + Global::state().frameworkId();
+  Global::scheduler().postRequest("master/shutdown", body);
+
+  Global::scheduler().stop();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief main dispatcher
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::dispatch () {
+  static const int SLEEP_SEC = 10;
+
+  unordered_set<string> bootstrapped;
+
+  while (! _stopDispatcher) {
+    bool found;
+    Global::state().frameworkId(found);
+
+    if (! found) {
+      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+      continue;
+    }
+
+    // apply received status updates
+    applyStatusUpdates();
+
+    // check all outstanding offers
+    bool sleep = checkOutstandOffers();
+
+    // check if we can start new instances
+    startNewInstances();
+
+    // wait for a little while
+    if (sleep) {
+      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief applies status updates
@@ -650,13 +670,13 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
 
   mesos::Volume* volume = container.add_volumes();
   volume->set_container_path("/data");
-  volume->set_host_path("/tmp/" + path);
+  volume->set_host_path(Global::volumePath() + "/" + path);
   volume->set_mode(mesos::Volume::RW);
 
   // and start
   mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
     taskId,
-    path + "_" + taskId,
+    path,
     info,
     container,
     command);
@@ -694,52 +714,24 @@ void ArangoManagerImpl::fillKnownInstances (AspectType type,
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManager::ArangoManager (const string& role, const string& principal)
-  : _impl(nullptr),
-    _dispatcher(nullptr) {
-  _impl = new ArangoManagerImpl(role, principal);
-  _dispatcher = new thread(&ArangoManagerImpl::dispatch, _impl);
-};
+ArangoManager::ArangoManager ()
+  : _stopDispatcher(false) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoManager* ArangoManager::New () {
+  return new ArangoManagerImpl();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoManager::~ArangoManager () {
-  _impl->_stopDispatcher = true;
-
-  _dispatcher->join();
-
-  delete _dispatcher;
-  delete _impl;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks and adds an offer
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManager::addOffer (const mesos::Offer& offer) {
-  _impl->addOffer(offer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an offer
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManager::removeOffer (const mesos::OfferID& offerId) {
-  _impl->removeOffer(offerId);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates status
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
-  _impl->taskStatusUpdate(status);
+  _stopDispatcher = true;
 }
 
 // -----------------------------------------------------------------------------

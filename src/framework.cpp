@@ -75,6 +75,7 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_HTTP_PORT   overrides '--http-port'\n"
        << "  ARANGODB_ROLE        overrides '--role'\n"
        << "  ARANGODB_USER        overrides '--user'\n"
+       << "  ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
        << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
        << "\n";
@@ -155,6 +156,12 @@ int main (int argc, char** argv) {
             "failover timeout in seconds",
             60 * 60 * 24 * 10);
 
+  string volumePath;
+  flags.add(&volumePath,
+            "volume-path",
+            "volume path (until persistent volumes become available)",
+            "/tmp");
+
   // address of master and zookeeper
   string master;
   flags.add(&master,
@@ -204,6 +211,10 @@ int main (int argc, char** argv) {
     principal = getenv("ARANGODB_PRINCIPAL");
   }
 
+  if (os::hasenv("ARANGODB_VOLUME_PATH")) {
+    volumePath = getenv("ARANGODB_VOLUME_PATH");
+  }
+
   if (master.empty()) {
     cerr << "Missing master, either use flag '--master' or set 'MESOS_MASTER'" << endl;
     usage(argv[0], flags);
@@ -221,6 +232,7 @@ int main (int argc, char** argv) {
   }
 
   Global::setFrameworkName(frameworkName);
+  Global::setVolumePath(volumePath);
 
   // .............................................................................
   // executor
@@ -320,8 +332,8 @@ int main (int argc, char** argv) {
   // manager
   // .............................................................................
 
-  ArangoManager manager(role, principal);
-  Global::setManager(&manager);
+  ArangoManager* manager = ArangoManager::New();
+  Global::setManager(manager);
 
   // .............................................................................
   // scheduler
@@ -378,6 +390,7 @@ int main (int argc, char** argv) {
   driver->stop();
 
   delete driver;
+  delete manager;
 
   return status;
 }

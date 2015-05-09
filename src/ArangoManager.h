@@ -28,6 +28,7 @@
 #ifndef ARANGO_MANAGER_H
 #define ARANGO_MANAGER_H 1
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -36,9 +37,6 @@
 #include <mesos/scheduler.hpp>
 
 namespace arangodb {
-  using namespace std;
-
-  class ArangoManagerImpl;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager
@@ -54,13 +52,21 @@ namespace arangodb {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+    protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      ArangoManager ();
+
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ArangoManager (const string& role, const string& principal);
+      static ArangoManager* New ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy constructor
@@ -78,7 +84,7 @@ namespace arangodb {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ~ArangoManager ();
+      virtual ~ArangoManager ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -90,43 +96,37 @@ namespace arangodb {
 /// @brief checks and adds an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      void addOffer (const mesos::Offer&);
+      virtual void addOffer (const mesos::Offer&) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      void removeOffer (const mesos::OfferID& offerId);
+      virtual void removeOffer (const mesos::OfferID& offerId) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
-      void taskStatusUpdate (const mesos::TaskStatus& status);
+      virtual void taskStatusUpdate (const mesos::TaskStatus& status) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slave update
+/// @brief destroys the cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      void slaveInfoUpdate (const mesos::SlaveInfo&);
+      virtual void destroy () = 0;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
-    private:
+    protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief implementation
+/// @brief stop flag
 ////////////////////////////////////////////////////////////////////////////////
 
-      ArangoManagerImpl* _impl;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread
-////////////////////////////////////////////////////////////////////////////////
-
-      thread* _dispatcher;
+      std::atomic<bool> _stopDispatcher;
   };
 }
 
