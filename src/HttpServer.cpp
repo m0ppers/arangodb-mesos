@@ -277,6 +277,7 @@ class arangodb::HttpServerImpl {
     string GET_V1_SERVERS_NAME (const string&);
     string GET_V1_OFFERS_NAME (const string&);
     string GET_V1_MODE (const string&);
+    string GET_V1_HEALTH (const string&);
 
     string GET_DEBUG_OFFERS (const string&);
     string GET_DEBUG_INSTANCES (const string&);
@@ -438,6 +439,17 @@ string HttpServerImpl::GET_V1_MODE (const string&) {
 
   picojson::object result;
   result["mode"] = picojson::value(mode);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/health
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_HEALTH (const string&) {
+  picojson::object result;
+  result["health"] = picojson::value(true);
 
   return picojson::value(result).serialize();
 }
@@ -639,6 +651,9 @@ static int answerRequest (
       }
       else if (0 == strcmp(url, "/v1/mode.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_MODE;
+      }
+      else if (0 == strcmp(url, "/v1/health.json")) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_HEALTH;
       }
       else if (0 == strncmp(url, "/v1/cluster/", 12)) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
