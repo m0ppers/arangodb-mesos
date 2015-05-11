@@ -72,7 +72,7 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_SECRET      secret for authentication\n"
        << "\n"
        << "  ARANGODB_PRINCIPAL   overrides '--principal'\n"
-       << "  ARANGODB_HTTP_PORT   overrides '--http-port'\n"
+       << "  ARANGODB_HTTP_PORT   overrides '--http_port'\n"
        << "  ARANGODB_ROLE        overrides '--role'\n"
        << "  ARANGODB_USER        overrides '--user'\n"
        << "  ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
@@ -134,7 +134,7 @@ int main (int argc, char** argv) {
 
   string frameworkName;
   flags.add(&frameworkName,
-            "framework-name",
+            "framework_name",
             "custom framework name",
             "arangodb");
 
@@ -146,25 +146,25 @@ int main (int argc, char** argv) {
 
   int webuiPort;
   flags.add(&webuiPort,
-            "http-port",
+            "http_port",
             "HTTP port to open for UI",
             8181);
 
   double failoverTimeout;
   flags.add(&failoverTimeout,
-            "failover-timeout",
+            "failover_timeout",
             "failover timeout in seconds",
             60 * 60 * 24 * 10);
 
   string volumePath;
   flags.add(&volumePath,
-            "volume-path",
+            "volume_path",
             "volume path (until persistent volumes become available)",
             "/tmp");
 
   bool resetState;
   flags.add(&resetState,
-            "resetState",
+            "reset_state",
             "ignore any old state",
             false);
 
