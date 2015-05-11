@@ -162,6 +162,12 @@ int main (int argc, char** argv) {
             "volume path (until persistent volumes become available)",
             "/tmp");
 
+  bool resetState;
+  flags.add(&resetState,
+            "resetState",
+            "ignore any old state",
+            false);
+
   // address of master and zookeeper
   string master;
   flags.add(&master,
@@ -254,7 +260,13 @@ int main (int argc, char** argv) {
 
   ArangoState state(role, zk);
   state.init();
-  state.load();
+
+  if (resetState) {
+    state.destroy();
+  }
+  else {
+    state.load();
+  }
 
   Global::setState(&state);
 

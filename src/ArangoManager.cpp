@@ -676,7 +676,7 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   // and start
   mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
     taskId,
-    path,
+    "standalone",
     info,
     container,
     command);
