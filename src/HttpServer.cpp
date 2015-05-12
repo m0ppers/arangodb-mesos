@@ -95,168 +95,6 @@ namespace {
 
     return "text/plain";
   }
-
-/*
-  picojson::object JsonClusterInfo (const ClusterInfo& info) {
-    picojson::object o;
-
-    o["name"] = picojson::value(info._name);
-
-    picojson::object planned;
-
-    planned["servers"] = picojson::value(info._planned._servers);
-    planned["agencies"] = picojson::value((double) info._planned._agencies);
-    planned["coordinators"] = picojson::value((double) info._planned._coordinators);
-    planned["dbservers"] = picojson::value((double) info._planned._dbservers);
-    planned["cpus"] = picojson::value(info._planned._cpus);
-    planned["memory"] = picojson::value(info._planned._memory);
-    planned["disk"] = picojson::value(info._planned._disk);
-
-    o["planned"] = picojson::value(planned);
-
-    picojson::object running;
-
-    running["servers"] = picojson::value(info._running._servers);
-    running["agencies"] = picojson::value((double) info._running._agencies);
-    running["coordinators"] = picojson::value((double) info._running._coordinators);
-    running["dbservers"] = picojson::value((double) info._running._dbservers);
-    running["cpus"] = picojson::value(info._running._cpus);
-    running["memory"] = picojson::value(info._running._memory);
-    running["disk"] = picojson::value(info._running._disk);
-
-    o["running"] = picojson::value(running);
-
-    return o;
-  }
-*/
-
-  picojson::array JsonResources (const mesos::Resources& resources) {
-    picojson::array result;
-    return result;
-  }
-
-  picojson::object JsonOffer (const Offer& offer) {
-    picojson::object o;
-
-    o["id"] = picojson::value(offer.id().value());
-    o["slaveId"] = picojson::value(offer.slave_id().value());
-    o["resources"] = picojson::value(JsonResources(offer.resources()));
-
-    return o;
-  }
-
-/*
-  picojson::object JsonOfferSummary (const OfferSummary& summary) {
-    const Offer& offer = summary._offer;
-
-    picojson::object o;
-
-    o["offerId"] = picojson::value(offer.id().value());
-    o["slaveId"] = picojson::value(offer.slave_id().value());
-
-    picojson::object resources;
-
-    Resources r = offer.resources();
-
-    resources["cpus"] = picojson::value(cpus(r));
-    resources["memory"] = picojson::value(memory(r) * 1024 * 1024);
-    resources["disk"] = picojson::value(diskspace(r) * 1024 * 1024);
-
-    o["resources"] = picojson::value(resources);
-
-    picojson::object status;
-
-    status["agency"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_AGENCY]._state));
-    status["coordinator"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_COORDINATOR]._state));
-    status["dbserver"] = picojson::value(toStringShort(summary._analysis[(int) AspectsId::ID_DBSERVER]._state));
-
-    o["status"] = picojson::value(status);
-
-    return o;
-  }
-*/
-
-/*
-  picojson::object JsonInstance (const Instance& instance) {
-    picojson::object o;
-
-    o["taskId"] = picojson::value(instance._taskId);
-    o["slaveId"] = picojson::value(instance._slaveId);
-    o["hostname"] = picojson::value(instance._hostname);
-    o["started"] = picojson::value(toStringSystemTime(instance._started));
-    o["lastUpdate"] = picojson::value(toStringSystemTime(instance._lastUpdate));
-    o["status"] = picojson::value(toString(instance._state));
-
-    switch (instance._aspectId) {
-      case ASPECTS_ID_AGENCY:
-        o["aspect"] = picojson::value("AGENCY");
-        break;
-
-      case ASPECTS_ID_COORDINATOR:
-        o["aspect"] = picojson::value("COORDINATOR");
-        break;
-
-      case ASPECTS_ID_DBSEVER:
-        o["aspect"] = picojson::value("DBSERVER");
-        break;
-
-      default:
-        o["aspect"] = picojson::value("");
-        break;
-    }
-
-    picojson::object resources;
-
-    const Resources& r = instance._resources;
-
-    resources["cpus"] = picojson::value(cpus(r));
-    resources["memory"] = picojson::value(memory(r) * 1024 * 1024);
-    resources["disk"] = picojson::value(diskspace(r) * 1024 * 1024);
-
-    o["resources"] = picojson::value(resources);
-
-    if (instance._state == InstanceState::RUNNING) {
-      string link = "http://" + instance._hostname + ":";
-
-      if (instance._aspectId == ASPECTS_ID_AGENCY) {
-        link += to_string(instance._ports[1]) + "/v2/keys";
-      }
-      else {
-        link += to_string(instance._ports[0]) + "/";
-      }
-
-      o["link"] = picojson::value(link);
-    }
-
-    return o;
-  }
-*/
-
-/*
-  picojson::object JsonSlaveInfo (const arangodb::SlaveInfo& info) {
-    picojson::object o;
-
-    o["name"] = picojson::value(info._name);
-
-    picojson::object available;
-
-    available["cpus"] = picojson::value(info._available._cpus);
-    available["memory"] = picojson::value(info._available._memory);
-    available["disk"] = picojson::value(info._available._disk);
-
-    o["available"] = picojson::value(available);
-
-    picojson::object used;
-
-    used["cpus"] = picojson::value(info._used._cpus);
-    used["memory"] = picojson::value(info._used._memory);
-    used["disk"] = picojson::value(info._used._disk);
-
-    o["used"] = picojson::value(used);
-
-    return o;
-  }
-*/
 }
 
 // -----------------------------------------------------------------------------
@@ -269,18 +107,12 @@ namespace {
 
 class arangodb::HttpServerImpl {
   public:
-    string POST_V1_CLUSTER_NAME (const string&, const string&);
     string POST_V1_DESTROY (const string&, const string&);
 
-    string GET_V1_CLUSTER (const string&);
-    string GET_V1_CLUSTER_NAME (const string&);
-    string GET_V1_SERVERS_NAME (const string&);
-    string GET_V1_OFFERS_NAME (const string&);
+    string GET_V1_STATE (const string&);
     string GET_V1_MODE (const string&);
     string GET_V1_HEALTH (const string&);
 
-    string GET_DEBUG_OFFERS (const string&);
-    string GET_DEBUG_INSTANCES (const string&);
     string GET_DEBUG_TARGET (const string&);
     string GET_DEBUG_PLAN (const string&);
     string GET_DEBUG_CURRENT (const string&);
@@ -288,88 +120,7 @@ class arangodb::HttpServerImpl {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/cluster
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_CLUSTER (const string&) {
-/*
-  const vector<ClusterInfo> infos = _manager->clusters();
-
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& info : infos) {
-    list.push_back(picojson::value(JsonClusterInfo(info)));
-  }
-
-  result["clusters"] = picojson::value(list);
-
-  return picojson::value(result).serialize();
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/cluster/<name>
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_CLUSTER_NAME (const string& name) {
-/*
-  ClusterInfo info = _manager->cluster(name);
-
-  return picojson::value(JsonClusterInfo(info)).serialize();
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief POST /v1/cluster/<name>
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::POST_V1_CLUSTER_NAME (const string& name, const string& body) {
-/*
-  picojson::value v;
-  std::string err = picojson::parse(v, body);
-
-  // TODO(fc) error handling
-
-  if (! err.empty() || ! v.is<picojson::object>()) {
-    return "failed";
-  }
-
-  const picojson::value::object& obj = v.get<picojson::object>();
-  auto iter = obj.find("servers");
-
-  if (iter != obj.end() && iter->second.is<double>()) {
-    _manager->adjustServers(name, iter->second.get<double>());
-  }
-  else {
-    iter = obj.find("agencies");
-
-    if (iter != obj.end() && iter->second.is<double>()) {
-      _manager->adjustAgencies(name, iter->second.get<double>());
-    }
-    else {
-      iter = obj.find("coordinators");
-
-      if (iter != obj.end() && iter->second.is<double>()) {
-        _manager->adjustCoordinators(name, iter->second.get<double>());
-      }
-      else {
-        iter = obj.find("dbservers");
-
-        if (iter != obj.end() && iter->second.is<double>()) {
-          _manager->adjustDbservers(name, iter->second.get<double>());
-        }
-      }
-    }
-  }
-
-  ClusterInfo info = _manager->cluster(name);
-  return picojson::value(JsonClusterInfo(info)).serialize();
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief POST /v1/destroy
+/// @brief POST /v1/destroy.json
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -383,49 +134,31 @@ string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/servers/<name>
+/// @brief GET /v1/state.json
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpServerImpl::GET_V1_SERVERS_NAME (const string& name) {
-/*
-  const vector<SlaveInfo> infos = _manager->slaveInfo(name);
+string HttpServerImpl::GET_V1_STATE (const string&) {
+  string mode = "unknown";
 
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& info : infos) {
-    list.push_back(picojson::value(JsonSlaveInfo(info)));
+  switch (Global::mode()) {
+    case OperationMode::STANDALONE:
+      mode = "standalone";
+      break;
   }
 
-  result["servers"] = picojson::value(list);
+  picojson::object result;
+  result["mode"] = picojson::value(mode);
+  result["health"] = picojson::value(true);
+  result["role"] = picojson::value(Global::role());
+  result["framework_name"] = picojson::value(Global::frameworkName());
+  result["master_url"] = picojson::value(Global::masterUrl());
+  result["volume_path"] = picojson::value(Global::volumePath());
 
   return picojson::value(result).serialize();
-*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/offers/<name>
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_V1_OFFERS_NAME (const string& name) {
-/*
-  vector<OfferSummary> offers = _manager->currentOffers();
-
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& offer : offers) {
-    list.push_back(picojson::value(JsonOfferSummary(offer)));
-  }
-
-  result["offers"] = picojson::value(list);
-
-  return picojson::value(result).serialize();
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/mode
+/// @brief GET /v1/mode.json
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_MODE (const string&) {
@@ -444,7 +177,7 @@ string HttpServerImpl::GET_V1_MODE (const string&) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /v1/health
+/// @brief GET /v1/health.json
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_HEALTH (const string&) {
@@ -452,70 +185,6 @@ string HttpServerImpl::GET_V1_HEALTH (const string&) {
   result["health"] = picojson::value(true);
 
   return picojson::value(result).serialize();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /debug/offers
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_DEBUG_OFFERS (const string& name) {
-/*
-  vector<OfferSummary> offers = _manager->currentOffers();
-
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& offer : offers) {
-    picojson::object r;
-
-    r["offer"] = picojson::value(JsonOffer(offer._offer));
-
-    picojson::object s;
-
-    s["agency"] = picojson::value(toString(offer._analysis[0]._state));
-    s["coordinator"] = picojson::value(toString(offer._analysis[1]._state));
-    s["dbserver"] = picojson::value(toString(offer._analysis[2]._state));
-
-    r["status"] = picojson::value(s);
-
-    list.push_back(picojson::value(r));
-  }
-
-  result["offers"] = picojson::value(list);
-
-  return picojson::value(result).serialize();
-*/
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET /debug/instances
-////////////////////////////////////////////////////////////////////////////////
-
-string HttpServerImpl::GET_DEBUG_INSTANCES (const string& name) {
-/*
-  vector<Instance> instances = _manager->currentInstances();
-
-  picojson::object result;
-  picojson::array list;
-
-  for (const auto& instance : instances) {
-    picojson::object o;
-
-    o["taskId"] = picojson::value(instance._taskId);
-    o["aspectId"] = picojson::value((double) instance._aspectId);
-    o["state"] = picojson::value(toString(instance._state));
-    o["slaveId"] = picojson::value(instance._slaveId);
-    o["resources"] = picojson::value(JsonResources(instance._resources));
-    o["started"] = picojson::value((double) instance._started.time_since_epoch().count());
-    o["lastUpdate"] = picojson::value((double) instance._lastUpdate.time_since_epoch().count());
-
-    list.push_back(picojson::value(o));
-  }
-
-  result["instances"] = picojson::value(list);
-
-  return picojson::value(result).serialize();
-*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -646,8 +315,8 @@ static int answerRequest (
     if (0 == strcmp(method, MHD_HTTP_METHOD_GET)) {
       conInfo->type = GET;
 
-      if (0 == strcmp(url, "/v1/cluster")) {
-        conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER;
+      if (0 == strcmp(url, "/v1/state.json")) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_STATE;
       }
       else if (0 == strcmp(url, "/v1/mode.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_MODE;
@@ -655,34 +324,16 @@ static int answerRequest (
       else if (0 == strcmp(url, "/v1/health.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_HEALTH;
       }
-      else if (0 == strncmp(url, "/v1/cluster/", 12)) {
-        conInfo->getMethod = &HttpServerImpl::GET_V1_CLUSTER_NAME;
-        conInfo->prefix = url + 12;
-      }
-      else if (0 == strncmp(url, "/v1/servers/", 12)) {
-        conInfo->getMethod = &HttpServerImpl::GET_V1_SERVERS_NAME;
-        conInfo->prefix = url + 12;
-      }
-      else if (0 == strncmp(url, "/v1/offers/", 11)) {
-        conInfo->getMethod = &HttpServerImpl::GET_V1_OFFERS_NAME;
-        conInfo->prefix = url + 11;
-      }
-      else if (0 == strcmp(url, "/debug/offers")) {
-        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_OFFERS;
-      }
-      else if (0 == strcmp(url, "/debug/instances")) {
-        conInfo->getMethod = &HttpServerImpl::GET_DEBUG_INSTANCES;
-      }
-      else if (0 == strcmp(url, "/debug/target")) {
+      else if (0 == strcmp(url, "/debug/target.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_TARGET;
       }
-      else if (0 == strcmp(url, "/debug/plan")) {
+      else if (0 == strcmp(url, "/debug/plan.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_PLAN;
       }
-      else if (0 == strcmp(url, "/debug/current")) {
+      else if (0 == strcmp(url, "/debug/current.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_CURRENT;
       }
-      else if (0 == strcmp(url, "/debug/overview")) {
+      else if (0 == strcmp(url, "/debug/overview.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_OVERVIEW;
       }
       else {
@@ -699,11 +350,7 @@ static int answerRequest (
     else if (0 == strcmp(method, MHD_HTTP_METHOD_POST)) {
       conInfo->type = POST;
 
-      if (0 == strncmp(url, "/v1/cluster/", 12)) {
-        conInfo->postMethod = &HttpServerImpl::POST_V1_CLUSTER_NAME;
-        conInfo->prefix = url + 12;
-      }
-      else if (0 == strcmp(url, "/v1/destroy.json")) {
+      if (0 == strcmp(url, "/v1/destroy.json")) {
         conInfo->postMethod = &HttpServerImpl::POST_V1_DESTROY;
       }
     }

@@ -258,7 +258,7 @@ int main (int argc, char** argv) {
 
   LOG(INFO) << "zookeeper: " << zk;
 
-  ArangoState state(role, zk);
+  ArangoState state(frameworkName, zk);
   state.init();
 
   if (resetState) {

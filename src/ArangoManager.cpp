@@ -292,12 +292,14 @@ ArangoManagerImpl::~ArangoManagerImpl () {
 void ArangoManagerImpl::addOffer (const mesos::Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
+  /*
   {
     string json;
     pbjson::pb2json(&offer, json);
     LOG(INFO)
     << "OFFER received: " << json;
   }
+  */
 
   _storedOffers[offer.id().value()] = offer;
 }

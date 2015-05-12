@@ -375,8 +375,10 @@ void ArangoScheduler::disconnected (mesos::SchedulerDriver* driver) {
 void ArangoScheduler::resourceOffers (mesos::SchedulerDriver* driver,
                                       const vector<mesos::Offer>& offers) {
   for (auto& offer : offers) {
+    /*
     LOG(INFO)
     << "DEBUG offer received " << offer.id().value();
+    */
 
     Global::manager().addOffer(offer);
   }
