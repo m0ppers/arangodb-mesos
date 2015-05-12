@@ -110,8 +110,7 @@ namespace arangodb {
 /// @brief kills an instances
 ////////////////////////////////////////////////////////////////////////////////
 
-      void killInstance (const std::string& name,
-                         const std::string& taskId) const;
+      void killInstance (const std::string& taskId) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief posts an request to the master

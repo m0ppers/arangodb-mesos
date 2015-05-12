@@ -235,6 +235,7 @@ class ArangoManagerImpl : public ArangoManager {
     bool makeDynamicReservation (const mesos::Offer&, const mesos::Resources&);
     void startInstance (InstanceActionState, const ResourcesCurrentEntry&, const AspectPosition&);
     void fillKnownInstances (AspectType, const InstancesCurrent&);
+    void killAllInstances ();
 
   private:
     mutex _lock;
@@ -330,16 +331,18 @@ void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys the cluster
+/// @brief destroys the cluster and shuts down the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::destroy () {
+  killAllInstances();
+
   Global::state().destroy();
+
+  Global::scheduler().stop();
 
   string body = "frameworkId=" + Global::state().frameworkId();
   Global::scheduler().postRequest("master/shutdown", body);
-
-  Global::scheduler().stop();
 }
 
 // -----------------------------------------------------------------------------
@@ -701,6 +704,18 @@ void ArangoManagerImpl::fillKnownInstances (AspectType type,
     if (entry.has_task_info()) {
       _task2position[entry.task_info().task_id().value()] = { type, (size_t) i };
     }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills all running tasks
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::killAllInstances () {
+  for (const auto& task : _task2position) {
+    const auto& id = task.first;
+
+    Global::scheduler().killInstance(id);
   }
 }
 

@@ -260,8 +260,7 @@ mesos::TaskInfo ArangoScheduler::startInstance (
 /// @brief kills an instances
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::killInstance (const string& name,
-                                    const string& taskId) const {
+void ArangoScheduler::killInstance (const string& taskId) const {
   LOG(INFO)
   << "INSTANCE kill instance " << taskId;
 
