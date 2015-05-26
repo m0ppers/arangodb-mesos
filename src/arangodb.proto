@@ -94,6 +94,9 @@ message InstancesCurrentEntry {
 
   optional mesos.TaskInfo task_info = 2;
   optional mesos.TaskStatus task_status = 3;
+
+  repeated uint32 ports = 4;
+  optional string hostname = 5;
 }
 
 

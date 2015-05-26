@@ -112,6 +112,7 @@ class arangodb::HttpServerImpl {
     string GET_V1_STATE (const string&);
     string GET_V1_MODE (const string&);
     string GET_V1_HEALTH (const string&);
+    string GET_V1_ENDPOINTS (const string&);
 
     string GET_DEBUG_TARGET (const string&);
     string GET_DEBUG_PLAN (const string&);
@@ -172,6 +173,33 @@ string HttpServerImpl::GET_V1_MODE (const string&) {
 
   picojson::object result;
   result["mode"] = picojson::value(mode);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET /v1/endpoints.json
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::GET_V1_ENDPOINTS (const string&) {
+  vector<string> read = Global::manager().readEndpoints();
+  vector<string> write = Global::manager().writeEndpoints();
+
+  picojson::array readA;
+
+  for (auto i : read) {
+    readA.push_back(picojson::value(i));
+  }
+
+  picojson::array writeA;
+
+  for (auto i : write) {
+    writeA.push_back(picojson::value(i));
+  }
+
+  picojson::object result;
+  result["read"] = picojson::value(readA);
+  result["write"] = picojson::value(writeA);
 
   return picojson::value(result).serialize();
 }
@@ -323,6 +351,9 @@ static int answerRequest (
       }
       else if (0 == strcmp(url, "/v1/health.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_V1_HEALTH;
+      }
+      else if (0 == strcmp(url, "/v1/endpoints.json")) {
+        conInfo->getMethod = &HttpServerImpl::GET_V1_ENDPOINTS;
       }
       else if (0 == strcmp(url, "/debug/target.json")) {
         conInfo->getMethod = &HttpServerImpl::GET_DEBUG_TARGET;

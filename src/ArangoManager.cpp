@@ -225,6 +225,8 @@ class ArangoManagerImpl : public ArangoManager {
     void removeOffer (const mesos::OfferID& offerId) override;
     void taskStatusUpdate (const mesos::TaskStatus& status) override;
     void destroy () override;
+    vector<string> readEndpoints () override;
+    vector<string> writeEndpoints () override;
 
   private:
     void dispatch ();
@@ -343,6 +345,46 @@ void ArangoManagerImpl::destroy () {
 
   string body = "frameworkId=" + Global::state().frameworkId();
   Global::scheduler().postRequest("master/shutdown", body);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoints for reading
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> ArangoManagerImpl::readEndpoints () {
+  Current current = Global::state().current();
+  auto const& dbservers = current.primary_dbservers();
+
+  vector<string> endpoints;
+
+  for (int i = 0;  i < dbservers.entries_size();  ++i) {
+    auto const& dbserver = dbservers.entries(i);
+    string endpoint = "http://" + dbserver.hostname() + ":" + to_string(dbserver.ports(0));
+
+    endpoints.push_back(endpoint);
+  }
+
+  return endpoints;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief endpoints for writing
+////////////////////////////////////////////////////////////////////////////////
+
+vector<string> ArangoManagerImpl::writeEndpoints () {
+  Current current = Global::state().current();
+  auto const& dbservers = current.primary_dbservers();
+
+  vector<string> endpoints;
+
+  for (int i = 0;  i < dbservers.entries_size();  ++i) {
+    auto const& dbserver = dbservers.entries(i);
+    string endpoint = "http://" + dbserver.hostname() + ":" + to_string(dbserver.ports(0));
+
+    endpoints.push_back(endpoint);
+  }
+
+  return endpoints;
 }
 
 // -----------------------------------------------------------------------------
@@ -634,7 +676,7 @@ bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a new agency
+/// @brief starts a new standalone arangodb
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::startInstance (InstanceActionState aspect,

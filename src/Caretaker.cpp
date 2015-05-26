@@ -740,6 +740,13 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
 
       if (resEntry->state() == RESOURCE_STATE_USEABLE) {
         instance->set_state(INSTANCE_STATE_STARTING);
+        instance->set_hostname(resEntry->hostname());
+        instance->clear_ports();
+
+        for (int j = 0;  j < resEntry->ports_size();  ++j) {
+          instance->add_ports(resEntry->ports(j));
+        }
+
         resEntry->set_state(RESOURCE_STATE_USED);
 
         mesos::OfferID offerId = resEntry->offer_id();
