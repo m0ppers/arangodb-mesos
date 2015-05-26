@@ -10,8 +10,410 @@
     <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
     <link href="css/generated-css.css" rel="stylesheet">
     <link href="scss/generated-scss.css" rel="stylesheet">
+
+    <!-- ArangoDB TEST Section -->
+    <!-- ArangoDB TEST Section -->
+
+<script id="clusterView.ejs" type="text/template">
+
+  <div id="cluster-content" class="innerContent">
+
+    <div class="pure-g">
+      <div class="pure-u-2-5 header"><p>Nodes</p></div>
+      <div class="pure-u-1-5">
+        <i class="fa fa-refresh"></i>
+      </div>
+      <div class="pure-u-1-5">
+      <select class="blue-select">
+        <optgroup class="cluster-select" label="Clusters">
+        </optgroup>
+      </select>
+      </div>
+      <div class="pure-u-1-5"><p>Legend</p>
+    </div>
+
+      <div class="pure-u-4-5 cluster-left epoch-theme-dark"></div>
+
+      <div class="pure-u-1-5 cluster-right">
+
+        <div class="pure-u-1-1">
+          <div class="legend-cpu legend-circle"></div>
+          <p>CPU</p>
+          <p class="cpu-label"></p>
+        </div>
+
+        <div class="pure-u-1-1">
+          <div class="legend-ram legend-circle"></div>
+          <p>RAM</p>
+          <p class="ram-label"></p>
+        </div>
+
+        <div class="pure-u-1-1">
+          <div class="legend-disk legend-circle"></div>
+          <p>Disk</cpup>
+          <p class="disk-label"></p>
+        </div>
+
+        <div class="pure-u-1-1">
+          <p class="name-label"></p>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  </script>
+
+<script id="dashboardView.ejs" type="text/template">
+
+  <div id="dashboard-content" class="innerContent">
+
+  <div class="pure-g t-head t-cluster">
+    <div class="pure-u-1-3"><p class="t-label">Name</p></div>
+    <div class="pure-u-1-3"><p class="t-label">Mode</p></div>
+    <div class="pure-u-1-3"><p class="t-label">Health</p></div>
+  </div>
+
+  <div class="pure-g t-body t-cluster-body">
+    <div class="pure-u-1-5"><p class="t-label"></p></div>
+    <div class="pure-u-1-5"><p class="t-label"></p></div>
+    <div class="pure-u-1-5"><p class="t-label align-left"></p></div>
+  </div>
+
+  </div>
+
+</script>
+
+<script id="debugView.ejs" type="text/template">
+
+  <div id="debug-content" class="innerContent">
+
+  <div class="pure-g tab-bar">
+    <div class="pure-u-1-5 tab-div header debug-target" data-url="target"><p>Target</p></div>
+    <div class="pure-u-1-5 tab-div header debug-plan" data-url="plan"><p>Plan</p></div>
+    <div class="pure-u-1-5 tab-div header debug-current" data-url="current"><p>Current</p></div>
+    <div class="pure-u-1-5 header">
+      <i class="fa fa-refresh"></i>
+    </div>
+    <div class="pure-u-1-5 header select-box tab-select">
+      <select class="blue-select">
+        <optgroup class="cluster-select" label="Clusters">
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="pure-g t-head t-cluster">
+    <div class="pure-u-1-1"><p class="t-label">Content</p></div>
+  </div>
+
+  <div class="pure-g t-body t-cluster-body">
+    <pre style="width: 100%; background: #323539; color: #fff; border: 0;">
+      <div class="pure-u-1-1 json-content"><p class="t-label"></p></div>
+    </pre>
+  </div>
+
+  </div>
+
+</script>
+
+<script id="debugView2.ejs" type="text/template">
+
+  <div id="debug-content" class="innerContent">
+
+  <div class="pure-g tab-bar">
+    <div class="pure-u-1-4 tab-div header debug-offers"><p>Offers</p></div>
+    <div class="pure-u-1-4 tab-div header active debug-instances"><p>Instances</p></div>
+    <div class="pure-u-1-4 header">
+      <i class="fa fa-refresh"></i>
+    </div>
+    <div class="pure-u-1-4 header select-box tab-select">
+      <select class="blue-select">
+        <optgroup class="cluster-select" label="Clusters">
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="pure-g t-head t-cluster">
+    <div class="pure-u-2-24"><p class="t-label">Aspect<i data-sortkey="aspect" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-6-24"><p class="t-label">Slave ID<i data-sortkey="slaveId" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">Hostname<i data-sortkey="hostname" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">Status<i data-sortkey="status" class="sorting fa fa-sort"></i></p></div>
+    <div class="pure-u-2-24"><p class="t-label">CPUs</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Memory</p></div>
+    <div class="pure-u-2-24"><p class="t-label">Disk</p></div>
+    <div class="pure-u-3-24"><p class="t-label">Started</p></div>
+    <div class="pure-u-3-24"><p class="t-label">Last update</p></div>
+  </div>
+
+  <div class="pure-g t-body t-cluster-body">
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-6-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label">No data available.</p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-2-24"><p class="t-label"></p></div>
+    <div class="pure-u-3-24"><p class="t-label"></p></div>
+    <div class="pure-u-3-24"><p class="t-label"></p></div>
+  </div>
+
+  </div>
+
+</script>
+
+<script id="footerView.ejs" type="text/template">
+</script>
+
+<script id="modalBase.ejs" type="text/template">
+  <div id="modal-dialog" class="modal fade hide createModalDialog" tabindex="-1" role="dialog"
+       aria-labelledby="myModalLabel" aria-hidden="true">
+   <% if (title !== null) { %>
+   <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader"><%=title%></a>
+   </div>
+   <%}%>
+
+    <div class="modal-body">
+    </div>
+    <% if (!hideFooter) { %>
+    <div class="modal-footer">
+      <%
+      _.each(buttons, function(value, key){
+        var type = value.type,
+          title = value.title,
+          disabled = '';
+          if (value.disabled) {
+            disabled = 'disabled';
+          }
+        %>
+      <button id="modalButton<%=key%>" class="button-<%=type%>" <%=disabled%>><%=title%></button>
+      <%});%>
+    </div>
+    <% } %>
+    <div class="alert alert-error modal-delete-confirmation" id="modal-delete-confirmation">
+      <strong>Really delete?</strong>
+      <button id="modal-confirm-delete" class="button-danger pull-right modal-confirm-delete">Yes</button>
+      <button id="modal-abort-delete" class="button-neutral pull-right">No</button>
+    </div>
+  </div>
+</script>
+
+<script id="modalTable.ejs" type="text/template">
+  <%
+  var createTR = function(row) {
+    var mandatory = '';
+    if (row.mandatory) {
+      mandatory = '*';
+    }
+    %>
+      <tr class="tableRow" id="<%='row_' + row.id%>">
+        <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+        <th class="collectionTh">
+          <%
+            switch(row.type) {
+              case "text":
+          %>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            case "password":
+          %>
+          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <%
+              break;
+            case "readonly":
+          %>
+          <div class="modal-text" id="<%=row.id%>"><%=row.value||''%></div>
+          <%
+              break;
+              case "checkbox":
+                var checked = '',
+                  disabled = '';
+                if (row.checked) {
+                  checked = 'checked';
+                }
+                if (row.disabled) {
+                  disabled = 'disabled';
+                }
+          %>
+          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+          <%
+              break;
+              case "select":
+          %>
+          <select id="<%=row.id%>" class="modalSelect">
+          <%
+                _.each(row.options, function(opt) {
+          %>
+            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+          <%
+                });
+          %>
+          </select>
+          <%
+              break;
+              case "select2":
+          %>
+          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <% if (row.addDelete) {%>
+            <button class="graphViewer-icon-button gv-icon-small add"></button>
+          <% } %>
+          <% if (row.addDelete) {%>
+            <button class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+          <% } %>
+          <%
+              break;
+            }
+
+            if (row.info) {
+          %>
+        <th>
+          <a class="modalTooltips" title="<%=row.info%>">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </th>
+      <%
+        }
+      %>
+      </tr>
+    <%
+  }//createTR
+  %>
+
+  <table>
+    <tbody>
+      <%
+      _.each(content, function(row) {
+        createTR(row);
+      });
+      %>
+
+    </tbody>
+  </table>
+    <%
+    if (advancedContent) {
+    %>
+    <div class="accordion" id="accordion2">
+      <div class="accordion-group">
+        <div class="accordion-heading">
+          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+          </a>
+        </div>
+        <div id="collapseOne" class="accordion-body collapse out">
+          <div class="accordion-inner">
+            <table>
+              <tbody>
+                <%
+                _.each(advancedContent.content, function(row) {
+                  createTR(row);
+                });
+                %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <%
+    }
+    %>
+</script>
+
+<script id="navigationView.ejs" type="text/template">
+  <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
+    <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard">Dashboard</a></li>
+<!--    <li class="overview-menu"><a id="overview" class="tab" href="#overview">Overview</a></li> -->
+    <li class="debug-menu"><a id="debug" class="tab" href="#debug">Debug</a></li>
+  </ul>
+</script>
+
+<script id="testView.ejs" type="text/template">
+
+  <div class="headerBar">
+    <a class="arangoHeader">Test</a>
+  </div>
+
+  <div id="test-content" class="innerContent">
+
+    <form>
+      Filter:<br>
+      Collection<input type="text" name="firstname">
+      Node<input type="text" name="lastname">
+      database<input type="text" name="lastname">
+    </form><br>
+
+    <div id="main">
+
+      <div id="sequence">
+      </div>
+
+      <div id="chart">
+        <div id="explanation" style="visibility: hidden;">
+          <span id="percentage"></span><br/>
+          of data
+        </div>
+      </div>
+
+    </div>
+
+    <div id="sidebar">
+      <input type="checkbox" id="togglelegend"> Legend<br/>
+      <div id="legend" style="visibility: hidden;">
+      </div>
+    </div>
+
+    <div id="information" style="width: 100%; height: 100px; float: left;">
+
+    </div>
+
+  </div>
+
+</script>
+
 </head>
 <body>
-  ArangoDB Framework is up and running.
-</body>
+  <nav class="navbar">
+    <div class="resizecontainer">
+      <div class="navlogo">
+        <a class="logo" href="#"><img src="img/logo_arangodb_white.png"/></a>
+      </div>
+      <div id="progressPlaceholderIcon"></div>
+        <div class="statmenu" id="statisticBar">
+        </div>
+        <div class="usermenu" id="userBar" style="float:right;">
+        </div>
+        <div class="notificationmenu" id="notificationBar" style="float:right;">
+        </div>
+        <div class="navmenu" id="navigationBar">
+        </div>
+    </div>
+  </nav>
+
+  <div class="centralRow resizecontainer">
+    <div id="content" class="centralContent"></div>
+  </div>
+
+  <div id="modalPlaceholder">
+  </div>
+
+  </div>
+
+  <footer class="footer">
+    <div class="resizecontainer" id="footerBar">
+    </div>
+  </footer>
+
+<script src="js/generated/libs.js"></script>
+
+<script src="js/arango/templateEngine.js"></script>
+
+<script src="js/generated/views.js"></script>
+
+<script src="js/generated/routers.js"></script>
+
 </html>

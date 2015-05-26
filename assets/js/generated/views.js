@@ -52,7 +52,8 @@
     render: function () {
       $(this.el).html(this.template.render());
 
-      this.renderSelectBox();
+      //TODO ajax not available
+      //this.renderSelectBox();
 
       var selected = $('.cluster-select option:selected').text();
       this.getClusterServers(selected, true);
@@ -236,15 +237,43 @@
     template: templateEngine.createTemplate("dashboardView.ejs"),
 
     render: function () {
+
+      //render dashboard
+
       var self = this;
       $(this.el).html(this.template.render());
-      this.drawServers();
+      //TODO v1/cluster not available
+      //this.drawServers();
 
       setInterval(function(){
         if (window.location.hash === '#dashboard' && $('#modal-dialog').is(':visible') === false) {
-          self.drawServers();
+          //TODO v1/cluster not available
+          //self.drawServers();
         }
       }, 15000);
+
+      this.drawServers2();
+
+    },
+
+    drawServers2: function () {
+      var self = this;
+
+      //ajax req for data before
+      $.ajax({
+        type : 'GET',
+        dataType : 'json',
+        async: true,
+        url: '/v1/state.json'
+      }).done(function(data) {
+        $('.t-cluster-body').empty();
+        self.drawServerLine2([
+          data.framework_name,
+          data.mode,
+          data.health
+        ]);
+      });
+
     },
 
     drawServers: function () {
@@ -472,6 +501,18 @@
       newCluster.dbservers = JSON.parse($('#id_dbservers').text());
     },
 
+    drawServerLine2: function(parameters) {
+      var htmlString = '<div class="t-row pure-g">';
+
+      _.each(parameters, function(val) {
+        htmlString += '<div class="pure-u-1-3"><p class="t-content">'+val+'</p></div>';
+      });
+      htmlString += '</div>';
+
+      $('.t-cluster-body').append(htmlString);
+
+    },
+
     drawServerLine: function(parameters) {
       var htmlString = '<div class="t-row pure-g">';
 
@@ -500,6 +541,9 @@
 
     events: {
       "click .debug-offers"    : "renderOfferTable",
+      "click .debug-target"    : "renderJSON",
+      "click .debug-plan"      : "renderJSON",
+      "click .debug-current"   : "renderJSON",
       "click .debug-instances" : "renderInstancesTable",
       "click .fa-refresh"      : "refresh",
       "click .sorting"         : "sorting",
@@ -513,7 +557,7 @@
     template2: templateEngine.createTemplate("debugView2.ejs"),
 
     render: function () {
-      this.renderOfferTable();
+      this.renderJSON(undefined);
     },
 
     refresh: function() {
@@ -533,6 +577,39 @@
       else {
         this.drawOfferTable();
       }
+    },
+
+    renderJSON: function(e) {
+
+      $('.tab-div').removeClass('active');
+
+      $(this.el).html(this.template.render());
+
+      var url = "";
+
+      if (e) {
+        url = $(e.currentTarget).attr('data-url');
+        console.log(url);
+      }
+      else {
+        url = "target";
+      }
+
+      $('.debug-'+url).addClass('active');
+
+      $.ajax({
+        type : 'GET',
+        dataType : 'json',
+        async: true,
+        url: '/debug/' + url + '.json'
+      }).done(function(data) {
+        $('.json-content').text(JSON.stringify(data, null, 2));
+      });
+
+      //TODO: disable not used stuff for the moment
+      $('.select-box').css('visibility', 'hidden');
+      $('.fa-refresh').css('visibility', 'hidden');
+  
     },
 
     renderOfferTable: function() {
