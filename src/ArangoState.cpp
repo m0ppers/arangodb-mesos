@@ -48,6 +48,8 @@ using namespace std;
 
 void fillTaskStatus (vector<mesos::TaskStatus>& result,
                      const InstancesCurrent& instances) {
+
+  // we have to check the TaskInfo (not TaskStatus!)
   for (int i = 0;  i < instances.entries_size();  ++i) {
     const InstancesCurrentEntry& entry = instances.entries(i);
 
@@ -58,8 +60,19 @@ void fillTaskStatus (vector<mesos::TaskStatus>& result,
       case INSTANCE_STATE_STARTING:
       case INSTANCE_STATE_RUNNING:
       case INSTANCE_STATE_STOPPED:
-        if (entry.has_task_status()) {
-          result.push_back(entry.task_status());
+        if (entry.has_task_info()) {
+          auto const& info = entry.task_info();
+
+          mesos::TaskStatus status;
+          status.mutable_task_id()->CopyFrom(info.task_id());
+
+          if (info.has_slave_id()) {
+            status.mutable_slave_id()->CopyFrom(info.slave_id());
+          }
+
+          status.set_state(mesos::TaskState::TASK_RUNNING);
+
+          result.push_back(status);
         }
 
         break;

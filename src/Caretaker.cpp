@@ -626,6 +626,45 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the task id, clears the task info and status
+////////////////////////////////////////////////////////////////////////////////
+
+void Caretaker::setTaskId (const AspectPosition& pos,
+                           const mesos::TaskID& taskId) {
+  Current current = Global::state().current();
+  int p = pos._pos;
+
+  mesos::SlaveID slaveId;
+  slaveId.set_value("");
+
+  mesos::TaskInfo info;
+  info.set_name("embryo");
+  info.mutable_task_id()->CopyFrom(taskId);
+  info.mutable_slave_id()->CopyFrom(slaveId);
+
+  switch (pos._type) {
+    case AspectType::PRIMARY_DBSERVER:
+      current.mutable_primary_dbservers()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(info);
+
+      current.mutable_primary_dbservers()
+        ->mutable_entries(p)
+        ->clear_task_status();
+      break;
+
+    default:
+      LOG(INFO)
+      << "unknown task type " << (int) pos._type
+      << " for " << taskId.value();
+      break;
+  }
+
+  Global::state().setCurrent(current);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task info
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -640,6 +679,12 @@ void Caretaker::setTaskInfo (const AspectPosition& pos,
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
+      break;
+
+    default:
+      LOG(INFO)
+      << "unknown task type " << (int) pos._type
+      << " for " << taskInfo.task_id().value();
       break;
   }
 
@@ -662,6 +707,12 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
       break;
+
+    default:
+      LOG(INFO)
+      << "unknown task type " << (int) pos._type
+      << " for " << taskStatus.task_id().value();
+      break;
   }
 
   Global::state().setCurrent(current);
@@ -682,6 +733,11 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
         ->mutable_entries(p)
         ->set_state(state);
       break;
+
+    default:
+      LOG(INFO)
+      << "unknown task type " << (int) pos._type;
+      break;
   }
 
   Global::state().setCurrent(current);
@@ -700,6 +756,11 @@ void Caretaker::freeResourceForInstance (const AspectPosition& pos) {
       current.mutable_primary_dbserver_resources()
         ->mutable_entries(p)
         ->set_state(RESOURCE_STATE_REQUIRED);
+      break;
+
+    default:
+      LOG(INFO)
+      << "unknown task type " << (int) pos._type;
       break;
   }
 

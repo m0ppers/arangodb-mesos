@@ -720,6 +720,14 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   volume->set_host_path(Global::volumePath() + "/" + path);
   volume->set_mode(mesos::Volume::RW);
 
+  // sets the task_id (in case we crash) before we start
+  Caretaker& caretaker = Global::caretaker();
+
+  mesos::TaskID tid;
+  tid.set_value(taskId);
+
+  caretaker.setTaskId(pos, tid);
+
   // and start
   mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
     taskId,
@@ -730,7 +738,6 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
 
   _task2position[taskId] = pos;
 
-  Caretaker& caretaker = Global::caretaker();
   caretaker.setTaskInfo(pos, taskInfo);
 }
 
@@ -740,11 +747,19 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
 
 void ArangoManagerImpl::fillKnownInstances (AspectType type,
                                             const InstancesCurrent& instances) {
+  LOG(INFO)
+  << "recovering instance type " << (int) type;
+
   for (int i = 0;  i < instances.entries_size();  ++i) {
     const InstancesCurrentEntry& entry = instances.entries(i);
 
     if (entry.has_task_info()) {
-      _task2position[entry.task_info().task_id().value()] = { type, (size_t) i };
+      string id = entry.task_info().task_id().value();
+
+      LOG(INFO)
+      << "for task id " << id << ": " << i;
+
+      _task2position[id] = { type, (size_t) i };
     }
   }
 }

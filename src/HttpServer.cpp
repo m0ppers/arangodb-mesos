@@ -246,7 +246,9 @@ string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
 string HttpServerImpl::GET_DEBUG_OVERVIEW (const string& name) {
   ArangoState& state = Global::state();
 
-  return "{ \"target\" : " + state.jsonTarget()
+  return "{ \"frameworkId\" : \"" + Global::state().frameworkId() + "\""
+       + ", \"frameworkName\" : \"" + Global::frameworkName() + "\""
+       + ", \"target\" : " + state.jsonTarget()
        + ", \"plan\" : " + state.jsonPlan()
        + ", \"current\" : " + state.jsonCurrent() + " }";
   

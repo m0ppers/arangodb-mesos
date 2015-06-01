@@ -39,6 +39,7 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 
   enum class AspectType {
+    UNKNOWN,
     AGENCY,
     COORDINATOR,
     PRIMARY_DBSERVER,
@@ -50,6 +51,10 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 
   class AspectPosition {
+    public:
+      AspectPosition () : _type(AspectType::UNKNOWN), _pos(0) {}
+      AspectPosition (AspectType type, size_t pos) : _type(type), _pos(pos) {}
+
     public:
       AspectType _type;
       size_t _pos;
@@ -170,6 +175,13 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       OfferAction checkOffer (const mesos::Offer&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the task id, clears the task info and status
+////////////////////////////////////////////////////////////////////////////////
+
+      void setTaskId (const AspectPosition&,
+                      const mesos::TaskID&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task info
