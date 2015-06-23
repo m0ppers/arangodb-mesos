@@ -339,7 +339,7 @@ int main (int argc, char** argv) {
   // ...........................................................................
 
   // create the scheduler
-  ArangoScheduler scheduler(role, principal);
+  ArangoScheduler scheduler;
 
   mesos::MesosSchedulerDriver* driver;
 

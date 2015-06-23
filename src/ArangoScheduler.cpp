@@ -154,11 +154,8 @@ static void checkVersion (string hostname, int port) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoScheduler::ArangoScheduler (const string& role,
-                                  const string& principal)
-  : _role(role),
-    _principal(principal),
-    _driver(nullptr) {
+ArangoScheduler::ArangoScheduler ()
+  : _driver(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
