@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief standalone caretaker
+/// @brief replication caretaker
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CaretakerStandalone.h"
+#include "CaretakerReplication.h"
 
 #include "ArangoState.h"
 #include "Global.h"
@@ -46,7 +46,7 @@ using namespace arangodb;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CaretakerStandalone::CaretakerStandalone () {
+CaretakerReplication::CaretakerReplication () {
   mesos::Resource* m;
 
   Target target = Global::state().target();
@@ -63,7 +63,7 @@ CaretakerStandalone::CaretakerStandalone () {
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
-  dbserver->set_instances(1);
+  dbserver->set_instances(2);
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
 
@@ -96,47 +96,55 @@ CaretakerStandalone::CaretakerStandalone () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void CaretakerStandalone::updatePlan () {
+void CaretakerReplication::updatePlan () {
   Target target = Global::state().target();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  // need exactly one DB server
+  // need at least one DB server
   int t = (int) target.dbservers().instances();
 
-  if (t != 1) {
+  if (t < 1) {
     LOG(ERROR)
-    << "FATAL running in standalone mode, exactly one db-server is supported, got " << t;
+    << "ERROR running in replication mode, need at least one db-server";
 
     exit(EXIT_FAILURE);
   }
 
-  TasksPlan* dbservers = plan.mutable_dbservers();
-  int p = dbservers->entries_size();
+  TasksPlan* tasks = plan.mutable_dbservers();
+  int p = tasks->entries_size();
 
-  if (1 < p) {
-    LOG(ERROR)
-    << "ERROR running in standalone mode, but got " << p << " db-servers";
+  if (t < p) {
+    LOG(INFO)
+    << "INFO reducing number of db-servers from " << p << " to " << t;
 
-    TasksPlanEntry entry = dbservers->entries(0);
+    TasksPlan original;
+    original.CopyFrom(*tasks);
+    
+    tasks->clear_entries();
 
-    dbservers->clear_entries();
-    dbservers->add_entries()->CopyFrom(entry);
+    for (int i = 0;  i < t;  ++i) {
+      TasksPlanEntry entry = original.entries(i);
+
+      tasks->add_entries()->CopyFrom(entry);
+    }
   }
 
-  else if (p < 1) {
+  if (p < t) {
     LOG(INFO)
-    << "DEBUG creating one db-server in plan";
+    << "DEBUG creating " << (t - p) << " more db-servers in plan";
 
-    TasksPlanEntry* planEntry = dbservers->add_entries();
-    planEntry->set_is_primary(true);
+    for (int i = p;  i < t;  ++i) {
+      TasksPlanEntry* planEntry = tasks->add_entries();
+      planEntry->set_is_primary(i == 0);
 
-    ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
-    ResourcesCurrentEntry* resEntry = resources->add_entries();
-    resEntry->set_state(RESOURCE_STATE_REQUIRED);
+      ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
+      ResourcesCurrentEntry* resEntry = resources->add_entries();
+      resEntry->set_state(RESOURCE_STATE_REQUIRED);
 
-    InstancesCurrent* instances = current.mutable_primary_dbservers();
-    instances->add_entries();
+      InstancesCurrent* instances = current.mutable_primary_dbservers();
+      instances->add_entries();
+    }
   }
 
   Global::state().setPlan(plan);
@@ -147,7 +155,8 @@ void CaretakerStandalone::updatePlan () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-InstanceAction CaretakerStandalone::checkInstance () {
+InstanceAction CaretakerReplication::checkInstance () {
+  Target target = Global::state().target();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 

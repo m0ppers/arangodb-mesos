@@ -363,12 +363,13 @@ static OfferAction checkResourceOffer (const string& name,
   // .............................................................................
 
   int required = -1;
+  const string& offerSlaveId = offer.slave_id().value();
 
   for (int i = 0;  i < p;  ++i) {
     TasksPlanEntry* entry = plan->mutable_entries(i);
     ResourcesCurrentEntry* resEntry = current->mutable_entries(i);
 
-    if (entry->slave_id().value() == offer.slave_id().value()) {
+    if (entry->slave_id().value() == offerSlaveId) {
       auto state = resEntry->state();
 
       // we do not need a reservation
@@ -544,7 +545,7 @@ void Caretaker::updatePlan () {
 
   adjustPlan("dbserver",
              target.dbservers(),
-             plan.mutable_primary_dbservers(),
+             plan.mutable_dbservers(),
              current.mutable_primary_dbserver_resources(),
              current.mutable_primary_dbservers());
 
@@ -569,11 +570,27 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  for (size_t i = 0;  i < 3;  ++i) {
+  vector<size_t> checks;
+
+  static const size_t AGENCY = 0;
+  static const size_t DBSERVER = 1;
+  static const size_t COORDINATOR = 3;
+
+  switch (Global::mode()) {
+    case OperationMode::STANDALONE:
+      checks = { DBSERVER };
+      break;
+
+    case OperationMode::REPLICATION:
+      checks = { DBSERVER };
+      break;
+  }
+
+  for (auto i : checks) {
     OfferAction action;
 
     switch (i) {
-      case 0:
+      case AGENCY:
         action = checkResourceOffer("agency", true,
                                     target.agencies(),
                                     plan.mutable_agencies(),
@@ -582,15 +599,15 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
         break;
 
 
-      case 1:
-        action = checkResourceOffer("dbserver", true,
+      case DBSERVER:
+        action = checkResourceOffer("primary", true,
                                     target.dbservers(),
-                                    plan.mutable_primary_dbservers(),
+                                    plan.mutable_dbservers(),
                                     current.mutable_primary_dbserver_resources(),
                                     offer);
         break;
 
-      case 2:
+      case COORDINATOR:
         action = checkResourceOffer("coordinator", false,
                                     target.coordinators(),
                                     plan.mutable_coordinators(),

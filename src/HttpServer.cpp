@@ -139,16 +139,8 @@ string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) 
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_STATE (const string&) {
-  string mode = "unknown";
-
-  switch (Global::mode()) {
-    case OperationMode::STANDALONE:
-      mode = "standalone";
-      break;
-  }
-
   picojson::object result;
-  result["mode"] = picojson::value(mode);
+  result["mode"] = picojson::value(Global::modeLC());
   result["health"] = picojson::value(true);
   result["role"] = picojson::value(Global::role());
   result["framework_name"] = picojson::value(Global::frameworkName());
@@ -163,16 +155,8 @@ string HttpServerImpl::GET_V1_STATE (const string&) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_MODE (const string&) {
-  string mode = "unknown";
-
-  switch (Global::mode()) {
-    case OperationMode::STANDALONE:
-      mode = "standalone";
-      break;
-  }
-
   picojson::object result;
-  result["mode"] = picojson::value(mode);
+  result["mode"] = picojson::value(Global::modeLC());
 
   return picojson::value(result).serialize();
 }

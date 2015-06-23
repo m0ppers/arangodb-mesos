@@ -16,9 +16,10 @@ message TargetEntry {
 
 
 message Target {
-  required TargetEntry agencies = 1;
-  required TargetEntry coordinators = 2;
-  required TargetEntry dbservers = 3;
+  required string mode = 1;
+  required TargetEntry agencies = 2;
+  required TargetEntry coordinators = 3;
+  required TargetEntry dbservers = 4;
 }
 
 // -----------------------------------------------------------------------------
@@ -26,8 +27,9 @@ message Target {
 // -----------------------------------------------------------------------------
 
 message TasksPlanEntry {
-  optional mesos.SlaveID slave_id = 1;
-  optional string persistence_id = 2;
+  required bool is_primary = 1;
+  optional mesos.SlaveID slave_id = 2;
+  optional string persistence_id = 3;
 }
 
 
@@ -39,10 +41,9 @@ message TasksPlan {
 
 
 message Plan {
-  required TasksPlan agencies = 5;
-  required TasksPlan coordinators = 6;
-  required TasksPlan primary_dbservers = 7;
-  required TasksPlan secondary_dbservers = 8;
+  required TasksPlan agencies = 1;
+  required TasksPlan coordinators = 2;
+  required TasksPlan dbservers = 3;
 }
 
 // -----------------------------------------------------------------------------

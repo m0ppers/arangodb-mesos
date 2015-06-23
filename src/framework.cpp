@@ -34,6 +34,7 @@
 #include "ArangoScheduler.h"
 #include "ArangoState.h"
 #include "CaretakerStandalone.h"
+#include "CaretakerReplication.h"
 #include "Global.h"
 #include "HttpServer.h"
 
@@ -95,6 +96,7 @@ int main (int argc, char** argv) {
   // command line options
   // .............................................................................
 
+#if 0
   // find this executable's directory to locate executor
 
   string argv0 = argv[0];
@@ -104,6 +106,7 @@ int main (int argc, char** argv) {
   if (getenv("ARANGODB_MESOS_DIR")) {
     uri = string(getenv("ARANGODB_MESOS_DIR")) + "/arangodb-executor";
   }
+#endif
 
   // parse the command line flags
   logging::Flags flags;
@@ -111,7 +114,7 @@ int main (int argc, char** argv) {
   string mode;
   flags.add(&mode,
             "mode",
-            "Mode of operation (standalone)",
+            "Mode of operation (standalone, replication)",
             "standalone");
 
   string role;
@@ -185,7 +188,7 @@ int main (int argc, char** argv) {
 
   if (load.isError()) {
     cerr << load.error() << endl;
-    usage(argv0, flags);
+    usage(argv[0], flags);
     exit(1);
   }
 
@@ -232,14 +235,18 @@ int main (int argc, char** argv) {
   if (mode == "standalone") {
     Global::setMode(OperationMode::STANDALONE);
   }
+  else if (mode == "replication") {
+    Global::setMode(OperationMode::REPLICATION);
+  }
   else {
-    cerr << argv0 << ": expecting mode '" << mode << "' to be "
-         << "standalone" << "\n";
+    cerr << argv[0] << ": expecting mode '" << mode << "' to be "
+         << "standalone, replication" << "\n";
   }
 
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);
 
+#if 0
   // .............................................................................
   // executor
   // .............................................................................
@@ -251,6 +258,7 @@ int main (int argc, char** argv) {
   executor.set_name("arangodb_executor");
   executor.set_source("arangodb");
   *executor.mutable_resources() = mesos::Resources();
+#endif
 
   // .............................................................................
   // state
@@ -336,6 +344,11 @@ int main (int argc, char** argv) {
   switch (Global::mode()) {
     case OperationMode::STANDALONE:
       caretaker.reset(new CaretakerStandalone);
+      break;
+
+    case OperationMode::REPLICATION:
+      caretaker.reset(new CaretakerReplication);
+      break;
   }
 
   Global::setCaretaker(caretaker.get());

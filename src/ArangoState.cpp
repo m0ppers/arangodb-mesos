@@ -27,6 +27,8 @@
 
 #include "ArangoState.h"
 
+#include "Global.h"
+
 #include "pbjson.hpp"
 
 #include <state/leveldb.hpp>
@@ -127,7 +129,7 @@ void ArangoState::init () {
     bool ok = boost::regex_match(_zk, m, re);
 
     if (! ok) {
-      LOG(ERROR) << "cannot parse zookeeper '" << _zk << "'";
+      LOG(ERROR) << "FATAL cannot parse zookeeper '" << _zk << "'";
       exit(EXIT_FAILURE);
     }
 
@@ -137,14 +139,14 @@ void ArangoState::init () {
   _stateStore = new mesos::internal::state::State(_storage);
 
   _state.mutable_target();
+  _state.mutable_target()->set_mode(Global::modeLC());
   _state.mutable_target()->mutable_agencies()->set_number_ports(0);
   _state.mutable_target()->mutable_coordinators()->set_number_ports(0);
 
   _state.mutable_plan();
   _state.mutable_plan()->mutable_agencies();
   _state.mutable_plan()->mutable_coordinators();
-  _state.mutable_plan()->mutable_primary_dbservers();
-  _state.mutable_plan()->mutable_secondary_dbservers();
+  _state.mutable_plan()->mutable_dbservers();
 
   _state.mutable_current();
   _state.mutable_current()->mutable_agencies();
@@ -169,6 +171,15 @@ void ArangoState::load () {
 
   if (! value.empty()) {
     _state.ParseFromString(value);
+
+    if (_state.target().mode() != Global::modeLC()) {
+      LOG(ERROR)
+      << "FATAL stored state is for mode '"
+      << _state.target().mode() << "', "
+      << "requested mode is '" << Global::modeLC() << "'";
+
+      exit(EXIT_FAILURE);
+    }
   }
 
   string json;

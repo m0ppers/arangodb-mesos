@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief standalone caretaker
+/// @brief replication caretaker
 ///
 /// @file
 ///
@@ -25,8 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef CARETAKER_STANDALONE_H
-#define CARETAKER_STANDALONE_H 1
+#ifndef CARETAKER_REPLICATION_H
+#define CARETAKER_REPLICATION_H 1
 
 #include "Caretaker.h"
 
@@ -40,7 +40,7 @@ namespace arangodb {
 /// @brief caretaker class
 ////////////////////////////////////////////////////////////////////////////////
 
-  class CaretakerStandalone : public Caretaker {
+  class CaretakerReplication : public Caretaker {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -52,7 +52,7 @@ namespace arangodb {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      CaretakerStandalone ();
+      CaretakerReplication ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
