@@ -53,13 +53,15 @@ CaretakerReplication::CaretakerReplication () {
 
   // AGENCY
   TargetEntry* agency = target.mutable_agencies();
-  agency->set_instances(0);
+  agency->set_instances(1);
   agency->clear_minimal_resources();
+  // FIXME: set sensible minimal resources for AGENCIES
 
   // COORDINATOR
   TargetEntry* coordinator = target.mutable_coordinators();
-  coordinator->set_instances(0);
+  coordinator->set_instances(1);
   coordinator->clear_minimal_resources();
+  // FIXME: set sensible minimal resources for COORDINATORS
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
@@ -67,6 +69,7 @@ CaretakerReplication::CaretakerReplication () {
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
 
+  // FIXME: make minimal resources for DBSERVERS configurable via command line
   m = dbserver->add_minimal_resources();
   m->set_role("*");
   m->set_name("cpus");
