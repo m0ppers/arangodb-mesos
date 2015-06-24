@@ -221,7 +221,7 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(InstancesCurrent));
   Current_descriptor_ = file->message_type(9);
-  static const int Current_offsets_[8] = {
+  static const int Current_offsets_[10] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, agency_resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, coordinator_resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, primary_dbserver_resources_),
@@ -230,6 +230,8 @@ void protobuf_AssignDesc_arangodb_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, coordinators_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, primary_dbservers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, secondary_dbservers_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, agency_initialized_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, cluster_initialized_),
   };
   Current_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -363,7 +365,7 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "s.TaskInfo\022&\n\013task_status\030\003 \001(\0132\021.mesos."
     "TaskStatus\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 "
     "\001(\t\"D\n\020InstancesCurrent\0220\n\007entries\030\001 \003(\013"
-    "2\037.arangodb.InstancesCurrentEntry\"\314\003\n\007Cu"
+    "2\037.arangodb.InstancesCurrentEntry\"\205\004\n\007Cu"
     "rrent\0224\n\020agency_resources\030\001 \002(\0132\032.arango"
     "db.ResourcesCurrent\0229\n\025coordinator_resou"
     "rces\030\002 \002(\0132\032.arangodb.ResourcesCurrent\022>"
@@ -375,20 +377,21 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "rangodb.InstancesCurrent\0225\n\021primary_dbse"
     "rvers\030\007 \002(\0132\032.arangodb.InstancesCurrent\022"
     "7\n\023secondary_dbservers\030\010 \002(\0132\032.arangodb."
-    "InstancesCurrent\"\225\001\n\005State\022(\n\014framework_"
-    "id\030\001 \001(\0132\022.mesos.FrameworkID\022 \n\006target\030\002"
-    " \002(\0132\020.arangodb.Target\022\034\n\004plan\030\003 \002(\0132\016.a"
-    "rangodb.Plan\022\"\n\007current\030\004 \002(\0132\021.arangodb"
-    ".Current*\352\001\n\025ResourcesCurrentState\022\032\n\026RE"
-    "SOURCE_STATE_UNKNOWN\020\001\022\033\n\027RESOURCE_STATE"
-    "_REQUIRED\020\002\022$\n RESOURCE_STATE_TRYING_TO_"
-    "RESERVE\020\003\022$\n RESOURCE_STATE_TRYING_TO_PE"
-    "RSIST\020\004\022\032\n\026RESOURCE_STATE_USEABLE\020\005\022\027\n\023R"
-    "ESOURCE_STATE_USED\020\006\022\027\n\023RESOURCE_STATE_L"
-    "OST\020\007*\207\001\n\025InstancesCurrentState\022\031\n\025INSTA"
-    "NCE_STATE_UNUSED\020\001\022\033\n\027INSTANCE_STATE_STA"
-    "RTING\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003\022\032\n\026I"
-    "NSTANCE_STATE_STOPPED\020\004", 2223);
+    "InstancesCurrent\022\032\n\022agency_initialized\030\t"
+    " \002(\010\022\033\n\023cluster_initialized\030\n \002(\010\"\225\001\n\005St"
+    "ate\022(\n\014framework_id\030\001 \001(\0132\022.mesos.Framew"
+    "orkID\022 \n\006target\030\002 \002(\0132\020.arangodb.Target\022"
+    "\034\n\004plan\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007current"
+    "\030\004 \002(\0132\021.arangodb.Current*\352\001\n\025ResourcesC"
+    "urrentState\022\032\n\026RESOURCE_STATE_UNKNOWN\020\001\022"
+    "\033\n\027RESOURCE_STATE_REQUIRED\020\002\022$\n RESOURCE"
+    "_STATE_TRYING_TO_RESERVE\020\003\022$\n RESOURCE_S"
+    "TATE_TRYING_TO_PERSIST\020\004\022\032\n\026RESOURCE_STA"
+    "TE_USEABLE\020\005\022\027\n\023RESOURCE_STATE_USED\020\006\022\027\n"
+    "\023RESOURCE_STATE_LOST\020\007*\207\001\n\025InstancesCurr"
+    "entState\022\031\n\025INSTANCE_STATE_UNUSED\020\001\022\033\n\027I"
+    "NSTANCE_STATE_STARTING\020\002\022\032\n\026INSTANCE_STA"
+    "TE_RUNNING\020\003\022\032\n\026INSTANCE_STATE_STOPPED\020\004", 2280);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   TargetEntry::default_instance_ = new TargetEntry();
@@ -3347,6 +3350,8 @@ const int Current::kAgenciesFieldNumber;
 const int Current::kCoordinatorsFieldNumber;
 const int Current::kPrimaryDbserversFieldNumber;
 const int Current::kSecondaryDbserversFieldNumber;
+const int Current::kAgencyInitializedFieldNumber;
+const int Current::kClusterInitializedFieldNumber;
 #endif  // !_MSC_VER
 
 Current::Current()
@@ -3381,6 +3386,8 @@ void Current::SharedCtor() {
   coordinators_ = NULL;
   primary_dbservers_ = NULL;
   secondary_dbservers_ = NULL;
+  agency_initialized_ = false;
+  cluster_initialized_ = false;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -3448,6 +3455,10 @@ void Current::Clear() {
     if (has_secondary_dbservers()) {
       if (secondary_dbservers_ != NULL) secondary_dbservers_->::arangodb::InstancesCurrent::Clear();
     }
+  }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    agency_initialized_ = false;
+    cluster_initialized_ = false;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -3566,6 +3577,38 @@ bool Current::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(72)) goto parse_agency_initialized;
+        break;
+      }
+
+      // required bool agency_initialized = 9;
+      case 9: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_agency_initialized:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &agency_initialized_)));
+          set_has_agency_initialized();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(80)) goto parse_cluster_initialized;
+        break;
+      }
+
+      // required bool cluster_initialized = 10;
+      case 10: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_cluster_initialized:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &cluster_initialized_)));
+          set_has_cluster_initialized();
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3636,6 +3679,16 @@ void Current::SerializeWithCachedSizes(
       8, this->secondary_dbservers(), output);
   }
 
+  // required bool agency_initialized = 9;
+  if (has_agency_initialized()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(9, this->agency_initialized(), output);
+  }
+
+  // required bool cluster_initialized = 10;
+  if (has_cluster_initialized()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(10, this->cluster_initialized(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -3698,6 +3751,16 @@ void Current::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         8, this->secondary_dbservers(), target);
+  }
+
+  // required bool agency_initialized = 9;
+  if (has_agency_initialized()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(9, this->agency_initialized(), target);
+  }
+
+  // required bool cluster_initialized = 10;
+  if (has_cluster_initialized()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(10, this->cluster_initialized(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -3768,6 +3831,18 @@ int Current::ByteSize() const {
     }
 
   }
+  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    // required bool agency_initialized = 9;
+    if (has_agency_initialized()) {
+      total_size += 1 + 1;
+    }
+
+    // required bool cluster_initialized = 10;
+    if (has_cluster_initialized()) {
+      total_size += 1 + 1;
+    }
+
+  }
   if (!unknown_fields().empty()) {
     total_size +=
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
@@ -3819,6 +3894,14 @@ void Current::MergeFrom(const Current& from) {
       mutable_secondary_dbservers()->::arangodb::InstancesCurrent::MergeFrom(from.secondary_dbservers());
     }
   }
+  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
+    if (from.has_agency_initialized()) {
+      set_agency_initialized(from.agency_initialized());
+    }
+    if (from.has_cluster_initialized()) {
+      set_cluster_initialized(from.cluster_initialized());
+    }
+  }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
@@ -3835,7 +3918,7 @@ void Current::CopyFrom(const Current& from) {
 }
 
 bool Current::IsInitialized() const {
-  if ((_has_bits_[0] & 0x000000ff) != 0x000000ff) return false;
+  if ((_has_bits_[0] & 0x000003ff) != 0x000003ff) return false;
 
   if (has_agency_resources()) {
     if (!this->agency_resources().IsInitialized()) return false;
@@ -3874,6 +3957,8 @@ void Current::Swap(Current* other) {
     std::swap(coordinators_, other->coordinators_);
     std::swap(primary_dbservers_, other->primary_dbservers_);
     std::swap(secondary_dbservers_, other->secondary_dbservers_);
+    std::swap(agency_initialized_, other->agency_initialized_);
+    std::swap(cluster_initialized_, other->cluster_initialized_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

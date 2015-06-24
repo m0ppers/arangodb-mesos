@@ -700,10 +700,18 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   mesos::CommandInfo command;
   command.set_value("standalone");
   command.set_shell(false);
+  mesos::Environment environment;
+  auto p = environment.add_variables();
+  p->set_name("HOST");
+  p->set_value(info.hostname());
+  p = environment.add_variables();
+  p->set_name("PORT0");
+  p->set_value(std::to_string(info.ports(0)));
+  p = environment.add_variables();
 
   // docker info
   mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
-  docker->set_image("arangodb/arangodb-mesos");
+  docker->set_image("arangodb/arangodb-mesos:test");
   docker->set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
 
   // port mapping

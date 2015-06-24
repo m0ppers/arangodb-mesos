@@ -1229,6 +1229,20 @@ class Current : public ::google::protobuf::Message {
   inline ::arangodb::InstancesCurrent* release_secondary_dbservers();
   inline void set_allocated_secondary_dbservers(::arangodb::InstancesCurrent* secondary_dbservers);
 
+  // required bool agency_initialized = 9;
+  inline bool has_agency_initialized() const;
+  inline void clear_agency_initialized();
+  static const int kAgencyInitializedFieldNumber = 9;
+  inline bool agency_initialized() const;
+  inline void set_agency_initialized(bool value);
+
+  // required bool cluster_initialized = 10;
+  inline bool has_cluster_initialized() const;
+  inline void clear_cluster_initialized();
+  static const int kClusterInitializedFieldNumber = 10;
+  inline bool cluster_initialized() const;
+  inline void set_cluster_initialized(bool value);
+
   // @@protoc_insertion_point(class_scope:arangodb.Current)
  private:
   inline void set_has_agency_resources();
@@ -1247,6 +1261,10 @@ class Current : public ::google::protobuf::Message {
   inline void clear_has_primary_dbservers();
   inline void set_has_secondary_dbservers();
   inline void clear_has_secondary_dbservers();
+  inline void set_has_agency_initialized();
+  inline void clear_has_agency_initialized();
+  inline void set_has_cluster_initialized();
+  inline void clear_has_cluster_initialized();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1258,9 +1276,11 @@ class Current : public ::google::protobuf::Message {
   ::arangodb::InstancesCurrent* coordinators_;
   ::arangodb::InstancesCurrent* primary_dbservers_;
   ::arangodb::InstancesCurrent* secondary_dbservers_;
+  bool agency_initialized_;
+  bool cluster_initialized_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -2814,6 +2834,50 @@ inline void Current::set_allocated_secondary_dbservers(::arangodb::InstancesCurr
   } else {
     clear_has_secondary_dbservers();
   }
+}
+
+// required bool agency_initialized = 9;
+inline bool Current::has_agency_initialized() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void Current::set_has_agency_initialized() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void Current::clear_has_agency_initialized() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void Current::clear_agency_initialized() {
+  agency_initialized_ = false;
+  clear_has_agency_initialized();
+}
+inline bool Current::agency_initialized() const {
+  return agency_initialized_;
+}
+inline void Current::set_agency_initialized(bool value) {
+  set_has_agency_initialized();
+  agency_initialized_ = value;
+}
+
+// required bool cluster_initialized = 10;
+inline bool Current::has_cluster_initialized() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void Current::set_has_cluster_initialized() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void Current::clear_has_cluster_initialized() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void Current::clear_cluster_initialized() {
+  cluster_initialized_ = false;
+  clear_has_cluster_initialized();
+}
+inline bool Current::cluster_initialized() const {
+  return cluster_initialized_;
+}
+inline void Current::set_cluster_initialized(bool value) {
+  set_has_cluster_initialized();
+  cluster_initialized_ = value;
 }
 
 // -------------------------------------------------------------------
