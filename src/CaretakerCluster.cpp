@@ -156,10 +156,11 @@ void CaretakerCluster::updatePlan () {
     LOG(INFO)
     << "INFO currently we support only a single server agency";
     t = 1;
-    target.agents().set_instances(1);
+    TargetEntry* te = target.mutable_agents();
+    te->set_instances(1);
   }
-  TasksPlan* agencyTasks = plan.mutable_agents();
-  p = agencyTasks->entries.size();
+  TasksPlan* tasks = plan.mutable_agents();
+  p = tasks->entries_size();
   if (t < p) {
     LOG(INFO)
     << "INFO reducing number of agents from " << p << " to " << t;
@@ -183,7 +184,7 @@ void CaretakerCluster::updatePlan () {
       TasksPlanEntry* planEntry = tasks->add_entries();
       planEntry->set_is_primary(true);
 
-      ResourcesCurrent* resources = current.mutable_primary_agency_resources();
+      ResourcesCurrent* resources = current.mutable_agency_resources();
       ResourcesCurrentEntry* resEntry = resources->add_entries();
       resEntry->set_state(RESOURCE_STATE_REQUIRED);
 
@@ -202,23 +203,14 @@ void CaretakerCluster::updatePlan () {
     exit(EXIT_FAILURE);
   }
 
-  TasksPlan* tasks = plan.mutable_dbservers();
+  tasks = plan.mutable_dbservers();
   p = tasks->entries_size();
 
   if (t < p) {
     LOG(INFO)
-    << "INFO reducing number of db-servers from " << p << " to " << t;
-
-    TasksPlan original;
-    original.CopyFrom(*tasks);
-    
-    tasks->clear_entries();
-
-    for (int i = 0;  i < t;  ++i) {
-      TasksPlanEntry entry = original.entries(i);
-
-      tasks->add_entries()->CopyFrom(entry);
-    }
+    << "INFO refusing to reduce number of db-servers from " << p << " to " << t
+    << " NOT YET IMPLEMENTED.";
+    target.mutable_dbservers()->set_instances(p);
   }
 
   if (p < t) {
@@ -227,13 +219,56 @@ void CaretakerCluster::updatePlan () {
 
     for (int i = p;  i < t;  ++i) {
       TasksPlanEntry* planEntry = tasks->add_entries();
-      planEntry->set_is_primary(i == 0);
+      planEntry->set_is_primary(true);
 
       ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
       ResourcesCurrentEntry* resEntry = resources->add_entries();
       resEntry->set_state(RESOURCE_STATE_REQUIRED);
 
       InstancesCurrent* instances = current.mutable_primary_dbservers();
+      instances->add_entries();
+    }
+  }
+
+  // need at least one coordinator
+  t = (int) target.coordinators().instances();
+
+  if (t < 1) {
+    LOG(ERROR)
+    << "ERROR running in cluster mode, need at least one coordinator";
+
+    exit(EXIT_FAILURE);
+  }
+
+  tasks = plan.mutable_coordinators();
+  p = tasks->entries_size();
+
+  if (t < p) {
+    LOG(INFO)
+    << "INFO reducing the number of coordinators from " << p << " to " << t;
+    TasksPlan original;
+    original.CopyFrom(*tasks);
+    
+    tasks->clear_entries();
+    for (int i = 0;  i < t;  ++i) {
+      TasksPlanEntry entry = original.entries(i);
+      tasks->add_entries()->CopyFrom(entry);
+    }
+  }
+
+  if (p < t) {
+    LOG(INFO)
+    << "DEBUG creating " << (t - p) << " more coordinators in plan";
+
+    for (int i = p;  i < t;  ++i) {
+      TasksPlanEntry* planEntry = tasks->add_entries();
+      planEntry->set_is_primary(true);
+
+      ResourcesCurrent* resources = current.mutable_coordinator_resources();
+      ResourcesCurrentEntry* resEntry = resources->add_entries();
+      resEntry->set_state(RESOURCE_STATE_REQUIRED);
+
+      InstancesCurrent* instances = current.mutable_coordinators();
       instances->add_entries();
     }
   }
