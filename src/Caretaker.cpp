@@ -538,10 +538,10 @@ void Caretaker::updatePlan () {
   Current current = Global::state().current();
 
   adjustPlan("agency",
-             target.agencies(),
-             plan.mutable_agencies(),
+             target.agents(),
+             plan.mutable_agents(),
              current.mutable_agency_resources(),
-             current.mutable_agencies());
+             current.mutable_agents());
 
   adjustPlan("dbserver",
              target.dbservers(),
@@ -581,8 +581,8 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
       checks = { DBSERVER };
       break;
 
-    case OperationMode::REPLICATION:
-      checks = { DBSERVER };
+    case OperationMode::CLUSTER:
+      checks = { AGENCY, DBSERVER, COORDINATOR };
       break;
   }
 
@@ -592,8 +592,8 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
     switch (i) {
       case AGENCY:
         action = checkResourceOffer("agency", true,
-                                    target.agencies(),
-                                    plan.mutable_agencies(),
+                                    target.agents(),
+                                    plan.mutable_agents(),
                                     current.mutable_agency_resources(),
                                     offer);
         break;

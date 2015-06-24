@@ -140,16 +140,16 @@ void ArangoState::init () {
 
   _state.mutable_target();
   _state.mutable_target()->set_mode(Global::modeLC());
-  _state.mutable_target()->mutable_agencies()->set_number_ports(0);
+  _state.mutable_target()->mutable_agents()->set_number_ports(0);
   _state.mutable_target()->mutable_coordinators()->set_number_ports(0);
 
   _state.mutable_plan();
-  _state.mutable_plan()->mutable_agencies();
+  _state.mutable_plan()->mutable_agents();
   _state.mutable_plan()->mutable_coordinators();
   _state.mutable_plan()->mutable_dbservers();
 
   _state.mutable_current();
-  _state.mutable_current()->mutable_agencies();
+  _state.mutable_current()->mutable_agents();
   _state.mutable_current()->mutable_coordinators();
   _state.mutable_current()->mutable_primary_dbservers();
   _state.mutable_current()->mutable_secondary_dbservers();
@@ -352,7 +352,7 @@ vector<mesos::TaskStatus> ArangoState::knownTaskStatus () {
 
   vector<mesos::TaskStatus> result;
 
-  fillTaskStatus(result, _state.current().agencies());
+  fillTaskStatus(result, _state.current().agents());
   fillTaskStatus(result, _state.current().coordinators());
   fillTaskStatus(result, _state.current().primary_dbservers());
   fillTaskStatus(result, _state.current().secondary_dbservers());

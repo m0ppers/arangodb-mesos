@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief replication caretaker
+/// @brief cluster caretaker
 ///
 /// @file
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CaretakerReplication.h"
+#include "CaretakerCluster.h"
 
 #include "ArangoState.h"
 #include "Global.h"
@@ -46,22 +46,58 @@ using namespace arangodb;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CaretakerReplication::CaretakerReplication () {
+CaretakerCluster::CaretakerCluster () {
   mesos::Resource* m;
 
   Target target = Global::state().target();
 
   // AGENCY
-  TargetEntry* agency = target.mutable_agencies();
+  TargetEntry* agency = target.mutable_agents();
   agency->set_instances(1);
   agency->clear_minimal_resources();
-  // FIXME: set sensible minimal resources for AGENCIES
+  agency->set_number_ports(1);
+  // FIXME: make minimal resources for AGENCY configurable via command line
+  m = agency->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("cpus");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(1);
+
+  m = agency->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("mem");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(512);
+
+  m = agency->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("disk");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(512);
 
   // COORDINATOR
   TargetEntry* coordinator = target.mutable_coordinators();
   coordinator->set_instances(1);
   coordinator->clear_minimal_resources();
-  // FIXME: set sensible minimal resources for COORDINATORS
+  coordinator->set_number_ports(1);
+  // FIXME: make minimal resources for COORDINATORS configurable via command line
+  m = coordinator->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("cpus");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(1);
+
+  m = coordinator->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("mem");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(512);
+
+  m = coordinator->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("disk");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(512);
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
@@ -99,23 +135,75 @@ CaretakerReplication::CaretakerReplication () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void CaretakerReplication::updatePlan () {
+void CaretakerCluster::updatePlan () {
+  // This updates the Plan according to what is in the Target, this is
+  // used to scale up coordinators or DBServers
+
   Target target = Global::state().target();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
+  int t, p;
 
+  // First the agency, currently, we only support a single agency:
+  t = (int) target.agents().instances();
+  if (t < 1) {
+    LOG(ERROR)
+    << "ERROR running in cluster mode, need at least one agency";
+
+    exit(EXIT_FAILURE);
+  }
+  if (t > 1) {
+    LOG(INFO)
+    << "INFO currently we support only a single server agency";
+    t = 1;
+    target.agents().set_instances(1);
+  }
+  TasksPlan* agencyTasks = plan.mutable_agents();
+  p = agencyTasks->entries.size();
+  if (t < p) {
+    LOG(INFO)
+    << "INFO reducing number of agents from " << p << " to " << t;
+
+    TasksPlan original;
+    original.CopyFrom(*tasks);
+    
+    tasks->clear_entries();
+
+    for (int i = 0;  i < t;  ++i) {
+      TasksPlanEntry entry = original.entries(i);
+
+      tasks->add_entries()->CopyFrom(entry);
+    }
+  }
+  if (p < t) {
+    LOG(INFO)
+    << "DEBUG creating " << (t - p) << " more agents in plan";
+
+    for (int i = p;  i < t;  ++i) {
+      TasksPlanEntry* planEntry = tasks->add_entries();
+      planEntry->set_is_primary(true);
+
+      ResourcesCurrent* resources = current.mutable_primary_agency_resources();
+      ResourcesCurrentEntry* resEntry = resources->add_entries();
+      resEntry->set_state(RESOURCE_STATE_REQUIRED);
+
+      InstancesCurrent* instances = current.mutable_agents();
+      instances->add_entries();
+    }
+  }
+  
   // need at least one DB server
-  int t = (int) target.dbservers().instances();
+  t = (int) target.dbservers().instances();
 
   if (t < 1) {
     LOG(ERROR)
-    << "ERROR running in replication mode, need at least one db-server";
+    << "ERROR running in cluster mode, need at least one db-server";
 
     exit(EXIT_FAILURE);
   }
 
   TasksPlan* tasks = plan.mutable_dbservers();
-  int p = tasks->entries_size();
+  p = tasks->entries_size();
 
   if (t < p) {
     LOG(INFO)
@@ -158,7 +246,7 @@ void CaretakerReplication::updatePlan () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-InstanceAction CaretakerReplication::checkInstance () {
+InstanceAction CaretakerCluster::checkInstance () {
   Target target = Global::state().target();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();

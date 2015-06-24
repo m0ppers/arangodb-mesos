@@ -278,14 +278,14 @@ class Target : public ::google::protobuf::Message {
   inline ::std::string* release_mode();
   inline void set_allocated_mode(::std::string* mode);
 
-  // required .arangodb.TargetEntry agencies = 2;
-  inline bool has_agencies() const;
-  inline void clear_agencies();
-  static const int kAgenciesFieldNumber = 2;
-  inline const ::arangodb::TargetEntry& agencies() const;
-  inline ::arangodb::TargetEntry* mutable_agencies();
-  inline ::arangodb::TargetEntry* release_agencies();
-  inline void set_allocated_agencies(::arangodb::TargetEntry* agencies);
+  // required .arangodb.TargetEntry agents = 2;
+  inline bool has_agents() const;
+  inline void clear_agents();
+  static const int kAgentsFieldNumber = 2;
+  inline const ::arangodb::TargetEntry& agents() const;
+  inline ::arangodb::TargetEntry* mutable_agents();
+  inline ::arangodb::TargetEntry* release_agents();
+  inline void set_allocated_agents(::arangodb::TargetEntry* agents);
 
   // required .arangodb.TargetEntry coordinators = 3;
   inline bool has_coordinators() const;
@@ -309,8 +309,8 @@ class Target : public ::google::protobuf::Message {
  private:
   inline void set_has_mode();
   inline void clear_has_mode();
-  inline void set_has_agencies();
-  inline void clear_has_agencies();
+  inline void set_has_agents();
+  inline void clear_has_agents();
   inline void set_has_coordinators();
   inline void clear_has_coordinators();
   inline void set_has_dbservers();
@@ -319,7 +319,7 @@ class Target : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* mode_;
-  ::arangodb::TargetEntry* agencies_;
+  ::arangodb::TargetEntry* agents_;
   ::arangodb::TargetEntry* coordinators_;
   ::arangodb::TargetEntry* dbservers_;
 
@@ -583,14 +583,14 @@ class Plan : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required .arangodb.TasksPlan agencies = 1;
-  inline bool has_agencies() const;
-  inline void clear_agencies();
-  static const int kAgenciesFieldNumber = 1;
-  inline const ::arangodb::TasksPlan& agencies() const;
-  inline ::arangodb::TasksPlan* mutable_agencies();
-  inline ::arangodb::TasksPlan* release_agencies();
-  inline void set_allocated_agencies(::arangodb::TasksPlan* agencies);
+  // required .arangodb.TasksPlan agents = 1;
+  inline bool has_agents() const;
+  inline void clear_agents();
+  static const int kAgentsFieldNumber = 1;
+  inline const ::arangodb::TasksPlan& agents() const;
+  inline ::arangodb::TasksPlan* mutable_agents();
+  inline ::arangodb::TasksPlan* release_agents();
+  inline void set_allocated_agents(::arangodb::TasksPlan* agents);
 
   // required .arangodb.TasksPlan coordinators = 2;
   inline bool has_coordinators() const;
@@ -612,8 +612,8 @@ class Plan : public ::google::protobuf::Message {
 
   // @@protoc_insertion_point(class_scope:arangodb.Plan)
  private:
-  inline void set_has_agencies();
-  inline void clear_has_agencies();
+  inline void set_has_agents();
+  inline void clear_has_agents();
   inline void set_has_coordinators();
   inline void clear_has_coordinators();
   inline void set_has_dbservers();
@@ -621,7 +621,7 @@ class Plan : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::arangodb::TasksPlan* agencies_;
+  ::arangodb::TasksPlan* agents_;
   ::arangodb::TasksPlan* coordinators_;
   ::arangodb::TasksPlan* dbservers_;
 
@@ -1193,14 +1193,14 @@ class Current : public ::google::protobuf::Message {
   inline ::arangodb::ResourcesCurrent* release_secondary_dbserver_resources();
   inline void set_allocated_secondary_dbserver_resources(::arangodb::ResourcesCurrent* secondary_dbserver_resources);
 
-  // required .arangodb.InstancesCurrent agencies = 5;
-  inline bool has_agencies() const;
-  inline void clear_agencies();
-  static const int kAgenciesFieldNumber = 5;
-  inline const ::arangodb::InstancesCurrent& agencies() const;
-  inline ::arangodb::InstancesCurrent* mutable_agencies();
-  inline ::arangodb::InstancesCurrent* release_agencies();
-  inline void set_allocated_agencies(::arangodb::InstancesCurrent* agencies);
+  // required .arangodb.InstancesCurrent agents = 5;
+  inline bool has_agents() const;
+  inline void clear_agents();
+  static const int kAgentsFieldNumber = 5;
+  inline const ::arangodb::InstancesCurrent& agents() const;
+  inline ::arangodb::InstancesCurrent* mutable_agents();
+  inline ::arangodb::InstancesCurrent* release_agents();
+  inline void set_allocated_agents(::arangodb::InstancesCurrent* agents);
 
   // required .arangodb.InstancesCurrent coordinators = 6;
   inline bool has_coordinators() const;
@@ -1253,8 +1253,8 @@ class Current : public ::google::protobuf::Message {
   inline void clear_has_primary_dbserver_resources();
   inline void set_has_secondary_dbserver_resources();
   inline void clear_has_secondary_dbserver_resources();
-  inline void set_has_agencies();
-  inline void clear_has_agencies();
+  inline void set_has_agents();
+  inline void clear_has_agents();
   inline void set_has_coordinators();
   inline void clear_has_coordinators();
   inline void set_has_primary_dbservers();
@@ -1272,7 +1272,7 @@ class Current : public ::google::protobuf::Message {
   ::arangodb::ResourcesCurrent* coordinator_resources_;
   ::arangodb::ResourcesCurrent* primary_dbserver_resources_;
   ::arangodb::ResourcesCurrent* secondary_dbserver_resources_;
-  ::arangodb::InstancesCurrent* agencies_;
+  ::arangodb::InstancesCurrent* agents_;
   ::arangodb::InstancesCurrent* coordinators_;
   ::arangodb::InstancesCurrent* primary_dbservers_;
   ::arangodb::InstancesCurrent* secondary_dbservers_;
@@ -1584,41 +1584,41 @@ inline void Target::set_allocated_mode(::std::string* mode) {
   }
 }
 
-// required .arangodb.TargetEntry agencies = 2;
-inline bool Target::has_agencies() const {
+// required .arangodb.TargetEntry agents = 2;
+inline bool Target::has_agents() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void Target::set_has_agencies() {
+inline void Target::set_has_agents() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void Target::clear_has_agencies() {
+inline void Target::clear_has_agents() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void Target::clear_agencies() {
-  if (agencies_ != NULL) agencies_->::arangodb::TargetEntry::Clear();
-  clear_has_agencies();
+inline void Target::clear_agents() {
+  if (agents_ != NULL) agents_->::arangodb::TargetEntry::Clear();
+  clear_has_agents();
 }
-inline const ::arangodb::TargetEntry& Target::agencies() const {
-  return agencies_ != NULL ? *agencies_ : *default_instance_->agencies_;
+inline const ::arangodb::TargetEntry& Target::agents() const {
+  return agents_ != NULL ? *agents_ : *default_instance_->agents_;
 }
-inline ::arangodb::TargetEntry* Target::mutable_agencies() {
-  set_has_agencies();
-  if (agencies_ == NULL) agencies_ = new ::arangodb::TargetEntry;
-  return agencies_;
+inline ::arangodb::TargetEntry* Target::mutable_agents() {
+  set_has_agents();
+  if (agents_ == NULL) agents_ = new ::arangodb::TargetEntry;
+  return agents_;
 }
-inline ::arangodb::TargetEntry* Target::release_agencies() {
-  clear_has_agencies();
-  ::arangodb::TargetEntry* temp = agencies_;
-  agencies_ = NULL;
+inline ::arangodb::TargetEntry* Target::release_agents() {
+  clear_has_agents();
+  ::arangodb::TargetEntry* temp = agents_;
+  agents_ = NULL;
   return temp;
 }
-inline void Target::set_allocated_agencies(::arangodb::TargetEntry* agencies) {
-  delete agencies_;
-  agencies_ = agencies;
-  if (agencies) {
-    set_has_agencies();
+inline void Target::set_allocated_agents(::arangodb::TargetEntry* agents) {
+  delete agents_;
+  agents_ = agents;
+  if (agents) {
+    set_has_agents();
   } else {
-    clear_has_agencies();
+    clear_has_agents();
   }
 }
 
@@ -1865,41 +1865,41 @@ TasksPlan::mutable_entries() {
 
 // Plan
 
-// required .arangodb.TasksPlan agencies = 1;
-inline bool Plan::has_agencies() const {
+// required .arangodb.TasksPlan agents = 1;
+inline bool Plan::has_agents() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void Plan::set_has_agencies() {
+inline void Plan::set_has_agents() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void Plan::clear_has_agencies() {
+inline void Plan::clear_has_agents() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void Plan::clear_agencies() {
-  if (agencies_ != NULL) agencies_->::arangodb::TasksPlan::Clear();
-  clear_has_agencies();
+inline void Plan::clear_agents() {
+  if (agents_ != NULL) agents_->::arangodb::TasksPlan::Clear();
+  clear_has_agents();
 }
-inline const ::arangodb::TasksPlan& Plan::agencies() const {
-  return agencies_ != NULL ? *agencies_ : *default_instance_->agencies_;
+inline const ::arangodb::TasksPlan& Plan::agents() const {
+  return agents_ != NULL ? *agents_ : *default_instance_->agents_;
 }
-inline ::arangodb::TasksPlan* Plan::mutable_agencies() {
-  set_has_agencies();
-  if (agencies_ == NULL) agencies_ = new ::arangodb::TasksPlan;
-  return agencies_;
+inline ::arangodb::TasksPlan* Plan::mutable_agents() {
+  set_has_agents();
+  if (agents_ == NULL) agents_ = new ::arangodb::TasksPlan;
+  return agents_;
 }
-inline ::arangodb::TasksPlan* Plan::release_agencies() {
-  clear_has_agencies();
-  ::arangodb::TasksPlan* temp = agencies_;
-  agencies_ = NULL;
+inline ::arangodb::TasksPlan* Plan::release_agents() {
+  clear_has_agents();
+  ::arangodb::TasksPlan* temp = agents_;
+  agents_ = NULL;
   return temp;
 }
-inline void Plan::set_allocated_agencies(::arangodb::TasksPlan* agencies) {
-  delete agencies_;
-  agencies_ = agencies;
-  if (agencies) {
-    set_has_agencies();
+inline void Plan::set_allocated_agents(::arangodb::TasksPlan* agents) {
+  delete agents_;
+  agents_ = agents;
+  if (agents) {
+    set_has_agents();
   } else {
-    clear_has_agencies();
+    clear_has_agents();
   }
 }
 
@@ -2684,41 +2684,41 @@ inline void Current::set_allocated_secondary_dbserver_resources(::arangodb::Reso
   }
 }
 
-// required .arangodb.InstancesCurrent agencies = 5;
-inline bool Current::has_agencies() const {
+// required .arangodb.InstancesCurrent agents = 5;
+inline bool Current::has_agents() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void Current::set_has_agencies() {
+inline void Current::set_has_agents() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void Current::clear_has_agencies() {
+inline void Current::clear_has_agents() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void Current::clear_agencies() {
-  if (agencies_ != NULL) agencies_->::arangodb::InstancesCurrent::Clear();
-  clear_has_agencies();
+inline void Current::clear_agents() {
+  if (agents_ != NULL) agents_->::arangodb::InstancesCurrent::Clear();
+  clear_has_agents();
 }
-inline const ::arangodb::InstancesCurrent& Current::agencies() const {
-  return agencies_ != NULL ? *agencies_ : *default_instance_->agencies_;
+inline const ::arangodb::InstancesCurrent& Current::agents() const {
+  return agents_ != NULL ? *agents_ : *default_instance_->agents_;
 }
-inline ::arangodb::InstancesCurrent* Current::mutable_agencies() {
-  set_has_agencies();
-  if (agencies_ == NULL) agencies_ = new ::arangodb::InstancesCurrent;
-  return agencies_;
+inline ::arangodb::InstancesCurrent* Current::mutable_agents() {
+  set_has_agents();
+  if (agents_ == NULL) agents_ = new ::arangodb::InstancesCurrent;
+  return agents_;
 }
-inline ::arangodb::InstancesCurrent* Current::release_agencies() {
-  clear_has_agencies();
-  ::arangodb::InstancesCurrent* temp = agencies_;
-  agencies_ = NULL;
+inline ::arangodb::InstancesCurrent* Current::release_agents() {
+  clear_has_agents();
+  ::arangodb::InstancesCurrent* temp = agents_;
+  agents_ = NULL;
   return temp;
 }
-inline void Current::set_allocated_agencies(::arangodb::InstancesCurrent* agencies) {
-  delete agencies_;
-  agencies_ = agencies;
-  if (agencies) {
-    set_has_agencies();
+inline void Current::set_allocated_agents(::arangodb::InstancesCurrent* agents) {
+  delete agents_;
+  agents_ = agents;
+  if (agents) {
+    set_has_agents();
   } else {
-    clear_has_agencies();
+    clear_has_agents();
   }
 }
 

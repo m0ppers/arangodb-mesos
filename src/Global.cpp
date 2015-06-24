@@ -182,8 +182,8 @@ string Global::modeLC () {
       return "standalone";
       break;
 
-    case OperationMode::REPLICATION:
-      return "replication";
+    case OperationMode::CLUSTER:
+      return "cluster";
       break;
   }
 

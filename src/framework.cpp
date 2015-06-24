@@ -34,7 +34,7 @@
 #include "ArangoScheduler.h"
 #include "ArangoState.h"
 #include "CaretakerStandalone.h"
-#include "CaretakerReplication.h"
+#include "CaretakerCluster.h"
 #include "Global.h"
 #include "HttpServer.h"
 
@@ -102,7 +102,7 @@ int main (int argc, char** argv) {
   string mode;
   flags.add(&mode,
             "mode",
-            "Mode of operation (standalone, replication)",
+            "Mode of operation (standalone, cluster)",
             "standalone");
 
   string role;
@@ -223,12 +223,12 @@ int main (int argc, char** argv) {
   if (mode == "standalone") {
     Global::setMode(OperationMode::STANDALONE);
   }
-  else if (mode == "replication") {
-    Global::setMode(OperationMode::REPLICATION);
+  else if (mode == "cluster") {
+    Global::setMode(OperationMode::CLUSTER);
   }
   else {
     cerr << argv[0] << ": expecting mode '" << mode << "' to be "
-         << "standalone, replication" << "\n";
+         << "standalone, cluster" << "\n";
   }
 
   Global::setFrameworkName(frameworkName);
@@ -320,8 +320,8 @@ int main (int argc, char** argv) {
       caretaker.reset(new CaretakerStandalone);
       break;
 
-    case OperationMode::REPLICATION:
-      caretaker.reset(new CaretakerReplication);
+    case OperationMode::CLUSTER:
+      caretaker.reset(new CaretakerCluster);
       break;
   }
 

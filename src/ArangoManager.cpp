@@ -267,7 +267,7 @@ ArangoManagerImpl::ArangoManagerImpl ()
 
   Current current = Global::state().current();
 
-  fillKnownInstances(AspectType::AGENCY, current.agencies());
+  fillKnownInstances(AspectType::AGENCY, current.agents());
   fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
   fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.primary_dbservers());
   fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());

@@ -51,7 +51,7 @@ lib_libarangodb_mesos_a_SOURCES = \
 	src/ArangoState.cpp \
 	src/Caretaker.cpp \
 	src/CaretakerStandalone.cpp \
-	src/CaretakerReplication.cpp \
+	src/CaretakerCluster.cpp \
 	src/Global.cpp \
 	src/HttpServer.cpp \
 	src/arangodb.pb.cc \

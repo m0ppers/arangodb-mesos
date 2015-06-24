@@ -17,7 +17,7 @@ message TargetEntry {
 
 message Target {
   required string mode = 1;
-  required TargetEntry agencies = 2;
+  required TargetEntry agents = 2;
   required TargetEntry coordinators = 3;
   required TargetEntry dbservers = 4;
 }
@@ -41,7 +41,7 @@ message TasksPlan {
 
 
 message Plan {
-  required TasksPlan agencies = 1;
+  required TasksPlan agents = 1;
   required TasksPlan coordinators = 2;
   required TasksPlan dbservers = 3;
 }
@@ -114,7 +114,7 @@ message Current {
   required ResourcesCurrent primary_dbserver_resources = 3;
   required ResourcesCurrent secondary_dbserver_resources = 4;
 
-  required InstancesCurrent agencies = 5;
+  required InstancesCurrent agents = 5;
   required InstancesCurrent coordinators = 6;
   required InstancesCurrent primary_dbservers = 7;
   required InstancesCurrent secondary_dbservers = 8;

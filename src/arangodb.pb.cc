@@ -86,7 +86,7 @@ void protobuf_AssignDesc_arangodb_2eproto() {
   Target_descriptor_ = file->message_type(1);
   static const int Target_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, mode_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, agencies_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, agents_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, coordinators_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, dbservers_),
   };
@@ -135,7 +135,7 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       sizeof(TasksPlan));
   Plan_descriptor_ = file->message_type(4);
   static const int Plan_offsets_[3] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Plan, agencies_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Plan, agents_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Plan, coordinators_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Plan, dbservers_),
   };
@@ -226,7 +226,7 @@ void protobuf_AssignDesc_arangodb_2eproto() {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, coordinator_resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, primary_dbserver_resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, secondary_dbserver_resources_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, agencies_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, agents_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, coordinators_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, primary_dbservers_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Current, secondary_dbservers_),
@@ -339,59 +339,59 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "proto\"\220\001\n\013TargetEntry\022\021\n\tinstances\030\001 \002(\r"
     "\022*\n\021minimal_resources\030\002 \003(\0132\017.mesos.Reso"
     "urce\022,\n\023additional_resouces\030\003 \003(\0132\017.meso"
-    "s.Resource\022\024\n\014number_ports\030\004 \002(\r\"\226\001\n\006Tar"
-    "get\022\014\n\004mode\030\001 \002(\t\022\'\n\010agencies\030\002 \002(\0132\025.ar"
-    "angodb.TargetEntry\022+\n\014coordinators\030\003 \002(\013"
-    "2\025.arangodb.TargetEntry\022(\n\tdbservers\030\004 \002"
-    "(\0132\025.arangodb.TargetEntry\"^\n\016TasksPlanEn"
-    "try\022\022\n\nis_primary\030\001 \002(\010\022 \n\010slave_id\030\002 \001("
-    "\0132\016.mesos.SlaveID\022\026\n\016persistence_id\030\003 \001("
-    "\t\"6\n\tTasksPlan\022)\n\007entries\030\001 \003(\0132\030.arango"
-    "db.TasksPlanEntry\"\200\001\n\004Plan\022%\n\010agencies\030\001"
-    " \002(\0132\023.arangodb.TasksPlan\022)\n\014coordinator"
-    "s\030\002 \002(\0132\023.arangodb.TasksPlan\022&\n\tdbserver"
-    "s\030\003 \002(\0132\023.arangodb.TasksPlan\"\200\002\n\025Resourc"
-    "esCurrentEntry\022F\n\005state\030\001 \001(\0162\037.arangodb"
-    ".ResourcesCurrentState:\026RESOURCE_STATE_U"
-    "NKNOWN\022 \n\010slave_id\030\002 \001(\0132\016.mesos.SlaveID"
-    "\022 \n\010offer_id\030\003 \001(\0132\016.mesos.OfferID\022\"\n\tre"
-    "sources\030\004 \003(\0132\017.mesos.Resource\022\r\n\005ports\030"
-    "\005 \003(\r\022\020\n\010hostname\030\006 \001(\t\022\026\n\016container_pat"
-    "h\030\007 \001(\t\"D\n\020ResourcesCurrent\0220\n\007entries\030\001"
-    " \003(\0132\037.arangodb.ResourcesCurrentEntry\"\313\001"
-    "\n\025InstancesCurrentEntry\022E\n\005state\030\001 \001(\0162\037"
-    ".arangodb.InstancesCurrentState:\025INSTANC"
-    "E_STATE_UNUSED\022\"\n\ttask_info\030\002 \001(\0132\017.meso"
-    "s.TaskInfo\022&\n\013task_status\030\003 \001(\0132\021.mesos."
-    "TaskStatus\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 "
-    "\001(\t\"D\n\020InstancesCurrent\0220\n\007entries\030\001 \003(\013"
-    "2\037.arangodb.InstancesCurrentEntry\"\205\004\n\007Cu"
-    "rrent\0224\n\020agency_resources\030\001 \002(\0132\032.arango"
-    "db.ResourcesCurrent\0229\n\025coordinator_resou"
-    "rces\030\002 \002(\0132\032.arangodb.ResourcesCurrent\022>"
-    "\n\032primary_dbserver_resources\030\003 \002(\0132\032.ara"
-    "ngodb.ResourcesCurrent\022@\n\034secondary_dbse"
-    "rver_resources\030\004 \002(\0132\032.arangodb.Resource"
-    "sCurrent\022,\n\010agencies\030\005 \002(\0132\032.arangodb.In"
-    "stancesCurrent\0220\n\014coordinators\030\006 \002(\0132\032.a"
-    "rangodb.InstancesCurrent\0225\n\021primary_dbse"
-    "rvers\030\007 \002(\0132\032.arangodb.InstancesCurrent\022"
-    "7\n\023secondary_dbservers\030\010 \002(\0132\032.arangodb."
-    "InstancesCurrent\022\032\n\022agency_initialized\030\t"
-    " \002(\010\022\033\n\023cluster_initialized\030\n \002(\010\"\225\001\n\005St"
-    "ate\022(\n\014framework_id\030\001 \001(\0132\022.mesos.Framew"
-    "orkID\022 \n\006target\030\002 \002(\0132\020.arangodb.Target\022"
-    "\034\n\004plan\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007current"
-    "\030\004 \002(\0132\021.arangodb.Current*\352\001\n\025ResourcesC"
-    "urrentState\022\032\n\026RESOURCE_STATE_UNKNOWN\020\001\022"
-    "\033\n\027RESOURCE_STATE_REQUIRED\020\002\022$\n RESOURCE"
-    "_STATE_TRYING_TO_RESERVE\020\003\022$\n RESOURCE_S"
-    "TATE_TRYING_TO_PERSIST\020\004\022\032\n\026RESOURCE_STA"
-    "TE_USEABLE\020\005\022\027\n\023RESOURCE_STATE_USED\020\006\022\027\n"
-    "\023RESOURCE_STATE_LOST\020\007*\207\001\n\025InstancesCurr"
-    "entState\022\031\n\025INSTANCE_STATE_UNUSED\020\001\022\033\n\027I"
-    "NSTANCE_STATE_STARTING\020\002\022\032\n\026INSTANCE_STA"
-    "TE_RUNNING\020\003\022\032\n\026INSTANCE_STATE_STOPPED\020\004", 2280);
+    "s.Resource\022\024\n\014number_ports\030\004 \002(\r\"\224\001\n\006Tar"
+    "get\022\014\n\004mode\030\001 \002(\t\022%\n\006agents\030\002 \002(\0132\025.aran"
+    "godb.TargetEntry\022+\n\014coordinators\030\003 \002(\0132\025"
+    ".arangodb.TargetEntry\022(\n\tdbservers\030\004 \002(\013"
+    "2\025.arangodb.TargetEntry\"^\n\016TasksPlanEntr"
+    "y\022\022\n\nis_primary\030\001 \002(\010\022 \n\010slave_id\030\002 \001(\0132"
+    "\016.mesos.SlaveID\022\026\n\016persistence_id\030\003 \001(\t\""
+    "6\n\tTasksPlan\022)\n\007entries\030\001 \003(\0132\030.arangodb"
+    ".TasksPlanEntry\"~\n\004Plan\022#\n\006agents\030\001 \002(\0132"
+    "\023.arangodb.TasksPlan\022)\n\014coordinators\030\002 \002"
+    "(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030\003 \002"
+    "(\0132\023.arangodb.TasksPlan\"\200\002\n\025ResourcesCur"
+    "rentEntry\022F\n\005state\030\001 \001(\0162\037.arangodb.Reso"
+    "urcesCurrentState:\026RESOURCE_STATE_UNKNOW"
+    "N\022 \n\010slave_id\030\002 \001(\0132\016.mesos.SlaveID\022 \n\010o"
+    "ffer_id\030\003 \001(\0132\016.mesos.OfferID\022\"\n\tresourc"
+    "es\030\004 \003(\0132\017.mesos.Resource\022\r\n\005ports\030\005 \003(\r"
+    "\022\020\n\010hostname\030\006 \001(\t\022\026\n\016container_path\030\007 \001"
+    "(\t\"D\n\020ResourcesCurrent\0220\n\007entries\030\001 \003(\0132"
+    "\037.arangodb.ResourcesCurrentEntry\"\313\001\n\025Ins"
+    "tancesCurrentEntry\022E\n\005state\030\001 \001(\0162\037.aran"
+    "godb.InstancesCurrentState:\025INSTANCE_STA"
+    "TE_UNUSED\022\"\n\ttask_info\030\002 \001(\0132\017.mesos.Tas"
+    "kInfo\022&\n\013task_status\030\003 \001(\0132\021.mesos.TaskS"
+    "tatus\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t\"D"
+    "\n\020InstancesCurrent\0220\n\007entries\030\001 \003(\0132\037.ar"
+    "angodb.InstancesCurrentEntry\"\203\004\n\007Current"
+    "\0224\n\020agency_resources\030\001 \002(\0132\032.arangodb.Re"
+    "sourcesCurrent\0229\n\025coordinator_resources\030"
+    "\002 \002(\0132\032.arangodb.ResourcesCurrent\022>\n\032pri"
+    "mary_dbserver_resources\030\003 \002(\0132\032.arangodb"
+    ".ResourcesCurrent\022@\n\034secondary_dbserver_"
+    "resources\030\004 \002(\0132\032.arangodb.ResourcesCurr"
+    "ent\022*\n\006agents\030\005 \002(\0132\032.arangodb.Instances"
+    "Current\0220\n\014coordinators\030\006 \002(\0132\032.arangodb"
+    ".InstancesCurrent\0225\n\021primary_dbservers\030\007"
+    " \002(\0132\032.arangodb.InstancesCurrent\0227\n\023seco"
+    "ndary_dbservers\030\010 \002(\0132\032.arangodb.Instanc"
+    "esCurrent\022\032\n\022agency_initialized\030\t \002(\010\022\033\n"
+    "\023cluster_initialized\030\n \002(\010\"\225\001\n\005State\022(\n\014"
+    "framework_id\030\001 \001(\0132\022.mesos.FrameworkID\022 "
+    "\n\006target\030\002 \002(\0132\020.arangodb.Target\022\034\n\004plan"
+    "\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007current\030\004 \002(\0132"
+    "\021.arangodb.Current*\352\001\n\025ResourcesCurrentS"
+    "tate\022\032\n\026RESOURCE_STATE_UNKNOWN\020\001\022\033\n\027RESO"
+    "URCE_STATE_REQUIRED\020\002\022$\n RESOURCE_STATE_"
+    "TRYING_TO_RESERVE\020\003\022$\n RESOURCE_STATE_TR"
+    "YING_TO_PERSIST\020\004\022\032\n\026RESOURCE_STATE_USEA"
+    "BLE\020\005\022\027\n\023RESOURCE_STATE_USED\020\006\022\027\n\023RESOUR"
+    "CE_STATE_LOST\020\007*\207\001\n\025InstancesCurrentStat"
+    "e\022\031\n\025INSTANCE_STATE_UNUSED\020\001\022\033\n\027INSTANCE"
+    "_STATE_STARTING\020\002\022\032\n\026INSTANCE_STATE_RUNN"
+    "ING\020\003\022\032\n\026INSTANCE_STATE_STOPPED\020\004", 2273);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   TargetEntry::default_instance_ = new TargetEntry();
@@ -800,7 +800,7 @@ void TargetEntry::Swap(TargetEntry* other) {
 
 #ifndef _MSC_VER
 const int Target::kModeFieldNumber;
-const int Target::kAgenciesFieldNumber;
+const int Target::kAgentsFieldNumber;
 const int Target::kCoordinatorsFieldNumber;
 const int Target::kDbserversFieldNumber;
 #endif  // !_MSC_VER
@@ -811,7 +811,7 @@ Target::Target()
 }
 
 void Target::InitAsDefaultInstance() {
-  agencies_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
+  agents_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
   coordinators_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
   dbservers_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
 }
@@ -825,7 +825,7 @@ Target::Target(const Target& from)
 void Target::SharedCtor() {
   _cached_size_ = 0;
   mode_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  agencies_ = NULL;
+  agents_ = NULL;
   coordinators_ = NULL;
   dbservers_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -840,7 +840,7 @@ void Target::SharedDtor() {
     delete mode_;
   }
   if (this != default_instance_) {
-    delete agencies_;
+    delete agents_;
     delete coordinators_;
     delete dbservers_;
   }
@@ -874,8 +874,8 @@ void Target::Clear() {
         mode_->clear();
       }
     }
-    if (has_agencies()) {
-      if (agencies_ != NULL) agencies_->::arangodb::TargetEntry::Clear();
+    if (has_agents()) {
+      if (agents_ != NULL) agents_->::arangodb::TargetEntry::Clear();
     }
     if (has_coordinators()) {
       if (coordinators_ != NULL) coordinators_->::arangodb::TargetEntry::Clear();
@@ -906,17 +906,17 @@ bool Target::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_agencies;
+        if (input->ExpectTag(18)) goto parse_agents;
         break;
       }
 
-      // required .arangodb.TargetEntry agencies = 2;
+      // required .arangodb.TargetEntry agents = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_agencies:
+         parse_agents:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_agencies()));
+               input, mutable_agents()));
         } else {
           goto handle_uninterpreted;
         }
@@ -979,10 +979,10 @@ void Target::SerializeWithCachedSizes(
       1, this->mode(), output);
   }
 
-  // required .arangodb.TargetEntry agencies = 2;
-  if (has_agencies()) {
+  // required .arangodb.TargetEntry agents = 2;
+  if (has_agents()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      2, this->agencies(), output);
+      2, this->agents(), output);
   }
 
   // required .arangodb.TargetEntry coordinators = 3;
@@ -1015,11 +1015,11 @@ void Target::SerializeWithCachedSizes(
         1, this->mode(), target);
   }
 
-  // required .arangodb.TargetEntry agencies = 2;
-  if (has_agencies()) {
+  // required .arangodb.TargetEntry agents = 2;
+  if (has_agents()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        2, this->agencies(), target);
+        2, this->agents(), target);
   }
 
   // required .arangodb.TargetEntry coordinators = 3;
@@ -1054,11 +1054,11 @@ int Target::ByteSize() const {
           this->mode());
     }
 
-    // required .arangodb.TargetEntry agencies = 2;
-    if (has_agencies()) {
+    // required .arangodb.TargetEntry agents = 2;
+    if (has_agents()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->agencies());
+          this->agents());
     }
 
     // required .arangodb.TargetEntry coordinators = 3;
@@ -1105,8 +1105,8 @@ void Target::MergeFrom(const Target& from) {
     if (from.has_mode()) {
       set_mode(from.mode());
     }
-    if (from.has_agencies()) {
-      mutable_agencies()->::arangodb::TargetEntry::MergeFrom(from.agencies());
+    if (from.has_agents()) {
+      mutable_agents()->::arangodb::TargetEntry::MergeFrom(from.agents());
     }
     if (from.has_coordinators()) {
       mutable_coordinators()->::arangodb::TargetEntry::MergeFrom(from.coordinators());
@@ -1133,8 +1133,8 @@ void Target::CopyFrom(const Target& from) {
 bool Target::IsInitialized() const {
   if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
 
-  if (has_agencies()) {
-    if (!this->agencies().IsInitialized()) return false;
+  if (has_agents()) {
+    if (!this->agents().IsInitialized()) return false;
   }
   if (has_coordinators()) {
     if (!this->coordinators().IsInitialized()) return false;
@@ -1148,7 +1148,7 @@ bool Target::IsInitialized() const {
 void Target::Swap(Target* other) {
   if (other != this) {
     std::swap(mode_, other->mode_);
-    std::swap(agencies_, other->agencies_);
+    std::swap(agents_, other->agents_);
     std::swap(coordinators_, other->coordinators_);
     std::swap(dbservers_, other->dbservers_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
@@ -1687,7 +1687,7 @@ void TasksPlan::Swap(TasksPlan* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int Plan::kAgenciesFieldNumber;
+const int Plan::kAgentsFieldNumber;
 const int Plan::kCoordinatorsFieldNumber;
 const int Plan::kDbserversFieldNumber;
 #endif  // !_MSC_VER
@@ -1698,7 +1698,7 @@ Plan::Plan()
 }
 
 void Plan::InitAsDefaultInstance() {
-  agencies_ = const_cast< ::arangodb::TasksPlan*>(&::arangodb::TasksPlan::default_instance());
+  agents_ = const_cast< ::arangodb::TasksPlan*>(&::arangodb::TasksPlan::default_instance());
   coordinators_ = const_cast< ::arangodb::TasksPlan*>(&::arangodb::TasksPlan::default_instance());
   dbservers_ = const_cast< ::arangodb::TasksPlan*>(&::arangodb::TasksPlan::default_instance());
 }
@@ -1711,7 +1711,7 @@ Plan::Plan(const Plan& from)
 
 void Plan::SharedCtor() {
   _cached_size_ = 0;
-  agencies_ = NULL;
+  agents_ = NULL;
   coordinators_ = NULL;
   dbservers_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -1723,7 +1723,7 @@ Plan::~Plan() {
 
 void Plan::SharedDtor() {
   if (this != default_instance_) {
-    delete agencies_;
+    delete agents_;
     delete coordinators_;
     delete dbservers_;
   }
@@ -1752,8 +1752,8 @@ Plan* Plan::New() const {
 
 void Plan::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (has_agencies()) {
-      if (agencies_ != NULL) agencies_->::arangodb::TasksPlan::Clear();
+    if (has_agents()) {
+      if (agents_ != NULL) agents_->::arangodb::TasksPlan::Clear();
     }
     if (has_coordinators()) {
       if (coordinators_ != NULL) coordinators_->::arangodb::TasksPlan::Clear();
@@ -1772,12 +1772,12 @@ bool Plan::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required .arangodb.TasksPlan agencies = 1;
+      // required .arangodb.TasksPlan agents = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_agencies()));
+               input, mutable_agents()));
         } else {
           goto handle_uninterpreted;
         }
@@ -1831,10 +1831,10 @@ bool Plan::MergePartialFromCodedStream(
 
 void Plan::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required .arangodb.TasksPlan agencies = 1;
-  if (has_agencies()) {
+  // required .arangodb.TasksPlan agents = 1;
+  if (has_agents()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      1, this->agencies(), output);
+      1, this->agents(), output);
   }
 
   // required .arangodb.TasksPlan coordinators = 2;
@@ -1857,11 +1857,11 @@ void Plan::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* Plan::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // required .arangodb.TasksPlan agencies = 1;
-  if (has_agencies()) {
+  // required .arangodb.TasksPlan agents = 1;
+  if (has_agents()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        1, this->agencies(), target);
+        1, this->agents(), target);
   }
 
   // required .arangodb.TasksPlan coordinators = 2;
@@ -1889,11 +1889,11 @@ int Plan::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required .arangodb.TasksPlan agencies = 1;
-    if (has_agencies()) {
+    // required .arangodb.TasksPlan agents = 1;
+    if (has_agents()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->agencies());
+          this->agents());
     }
 
     // required .arangodb.TasksPlan coordinators = 2;
@@ -1937,8 +1937,8 @@ void Plan::MergeFrom(const ::google::protobuf::Message& from) {
 void Plan::MergeFrom(const Plan& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_agencies()) {
-      mutable_agencies()->::arangodb::TasksPlan::MergeFrom(from.agencies());
+    if (from.has_agents()) {
+      mutable_agents()->::arangodb::TasksPlan::MergeFrom(from.agents());
     }
     if (from.has_coordinators()) {
       mutable_coordinators()->::arangodb::TasksPlan::MergeFrom(from.coordinators());
@@ -1965,8 +1965,8 @@ void Plan::CopyFrom(const Plan& from) {
 bool Plan::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
 
-  if (has_agencies()) {
-    if (!this->agencies().IsInitialized()) return false;
+  if (has_agents()) {
+    if (!this->agents().IsInitialized()) return false;
   }
   if (has_coordinators()) {
     if (!this->coordinators().IsInitialized()) return false;
@@ -1979,7 +1979,7 @@ bool Plan::IsInitialized() const {
 
 void Plan::Swap(Plan* other) {
   if (other != this) {
-    std::swap(agencies_, other->agencies_);
+    std::swap(agents_, other->agents_);
     std::swap(coordinators_, other->coordinators_);
     std::swap(dbservers_, other->dbservers_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
@@ -3346,7 +3346,7 @@ const int Current::kAgencyResourcesFieldNumber;
 const int Current::kCoordinatorResourcesFieldNumber;
 const int Current::kPrimaryDbserverResourcesFieldNumber;
 const int Current::kSecondaryDbserverResourcesFieldNumber;
-const int Current::kAgenciesFieldNumber;
+const int Current::kAgentsFieldNumber;
 const int Current::kCoordinatorsFieldNumber;
 const int Current::kPrimaryDbserversFieldNumber;
 const int Current::kSecondaryDbserversFieldNumber;
@@ -3364,7 +3364,7 @@ void Current::InitAsDefaultInstance() {
   coordinator_resources_ = const_cast< ::arangodb::ResourcesCurrent*>(&::arangodb::ResourcesCurrent::default_instance());
   primary_dbserver_resources_ = const_cast< ::arangodb::ResourcesCurrent*>(&::arangodb::ResourcesCurrent::default_instance());
   secondary_dbserver_resources_ = const_cast< ::arangodb::ResourcesCurrent*>(&::arangodb::ResourcesCurrent::default_instance());
-  agencies_ = const_cast< ::arangodb::InstancesCurrent*>(&::arangodb::InstancesCurrent::default_instance());
+  agents_ = const_cast< ::arangodb::InstancesCurrent*>(&::arangodb::InstancesCurrent::default_instance());
   coordinators_ = const_cast< ::arangodb::InstancesCurrent*>(&::arangodb::InstancesCurrent::default_instance());
   primary_dbservers_ = const_cast< ::arangodb::InstancesCurrent*>(&::arangodb::InstancesCurrent::default_instance());
   secondary_dbservers_ = const_cast< ::arangodb::InstancesCurrent*>(&::arangodb::InstancesCurrent::default_instance());
@@ -3382,7 +3382,7 @@ void Current::SharedCtor() {
   coordinator_resources_ = NULL;
   primary_dbserver_resources_ = NULL;
   secondary_dbserver_resources_ = NULL;
-  agencies_ = NULL;
+  agents_ = NULL;
   coordinators_ = NULL;
   primary_dbservers_ = NULL;
   secondary_dbservers_ = NULL;
@@ -3401,7 +3401,7 @@ void Current::SharedDtor() {
     delete coordinator_resources_;
     delete primary_dbserver_resources_;
     delete secondary_dbserver_resources_;
-    delete agencies_;
+    delete agents_;
     delete coordinators_;
     delete primary_dbservers_;
     delete secondary_dbservers_;
@@ -3443,8 +3443,8 @@ void Current::Clear() {
     if (has_secondary_dbserver_resources()) {
       if (secondary_dbserver_resources_ != NULL) secondary_dbserver_resources_->::arangodb::ResourcesCurrent::Clear();
     }
-    if (has_agencies()) {
-      if (agencies_ != NULL) agencies_->::arangodb::InstancesCurrent::Clear();
+    if (has_agents()) {
+      if (agents_ != NULL) agents_->::arangodb::InstancesCurrent::Clear();
     }
     if (has_coordinators()) {
       if (coordinators_ != NULL) coordinators_->::arangodb::InstancesCurrent::Clear();
@@ -3521,17 +3521,17 @@ bool Current::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_agencies;
+        if (input->ExpectTag(42)) goto parse_agents;
         break;
       }
 
-      // required .arangodb.InstancesCurrent agencies = 5;
+      // required .arangodb.InstancesCurrent agents = 5;
       case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_agencies:
+         parse_agents:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_agencies()));
+               input, mutable_agents()));
         } else {
           goto handle_uninterpreted;
         }
@@ -3655,10 +3655,10 @@ void Current::SerializeWithCachedSizes(
       4, this->secondary_dbserver_resources(), output);
   }
 
-  // required .arangodb.InstancesCurrent agencies = 5;
-  if (has_agencies()) {
+  // required .arangodb.InstancesCurrent agents = 5;
+  if (has_agents()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      5, this->agencies(), output);
+      5, this->agents(), output);
   }
 
   // required .arangodb.InstancesCurrent coordinators = 6;
@@ -3725,11 +3725,11 @@ void Current::SerializeWithCachedSizes(
         4, this->secondary_dbserver_resources(), target);
   }
 
-  // required .arangodb.InstancesCurrent agencies = 5;
-  if (has_agencies()) {
+  // required .arangodb.InstancesCurrent agents = 5;
+  if (has_agents()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        5, this->agencies(), target);
+        5, this->agents(), target);
   }
 
   // required .arangodb.InstancesCurrent coordinators = 6;
@@ -3802,11 +3802,11 @@ int Current::ByteSize() const {
           this->secondary_dbserver_resources());
     }
 
-    // required .arangodb.InstancesCurrent agencies = 5;
-    if (has_agencies()) {
+    // required .arangodb.InstancesCurrent agents = 5;
+    if (has_agents()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->agencies());
+          this->agents());
     }
 
     // required .arangodb.InstancesCurrent coordinators = 6;
@@ -3881,8 +3881,8 @@ void Current::MergeFrom(const Current& from) {
     if (from.has_secondary_dbserver_resources()) {
       mutable_secondary_dbserver_resources()->::arangodb::ResourcesCurrent::MergeFrom(from.secondary_dbserver_resources());
     }
-    if (from.has_agencies()) {
-      mutable_agencies()->::arangodb::InstancesCurrent::MergeFrom(from.agencies());
+    if (from.has_agents()) {
+      mutable_agents()->::arangodb::InstancesCurrent::MergeFrom(from.agents());
     }
     if (from.has_coordinators()) {
       mutable_coordinators()->::arangodb::InstancesCurrent::MergeFrom(from.coordinators());
@@ -3932,8 +3932,8 @@ bool Current::IsInitialized() const {
   if (has_secondary_dbserver_resources()) {
     if (!this->secondary_dbserver_resources().IsInitialized()) return false;
   }
-  if (has_agencies()) {
-    if (!this->agencies().IsInitialized()) return false;
+  if (has_agents()) {
+    if (!this->agents().IsInitialized()) return false;
   }
   if (has_coordinators()) {
     if (!this->coordinators().IsInitialized()) return false;
@@ -3953,7 +3953,7 @@ void Current::Swap(Current* other) {
     std::swap(coordinator_resources_, other->coordinator_resources_);
     std::swap(primary_dbserver_resources_, other->primary_dbserver_resources_);
     std::swap(secondary_dbserver_resources_, other->secondary_dbserver_resources_);
-    std::swap(agencies_, other->agencies_);
+    std::swap(agents_, other->agents_);
     std::swap(coordinators_, other->coordinators_);
     std::swap(primary_dbservers_, other->primary_dbservers_);
     std::swap(secondary_dbservers_, other->secondary_dbservers_);

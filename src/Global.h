@@ -44,7 +44,7 @@ namespace arangodb {
 
   enum class OperationMode {
     STANDALONE,
-    REPLICATION
+    CLUSTER
   };
 
 // -----------------------------------------------------------------------------

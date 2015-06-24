@@ -52,7 +52,7 @@ CaretakerStandalone::CaretakerStandalone () {
   Target target = Global::state().target();
 
   // AGENCY
-  TargetEntry* agency = target.mutable_agencies();
+  TargetEntry* agency = target.mutable_agents();
   agency->set_instances(0);
   agency->clear_minimal_resources();
 
