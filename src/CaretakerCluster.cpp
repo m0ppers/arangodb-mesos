@@ -281,6 +281,97 @@ void CaretakerCluster::updatePlan () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
+static int countRunningInstances (InstancesCurrent const& instances) {
+  int runningInstances = 0;
+  for (int i = 0; i < instances.entries_size(); i++) {
+    InstancesCurrentEntry const& entry = instances.entries(i);
+    if (entry.state() == INSTANCE_STATE_RUNNING) {
+      runningInstances += 1;
+    }
+  }
+  return runningInstances;
+}
+
+OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
+  // We proceed as follows:
+  //   If not all agencies are up and running, then we check whether
+  //   this offer is good for an agency.
+  //   If all agencies are running, we ask the first one if it is initialized
+  //   properly. If not, we wait and decline the offer.
+  //   Otherwise, if not all DBservers are up and running, we check first
+  //   whether this offer is good for one of them.
+  //   If all DBservers are up, we check with the coordinators.
+  //   If all is well, we decline politely.
+
+  Target target = Global::state().target();
+  Plan plan = Global::state().plan();
+  Current current = Global::state().current();
+
+  OfferAction action;
+
+  int plannedInstances = plan.agents().entries_size();
+  int runningInstances = countRunningInstances(current.agents());
+  if (runningInstances < plannedInstances) {
+    // Try to use the offer for a new agent:
+    action = checkResourceOffer("agency", true,
+                                target.agents(),
+                                plan.mutable_agents(),
+                                current.mutable_agency_resources(),
+                                offer);
+
+    // Save new state:
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
+    return action;
+  }
+
+  // Agency is running, make sure it is initialized:
+  sleep(5);   // FIXME: do an HTTP GET to 
+              // http://<agencyhost>:<agencyport>/v2/keys/arango/InitDone
+              // if this is not successful, ignore offer
+  
+  // Now look after the DBservers:
+  plannedInstances = plan.dbservers().entries_size();
+  runningInstances = countRunningInstances(current.primary_dbservers());
+  if (runningInstances < plannedInstances) {
+    // Try to use the offer for a new DBserver:
+    action = checkResourceOffer("primary", true,
+                                target.dbservers(),
+                                plan.mutable_dbservers(),
+                                current.mutable_primary_dbserver_resources(),
+                                offer);
+
+    // Save new state:
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
+    return action;
+  }
+
+  // Finally, look after the coordinators:
+  plannedInstances = plan.dbservers().entries_size();
+  runningInstances = countRunningInstances(current.primary_dbservers());
+  if (runningInstances < plannedInstances) {
+    // Try to use the offer for a new DBserver:
+    action = checkResourceOffer("coordinator", false,
+                                target.coordinators(),
+                                plan.mutable_coordinators(),
+                                current.mutable_coordinator_resources(),
+                                offer);
+
+    // Save new state:
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
+    return action;
+  }
+
+  // All is good, ignore offer:
+  return { OfferActionState::IGNORE };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
 InstanceAction CaretakerCluster::checkInstance () {
   Target target = Global::state().target();
   Plan plan = Global::state().plan();

@@ -329,12 +329,12 @@ static mesos::Resources suitablePersistent (const string& name,
 /// @brief checks if an offer fits
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction checkResourceOffer (const string& name,
-                                       bool persistent,
-                                       const TargetEntry& target,
-                                       TasksPlan* plan,
-                                       ResourcesCurrent* current,
-                                       const mesos::Offer& offer) {
+OfferAction Caretaker::checkResourceOffer (string const& name,
+                                           bool persistent,
+                                           TargetEntry const& target,
+                                           TasksPlan* plan,
+                                           ResourcesCurrent* current,
+                                           mesos::Offer const& offer) {
 
 #if MESOS_DYNAMIC_RESERVATION
 #else
@@ -344,9 +344,9 @@ static OfferAction checkResourceOffer (const string& name,
   string upper = name;
   for (auto& c : upper) { c = toupper(c); }
           
-  // .............................................................................
+  // ...........................................................................
   // check that the minimal resources are satisfied
-  // .............................................................................
+  // ...........................................................................
 
   if (! isSuitableOffer(target, offer)) {
     return { OfferActionState::IGNORE };
@@ -358,9 +358,9 @@ static OfferAction checkResourceOffer (const string& name,
     return { OfferActionState::IGNORE };
   }
 
-  // .............................................................................
+  // ...........................................................................
   // we do not want to start two instance on the same slave
-  // .............................................................................
+  // ...........................................................................
 
   int required = -1;
   const string& offerSlaveId = offer.slave_id().value();
@@ -433,9 +433,9 @@ static OfferAction checkResourceOffer (const string& name,
     }
   }
 
-  // .............................................................................
+  // ...........................................................................
   // check if we have a free slot
-  // .............................................................................
+  // ...........................................................................
 
   if (required == -1) {
     for (int i = 0;  i < p;  ++i) {
@@ -452,9 +452,9 @@ static OfferAction checkResourceOffer (const string& name,
     return { OfferActionState::STORE_FOR_LATER };
   }
 
-  // .............................................................................
+  // ...........................................................................
   // make a reservation
-  // .............................................................................
+  // ...........................................................................
 
   TasksPlanEntry* entry = plan->mutable_entries(required);
 
@@ -570,68 +570,28 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  vector<size_t> checks;
+  OfferAction action;
+  action = checkResourceOffer("primary", true,
+                              target.dbservers(),
+                              plan.mutable_dbservers(),
+                              current.mutable_primary_dbserver_resources(),
+                              offer);
 
-  static const size_t AGENCY = 0;
-  static const size_t DBSERVER = 1;
-  static const size_t COORDINATOR = 3;
+  Global::state().setPlan(plan);
+  Global::state().setCurrent(current);
 
-  switch (Global::mode()) {
-    case OperationMode::STANDALONE:
-      checks = { DBSERVER };
+  switch (action._state) {
+    case OfferActionState::USABLE:
+    case OfferActionState::MAKE_DYNAMIC_RESERVATION:
+    case OfferActionState::MAKE_PERSISTENT_VOLUME:
+      return action;
+
+    case OfferActionState::STORE_FOR_LATER:
+      store = true;
       break;
 
-    case OperationMode::CLUSTER:
-      checks = { AGENCY, DBSERVER, COORDINATOR };
+    case OfferActionState::IGNORE:
       break;
-  }
-
-  for (auto i : checks) {
-    OfferAction action;
-
-    switch (i) {
-      case AGENCY:
-        action = checkResourceOffer("agency", true,
-                                    target.agents(),
-                                    plan.mutable_agents(),
-                                    current.mutable_agency_resources(),
-                                    offer);
-        break;
-
-
-      case DBSERVER:
-        action = checkResourceOffer("primary", true,
-                                    target.dbservers(),
-                                    plan.mutable_dbservers(),
-                                    current.mutable_primary_dbserver_resources(),
-                                    offer);
-        break;
-
-      case COORDINATOR:
-        action = checkResourceOffer("coordinator", false,
-                                    target.coordinators(),
-                                    plan.mutable_coordinators(),
-                                    current.mutable_coordinator_resources(),
-                                    offer);
-        break;
-    }
-
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-
-    switch (action._state) {
-      case OfferActionState::USABLE:
-      case OfferActionState::MAKE_DYNAMIC_RESERVATION:
-      case OfferActionState::MAKE_PERSISTENT_VOLUME:
-        return action;
-
-      case OfferActionState::STORE_FOR_LATER:
-        store = true;
-        break;
-
-      case OfferActionState::IGNORE:
-        break;
-    }
   }
 
   if (store) {

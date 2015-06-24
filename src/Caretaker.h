@@ -174,7 +174,7 @@ namespace arangodb {
 /// @brief checks if we can use a resource offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      OfferAction checkOffer (const mesos::Offer&);
+      virtual OfferAction checkOffer (const mesos::Offer&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task id, clears the task info and status
@@ -214,6 +214,17 @@ namespace arangodb {
 // -----------------------------------------------------------------------------
 
     protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a resource offer can be used
+////////////////////////////////////////////////////////////////////////////////
+
+OfferAction checkResourceOffer (std::string const& name,
+                                bool persistent,
+                                TargetEntry const& target,
+                                TasksPlan* plan,
+                                ResourcesCurrent* current,
+                                mesos::Offer const& offer);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we can/should start a new instance
