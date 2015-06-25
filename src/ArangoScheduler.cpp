@@ -244,6 +244,17 @@ mesos::TaskInfo ArangoScheduler::startInstance (
   task.mutable_container()->CopyFrom(container);
   task.mutable_command()->CopyFrom(command);
 
+  mesos::DiscoveryInfo di;
+  di.set_visibility(mesos::DiscoveryInfo::FRAMEWORK);
+  di.set_name(name);
+  mesos::Ports po;
+  auto p = po.add_ports();
+  p->set_number(info.ports(0));
+  p->set_name("ArangoDB");
+  p->set_protocol("tcp");
+  di.mutable_ports()->CopyFrom(po);
+  task.mutable_discovery()->CopyFrom(di);
+
   // launch the tasks
   vector<mesos::TaskInfo> tasks;
   tasks.push_back(task);
