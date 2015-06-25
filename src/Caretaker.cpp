@@ -620,6 +620,17 @@ void Caretaker::setTaskId (const AspectPosition& pos,
   info.mutable_slave_id()->CopyFrom(slaveId);
 
   switch (pos._type) {
+    case AspectType::AGENT:
+      current.mutable_agents()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(info);
+
+      current.mutable_agents()
+        ->mutable_entries(p)
+        ->clear_task_status();
+      break;
+
     case AspectType::PRIMARY_DBSERVER:
       current.mutable_primary_dbservers()
         ->mutable_entries(p)
@@ -631,7 +642,29 @@ void Caretaker::setTaskId (const AspectPosition& pos,
         ->clear_task_status();
       break;
 
-    default:
+    case AspectType::SECONDARY_DBSERVER:
+      current.mutable_secondary_dbservers()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(info);
+
+      current.mutable_secondary_dbservers()
+        ->mutable_entries(p)
+        ->clear_task_status();
+      break;
+
+    case AspectType::COORDINATOR:
+      current.mutable_coordinators()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(info);
+
+      current.mutable_coordinators()
+        ->mutable_entries(p)
+        ->clear_task_status();
+      break;
+
+    case AspectType::UNKNOWN:
       LOG(INFO)
       << "unknown task type " << (int) pos._type
       << " for " << taskId.value();
@@ -651,6 +684,13 @@ void Caretaker::setTaskInfo (const AspectPosition& pos,
   int p = pos._pos;
 
   switch (pos._type) {
+    case AspectType::AGENT:
+      current.mutable_agents()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(taskInfo);
+      break;
+
     case AspectType::PRIMARY_DBSERVER:
       current.mutable_primary_dbservers()
         ->mutable_entries(p)
@@ -658,7 +698,21 @@ void Caretaker::setTaskInfo (const AspectPosition& pos,
         ->CopyFrom(taskInfo);
       break;
 
-    default:
+    case AspectType::SECONDARY_DBSERVER:
+      current.mutable_secondary_dbservers()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(taskInfo);
+      break;
+
+    case AspectType::COORDINATOR:
+      current.mutable_coordinators()
+        ->mutable_entries(p)
+        ->mutable_task_info()
+        ->CopyFrom(taskInfo);
+      break;
+
+    case AspectType::UNKNOWN:
       LOG(INFO)
       << "unknown task type " << (int) pos._type
       << " for " << taskInfo.task_id().value();
@@ -678,6 +732,13 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
   int p = pos._pos;
 
   switch (pos._type) {
+    case AspectType::AGENT:
+      current.mutable_agents()
+        ->mutable_entries(p)
+        ->mutable_task_status()
+        ->CopyFrom(taskStatus);
+      break;
+
     case AspectType::PRIMARY_DBSERVER:
       current.mutable_primary_dbservers()
         ->mutable_entries(p)
@@ -685,7 +746,21 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
         ->CopyFrom(taskStatus);
       break;
 
-    default:
+    case AspectType::SECONDARY_DBSERVER:
+      current.mutable_secondary_dbservers()
+        ->mutable_entries(p)
+        ->mutable_task_status()
+        ->CopyFrom(taskStatus);
+      break;
+
+    case AspectType::COORDINATOR:
+      current.mutable_coordinators()
+        ->mutable_entries(p)
+        ->mutable_task_status()
+        ->CopyFrom(taskStatus);
+      break;
+
+    case AspectType::UNKNOWN:
       LOG(INFO)
       << "unknown task type " << (int) pos._type
       << " for " << taskStatus.task_id().value();
@@ -705,13 +780,31 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
   int p = pos._pos;
 
   switch (pos._type) {
+    case AspectType::AGENT:
+      current.mutable_agents()
+        ->mutable_entries(p)
+        ->set_state(state);
+      break;
+
     case AspectType::PRIMARY_DBSERVER:
       current.mutable_primary_dbservers()
         ->mutable_entries(p)
         ->set_state(state);
       break;
 
-    default:
+    case AspectType::SECONDARY_DBSERVER:
+      current.mutable_secondary_dbservers()
+        ->mutable_entries(p)
+        ->set_state(state);
+      break;
+
+    case AspectType::COORDINATOR:
+      current.mutable_coordinators()
+        ->mutable_entries(p)
+        ->set_state(state);
+      break;
+
+    case AspectType::UNKNOWN:
       LOG(INFO)
       << "unknown task type " << (int) pos._type;
       break;
@@ -729,13 +822,31 @@ void Caretaker::freeResourceForInstance (const AspectPosition& pos) {
   int p = pos._pos;
 
   switch (pos._type) {
+    case AspectType::AGENT:
+      current.mutable_agency_resources()
+        ->mutable_entries(p)
+        ->set_state(RESOURCE_STATE_REQUIRED);
+      break;
+
     case AspectType::PRIMARY_DBSERVER:
       current.mutable_primary_dbserver_resources()
         ->mutable_entries(p)
         ->set_state(RESOURCE_STATE_REQUIRED);
       break;
 
-    default:
+    case AspectType::SECONDARY_DBSERVER:
+      current.mutable_secondary_dbserver_resources()
+        ->mutable_entries(p)
+        ->set_state(RESOURCE_STATE_REQUIRED);
+      break;
+
+    case AspectType::COORDINATOR:
+      current.mutable_coordinator_resources()
+        ->mutable_entries(p)
+        ->set_state(RESOURCE_STATE_REQUIRED);
+      break;
+
+    case AspectType::UNKNOWN:
       LOG(INFO)
       << "unknown task type " << (int) pos._type;
       break;
@@ -752,6 +863,7 @@ void Caretaker::freeResourceForInstance (const AspectPosition& pos) {
 /// @brief checks if we can/should start a new instance
 ////////////////////////////////////////////////////////////////////////////////
 
+// FIXME: remove name argument which is unused
 InstanceAction Caretaker::checkStartInstance (const string& name,
                                               AspectType aspect,
                                               InstanceActionState startState,

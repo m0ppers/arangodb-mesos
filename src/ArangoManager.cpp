@@ -267,7 +267,7 @@ ArangoManagerImpl::ArangoManagerImpl ()
 
   Current current = Global::state().current();
 
-  fillKnownInstances(AspectType::AGENCY, current.agents());
+  fillKnownInstances(AspectType::AGENT, current.agents());
   fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
   fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.primary_dbservers());
   fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());
@@ -570,7 +570,7 @@ void ArangoManagerImpl::startNewInstances () {
         case::InstanceActionState::DONE:
           break;
 
-        case::InstanceActionState::START_AGENCY:
+        case::InstanceActionState::START_AGENT:
         case::InstanceActionState::START_COORDINATOR:
         case::InstanceActionState::START_PRIMARY_DBSERVER:
         case::InstanceActionState::START_SECONDARY_DBSERVER:
@@ -696,18 +696,69 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   mesos::ContainerInfo container;
   container.set_type(mesos::ContainerInfo::DOCKER);
 
+  // our own name:
+  string type;
+  switch (aspect) {
+    case InstanceActionState::START_AGENT:
+      type = "agent";
+      break;
+    case InstanceActionState::START_PRIMARY_DBSERVER:
+      type = "dbserver";
+      break;
+    case InstanceActionState::START_COORDINATOR:
+      type = "coordinator";
+      break;
+    case InstanceActionState::START_SECONDARY_DBSERVER:
+      type = "secondary";
+      break;
+    case InstanceActionState::DONE:
+      assert(false);
+      break;
+  }
+  string myName = type + to_string(pos._pos + 1);
+
   // command to execute
   mesos::CommandInfo command;
-  command.set_value("standalone");
-  command.set_shell(false);
   mesos::Environment environment;
+  switch (aspect) {
+    case InstanceActionState::START_AGENT: {
+      command.set_value("agency");
+      auto p = environment.add_variables();
+      p->set_name("numberOfDBServers");
+      p->set_value(to_string(Global::state().target().coordinators().instances()));
+      p = environment.add_variables();
+      p->set_name("numberOfCoordinators");
+      p->set_value(to_string(Global::state().target().dbservers().instances()));
+      break;
+    }
+    case InstanceActionState::START_PRIMARY_DBSERVER:
+    case InstanceActionState::START_COORDINATOR:
+    case InstanceActionState::START_SECONDARY_DBSERVER: {
+      if (Global::mode() == OperationMode::STANDALONE) {
+        command.set_value("standalone");
+      }
+      else {
+        command.set_value("cluster");
+        string hostname = Global::state().current().agents().entries(0).hostname();
+        uint32_t port = Global::state().current().agents().entries(0).ports(0);
+        command.add_arguments("tcp://" + hostname + ":" + to_string(port));
+        command.add_arguments(myName);
+      }
+      break;
+    }
+    case InstanceActionState::DONE: {
+      assert(false);
+      break;
+    }
+  }
+  command.set_shell(false);
   auto p = environment.add_variables();
   p->set_name("HOST");
   p->set_value(info.hostname());
   p = environment.add_variables();
   p->set_name("PORT0");
   p->set_value(std::to_string(info.ports(0)));
-  p = environment.add_variables();
+  command.mutable_environment()->CopyFrom(environment);
 
   // docker info
   mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
@@ -717,12 +768,27 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   // port mapping
   mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker->add_port_mappings();
   mapping->set_host_port(info.ports(0));
-  mapping->set_container_port(8529);
+  switch (aspect) {
+    case InstanceActionState::START_AGENT:
+      mapping->set_container_port(4001);
+      break;
+    case InstanceActionState::START_PRIMARY_DBSERVER:
+      mapping->set_container_port(8529);
+      break;
+    case InstanceActionState::START_COORDINATOR:
+      mapping->set_container_port(8529);
+      break;
+    case InstanceActionState::START_SECONDARY_DBSERVER:
+      mapping->set_container_port(8529);
+      break;
+    case InstanceActionState::DONE:
+      assert(false);
+      break;
+  }
   mapping->set_protocol("tcp");
 
   // volume
-  string path = "arangodb_" + Global::frameworkName() + "_standalone";
-
+  string path = "arangodb_" + Global::frameworkName() + "_" + myName;
   mesos::Volume* volume = container.add_volumes();
   volume->set_container_path("/data");
   volume->set_host_path(Global::volumePath() + "/" + path);
@@ -739,7 +805,7 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   // and start
   mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
     taskId,
-    "standalone",
+    myName,
     info,
     container,
     command);

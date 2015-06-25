@@ -278,7 +278,7 @@ void CaretakerCluster::updatePlan () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief count the number of running instances of a certain kind
 ////////////////////////////////////////////////////////////////////////////////
 
 static int countRunningInstances (InstancesCurrent const& instances) {
@@ -291,6 +291,10 @@ static int countRunningInstances (InstancesCurrent const& instances) {
   }
   return runningInstances;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check an incoming offer against a certain kind of server
+////////////////////////////////////////////////////////////////////////////////
 
 OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // We proceed as follows:
@@ -377,13 +381,47 @@ InstanceAction CaretakerCluster::checkInstance () {
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  auto res = checkStartInstance(
+  InstanceAction res = checkStartInstance(
+    "agency",
+    AspectType::AGENT,
+    InstanceActionState::START_AGENT,
+    plan.agents(),
+    current.mutable_agency_resources(),
+    current.mutable_agents());
+
+  if (res._state != InstanceActionState::DONE) {
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
+
+    return res;
+  }
+
+  // OK, agents are fine, move on to DBservers:
+
+  res = checkStartInstance(
     "dbserver",
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
     plan.dbservers(),
     current.mutable_primary_dbserver_resources(),
     current.mutable_primary_dbservers());
+
+  if (res._state != InstanceActionState::DONE) {
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
+
+    return res;
+  }
+
+  // Finally, the coordinators:
+
+  res = checkStartInstance(
+    "coordinator",
+    AspectType::COORDINATOR,
+    InstanceActionState::START_COORDINATOR,
+    plan.coordinators(),
+    current.mutable_coordinator_resources(),
+    current.mutable_coordinators());
 
   Global::state().setPlan(plan);
   Global::state().setCurrent(current);

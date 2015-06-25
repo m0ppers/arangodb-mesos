@@ -40,7 +40,7 @@ namespace arangodb {
 
   enum class AspectType {
     UNKNOWN,
-    AGENCY,
+    AGENT,
     COORDINATOR,
     PRIMARY_DBSERVER,
     SECONDARY_DBSERVER
@@ -89,7 +89,7 @@ namespace arangodb {
 
   enum class InstanceActionState {
     DONE,
-    START_AGENCY,
+    START_AGENT,
     START_COORDINATOR,
     START_PRIMARY_DBSERVER,
     START_SECONDARY_DBSERVER
