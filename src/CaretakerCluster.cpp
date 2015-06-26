@@ -31,6 +31,7 @@
 #include "Global.h"
 
 #include "arangodb.pb.h"
+#include "pbjson.hpp"
 
 using namespace arangodb;
 
@@ -313,8 +314,23 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   OfferAction action;
 
+  LOG(INFO) 
+  << "checkOffer, here is the state:\n"
+  << "TARGET:" << Global::state().jsonTarget() << "\n"
+  << "PLAN:"   << Global::state().jsonPlan() << "\n"
+  << "CURRENT:"<< Global::state().jsonCurrent() << "\n";
+
+  std::string offerString;
+  pbjson::pb2json(&offer, offerString);
+
+  LOG(INFO)
+  << "And here the offer:\n" << offerString << "\n";
+
   int plannedInstances = plan.agents().entries_size();
   int runningInstances = countRunningInstances(current.agents());
+  LOG(INFO)
+  << "planned agent instances: " << plannedInstances << ", "
+  << "running agent instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new agent:
     action = checkResourceOffer("agency", true,
@@ -337,6 +353,9 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // Now look after the DBservers:
   plannedInstances = plan.dbservers().entries_size();
   runningInstances = countRunningInstances(current.primary_dbservers());
+  LOG(INFO)
+  << "planned DBServer instances: " << plannedInstances << ", "
+  << "running DBServer instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
     action = checkResourceOffer("primary", true,
@@ -352,8 +371,11 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   // Finally, look after the coordinators:
-  plannedInstances = plan.dbservers().entries_size();
-  runningInstances = countRunningInstances(current.primary_dbservers());
+  plannedInstances = plan.coordinators().entries_size();
+  runningInstances = countRunningInstances(current.coordinators());
+  LOG(INFO)
+  << "planned coordinator instances: " << plannedInstances << ", "
+  << "running coordinator instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
     action = checkResourceOffer("coordinator", false,
@@ -366,6 +388,11 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
     return action;
+  }
+
+  LOG(INFO) << "Cluster is complete.";
+  if (! Global::state().current().cluster_initialized()) {
+    LOG(INFO) << "Running cluster initialisation procedure... (NOT YET IMPL)";
   }
 
   // All is good, ignore offer:

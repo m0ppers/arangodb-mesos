@@ -359,7 +359,7 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   }
 
   // ...........................................................................
-  // we do not want to start two instance on the same slave
+  // we do not want to start two instances on the same slave
   // ...........................................................................
 
   int required = -1;
@@ -429,7 +429,9 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
       << "already using slave " << entry->slave_id().value();
       */
 
-      return { OfferActionState::STORE_FOR_LATER };
+      // return { OfferActionState::STORE_FOR_LATER };
+      // For testing, we allow more than one instance on the same slave
+      // for now, simply to allow for local testing.
     }
   }
 

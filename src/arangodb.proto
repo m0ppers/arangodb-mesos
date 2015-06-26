@@ -119,8 +119,7 @@ message Current {
   required InstancesCurrent primary_dbservers = 7;
   required InstancesCurrent secondary_dbservers = 8;
 
-  required bool             agency_initialized = 9;
-  required bool             cluster_initialized = 10;
+  required bool             cluster_initialized = 9;
 }
 
 // -----------------------------------------------------------------------------

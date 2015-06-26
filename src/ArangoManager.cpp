@@ -42,6 +42,11 @@
 #include <unordered_set>
 #include <unordered_map>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+
 using namespace arangodb;
 using namespace std;
 
@@ -676,6 +681,43 @@ bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief do IP address lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static string getIPAddress (string hostname) {
+  std::cout << "getIPAddress: " << hostname << std::endl;
+  struct addrinfo hints;
+  struct addrinfo* ai;
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = 0;
+  hints.ai_flags = AI_ADDRCONFIG;
+  int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
+  if (res != 0) {
+    std::cout << "Alarm: res=" << res << std::endl;
+    return hostname;
+  }
+  struct addrinfo* b = ai;
+  std::string result = hostname;
+  while (b != nullptr) {
+    auto q = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
+    char buffer[INET_ADDRSTRLEN+5];
+    char const* p = inet_ntop(AF_INET, &q->sin_addr, buffer, sizeof(buffer));
+    if (p != nullptr) {
+      std::cout << "getIPAddress: " << p << std::endl;
+      if (p[0] != '1' || p[1] != '2' || p[2] != '7') {
+        result = p;
+      }
+    }
+    else {
+      std::cout << "error in inet_ntop" << std::endl;
+    }
+    b = b->ai_next;
+  }
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new standalone arangodb
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -700,16 +742,16 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   string type;
   switch (aspect) {
     case InstanceActionState::START_AGENT:
-      type = "agent";
+      type = "Agent";
       break;
     case InstanceActionState::START_PRIMARY_DBSERVER:
-      type = "dbserver";
+      type = "DBServer";
       break;
     case InstanceActionState::START_COORDINATOR:
-      type = "coordinator";
+      type = "Coordinator";
       break;
     case InstanceActionState::START_SECONDARY_DBSERVER:
-      type = "secondary";
+      type = "Secondary";
       break;
     case InstanceActionState::DONE:
       assert(false);
@@ -725,10 +767,10 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
       command.set_value("agency");
       auto p = environment.add_variables();
       p->set_name("numberOfDBServers");
-      p->set_value(to_string(Global::state().target().coordinators().instances()));
+      p->set_value(to_string(Global::state().target().dbservers().instances()));
       p = environment.add_variables();
       p->set_name("numberOfCoordinators");
-      p->set_value(to_string(Global::state().target().dbservers().instances()));
+      p->set_value(to_string(Global::state().target().coordinators().instances()));
       break;
     }
     case InstanceActionState::START_PRIMARY_DBSERVER:
@@ -741,7 +783,8 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
         command.set_value("cluster");
         string hostname = Global::state().current().agents().entries(0).hostname();
         uint32_t port = Global::state().current().agents().entries(0).ports(0);
-        command.add_arguments("tcp://" + hostname + ":" + to_string(port));
+        command.add_arguments(
+            "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
         command.add_arguments(myName);
       }
       break;
@@ -752,9 +795,11 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
     }
   }
   command.set_shell(false);
+  // Find out the IP address:
+
   auto p = environment.add_variables();
   p->set_name("HOST");
-  p->set_value(info.hostname());
+  p->set_value(getIPAddress(info.hostname()));
   p = environment.add_variables();
   p->set_name("PORT0");
   p->set_value(std::to_string(info.ports(0)));
