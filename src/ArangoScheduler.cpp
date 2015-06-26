@@ -53,92 +53,66 @@ using namespace arangodb;
 /// @brief checks the master version
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void *userp) {
-  size_t realsize = size * nmemb;
-  string* mem = (string*) userp;
- 
-  mem->append((char*) contents, realsize);
-
-  return realsize;
-}
-
 static void checkVersion (string hostname, int port) {
-  CURL *curl;
-  CURLcode res;
- 
-  curl = curl_easy_init();
+  std::string body;
+  int res = doHTTPGet("http://" + hostname + ":" + to_string(port) 
+                      + "/state.json", body);
+  if (res == 0) {
+    picojson::value s;
+    std::string err = picojson::parse(s, body);
 
-  if (curl) {
-    string url = "http://" + hostname + ":" + to_string(port) + "/state.json";
-    string body;
+    if (err.empty()) {
+      if (s.is<picojson::object>()) {
+        auto& o = s.get<picojson::object>();
+        auto& v = o["version"];
 
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &body);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+        if (v.is<string>()) {
+          string version = v.get<string>();
 
-    res = curl_easy_perform(curl);
+          if (! version.empty()) {
+            vector<string> vv;
+            boost::split(vv, version, boost::is_any_of("."));
 
-    if (res != CURLE_OK) {
-      LOG(WARNING)
-      << "cannot connect to " << url;
-    }
-    else {
-      picojson::value s;
-      std::string err = picojson::parse(s, body);
+            int major = 0;
+            int minor = 0;
 
-      if (err.empty()) {
-        if (s.is<picojson::object>()) {
-          auto& o = s.get<picojson::object>();
-          auto& v = o["version"];
+            if (vv.size() >= 2) {
+              major = stoi(vv[0]);
+              minor = stoi(vv[1]);
 
-          if (v.is<string>()) {
-            string version = v.get<string>();
-
-            if (! version.empty()) {
-              vector<string> vv;
-              boost::split(vv, version, boost::is_any_of("."));
-
-              int major = 0;
-              int minor = 0;
-
-              if (vv.size() >= 2) {
-                major = stoi(vv[0]);
-                minor = stoi(vv[1]);
-
-                if (major == 0 && minor < 22) {
-                  err = "version '" + version + "' is not suitable";
-                }
-                else {
-                  LOG(INFO)
-                  << "version '" << version << "' is suitable";
-                }
+              if (major == 0 && minor < 22) {
+                err = "version '" + version + "' is not suitable";
               }
               else {
-                err = "version '" + version + "' is corrupt";
+                LOG(INFO)
+                << "version '" << version << "' is suitable";
               }
             }
             else {
-              err = "version field is empty";
+              err = "version '" + version + "' is corrupt";
             }
           }
           else {
-            err = "version field is not a string";
+            err = "version field is empty";
           }
         }
         else {
-          err = "state is not a json object";
+          err = "version field is not a string";
         }
       }
-
-      if (! err.empty()) {
-        LOG(WARNING)
-        << "malformed state object from master: " << err;
+      else {
+        err = "state is not a json object";
       }
     }
- 
-    curl_easy_cleanup(curl);
+
+    if (! err.empty()) {
+      LOG(WARNING)
+      << "malformed state object from master: " << err;
+    }
+  }
+  else {
+    LOG(WARNING)
+    << "could not get version from master";
   }
 }
 
@@ -288,28 +262,10 @@ string ArangoScheduler::postRequest (const string& command,
 
   string result;
 
-  CURL *curl;
-  CURLcode res;
- 
-  curl = curl_easy_init();
-
-  if (curl) {
-    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &result);
-    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-    curl_easy_setopt(curl, CURLOPT_POST, 1);
-    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-
-    res = curl_easy_perform(curl);
-
-    if (res != CURLE_OK) {
-      LOG(WARNING)
-      << "cannot connect to " << url;
-    }
-
-    curl_easy_cleanup(curl);
+  int res = doHTTPPost(url, body, result);
+  if (res != 0) {
+    LOG(WARNING)
+    << "could not perform postRequest, error: " << res;
   }
 
   return result;

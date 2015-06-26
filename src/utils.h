@@ -34,6 +34,8 @@
 
 #include <mesos/resources.hpp>
 
+#include <curl/curl.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -136,6 +138,27 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
   mesos::Resources filterNotIsPorts (const mesos::Resources&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a GET request using libcurl, a return value of 0 means OK, the
+/// body of the result is in resultBody. If libcurl did not initialise 
+/// properly, -1 is returned and resultBody is empty, otherwise, a positive
+/// libcurl error code (see man 3 libcurl-errors) is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+  int doHTTPGet (std::string url, std::string& resultBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a POST request using libcurl, a return value of 0 means
+/// OK, the input body is in body, in the end, the body of the result is
+/// in resultBody. If libcurl did not initialise properly, -1 is returned.
+/// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
+/// is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+  int doHTTPPost (std::string url, std::string const& body,
+                                   std::string& resultBody);
+
 }
 
 #endif

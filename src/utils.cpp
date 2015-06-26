@@ -319,6 +319,89 @@ mesos::Resources arangodb::filterNotIsPorts (const mesos::Resources& resources) 
 #endif
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a GET request using libcurl
+////////////////////////////////////////////////////////////////////////////////
+
+static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, 
+                                  void *userp) {
+  size_t realsize = size * nmemb;
+  std::string* mem = static_cast<std::string*>(userp);
+ 
+  mem->append((char*) contents, realsize);
+
+  return realsize;
+}
+
+int arangodb::doHTTPGet (std::string url, std::string& resultBody) {
+  CURL *curl;
+  CURLcode res;
+ 
+  curl = curl_easy_init();
+
+  resultBody.clear();
+
+  if (curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &resultBody);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+      LOG(WARNING)
+      << "cannot connect to " << url << ", curl error: " << res;
+    }
+    curl_easy_cleanup(curl);
+    return res;
+  }
+  else {
+    return -1;  // indicate that curl did not properly initialize
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a POST request using libcurl, a return value of 0 means
+/// OK, the input body is in body, in the end, the body of the result is
+/// in resultBody. If libcurl did not initialise properly, -1 is returned.
+/// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
+/// is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+int arangodb::doHTTPPost (std::string url, std::string const& body,
+                                           std::string& resultBody) {
+  CURL *curl;
+  CURLcode res;
+ 
+  curl = curl_easy_init();
+
+  if (curl) {
+    resultBody.clear();
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &resultBody);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+    curl_easy_setopt(curl, CURLOPT_POST, 1);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+      LOG(WARNING)
+      << "cannot connect to " << url << ", curl error: " << res;
+    }
+    curl_easy_cleanup(curl);
+    return res;
+  }
+  else {
+    return -1;  // indicate that curl did not properly initialize
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
