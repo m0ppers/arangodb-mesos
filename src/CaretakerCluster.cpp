@@ -355,12 +355,37 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
                     "/v2/keys/arango/InitDone";
   std::string body;
   int res = doHTTPGet(url, body);
-  if (res != 0 || body != "true") {
+  if (res == 0) {
+    // Quickly check the JSON result:
+    picojson::value s;
+    std::string err = picojson::parse(s, body);
+
+    res = -2;  // Will rest to 0 if all is OK
+    if (err.empty()) {
+      if (s.is<picojson::object>()) {
+        auto& o = s.get<picojson::object>();
+        auto& n = o["node"];
+        if (n.is<picojson::object>()) {
+          auto& oo = n.get<picojson::object>();
+          auto& v = oo["value"];
+          if (v.is<string>()) {
+            string vv = v.get<string>();
+            if (vv == "true") {
+              res = 0;  // all OK
+            }
+          }
+        }
+      }
+    }
+  }
+  if (res != 0) {
     // Ignore the offer, since the agency is not yet ready:
     LOG(INFO)
     << "agency is not yet properly initialized, decline offer.";
     return { OfferActionState::IGNORE };
   }
+  LOG(INFO)
+  << "agency is up and running.";
   
   // Now look after the DBservers:
   plannedInstances = plan.dbservers().entries_size();
