@@ -655,7 +655,6 @@ bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
 ////////////////////////////////////////////////////////////////////////////////
 
 static string getIPAddress (string hostname) {
-  std::cout << "getIPAddress: " << hostname << std::endl;
   struct addrinfo hints;
   struct addrinfo* ai;
   hints.ai_family = AF_INET;
@@ -664,7 +663,7 @@ static string getIPAddress (string hostname) {
   hints.ai_flags = AI_ADDRCONFIG;
   int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
   if (res != 0) {
-    std::cout << "Alarm: res=" << res << std::endl;
+    LOG_WARNING << "Alarm: res=" << res;
     return hostname;
   }
   struct addrinfo* b = ai;
@@ -674,13 +673,12 @@ static string getIPAddress (string hostname) {
     char buffer[INET_ADDRSTRLEN+5];
     char const* p = inet_ntop(AF_INET, &q->sin_addr, buffer, sizeof(buffer));
     if (p != nullptr) {
-      std::cout << "getIPAddress: " << p << std::endl;
       if (p[0] != '1' || p[1] != '2' || p[2] != '7') {
         result = p;
       }
     }
     else {
-      std::cout << "error in inet_ntop" << std::endl;
+      LOG_WARNING << "error in inet_ntop";
     }
     b = b->ai_next;
   }

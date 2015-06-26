@@ -315,6 +315,8 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   OfferAction action;
 
+#if 0
+  // Further debugging output:
   LOG(INFO) 
   << "checkOffer, here is the state:\n"
   << "TARGET:" << Global::state().jsonTarget() << "\n"
@@ -326,6 +328,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   LOG(INFO)
   << "And here the offer:\n" << offerString << "\n";
+#endif
 
   int plannedInstances = plan.agents().entries_size();
   int runningInstances = countRunningInstances(current.agents());
