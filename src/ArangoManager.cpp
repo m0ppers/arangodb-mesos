@@ -103,88 +103,114 @@ vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 
-  /*
-  void bootstrapDbserver (const Instance& instance) {
-    
-    // extract the hostname
-    const string& hostname = instance._hostname;
-
-    // and the client port
-    uint32_t port = instance._ports[0];
-
-    // construct the address
-    string address = "http://" + hostname + ":" + to_string(port);
-
-    string command
-      = "curl -s -X POST " + address + "/_admin/cluster/bootstrapDbServer -d '{\"isRelaunch\":false}'";
-
-    LOG(INFO)
-    << "DBSERVER bootstraping using: " << command;
-
-    int res = system(command.c_str());
-
-    LOG(INFO)
-    << "DBSERVER " << command << " returned " << res;
+static bool bootstrapDBservers () {
+  string hostname 
+    = Global::state().current().coordinators().entries(0).hostname();
+  uint32_t port
+    = Global::state().current().coordinators().entries(0).ports(0);
+  string url = "http://" + hostname + ":" + to_string(port) +
+                    "/_admin/cluster/bootstrapDbServers";
+  string body = "{\"isRelaunch\":false}";
+  string result;
+  LOG(INFO) << "doing HTTP POST to " << url;
+  int res = doHTTPPost(url, body, result);
+  if (res != 0) {
+    LOG(WARNING)
+    << "bootstrapDBservers did not work, curl error: " << res << ", result:\n"
+    << result;
+    return false;
   }
-  */
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief bootstraps a coordinator
-///////////////////////////////////////////////////////////////////////////////
-
-  /*
-  void bootstrapCoordinator (const Instance& instance) {
-    
-    // extract the hostname
-    const string& hostname = instance._hostname;
-
-    // and the client port
-    uint32_t port = instance._ports[0];
-
-    // construct the address
-    string address = "http://" + hostname + ":" + to_string(port);
-
-    string command
-      = "curl -s -X POST " + address + "/_admin/cluster/bootstrapCoordinator -d '{\"isRelaunch\":false}'";
-
-    LOG(INFO)
-    << "COORDINATOR bootstraping using: " << command;
-
-    int res = system(command.c_str());
-
-    LOG(INFO)
-    << "COORDINATOR " << command << " returned " << res;
-  }
-  */
+  LOG(INFO) << "bootstrapDBservers answered:" << result;
+  return true;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief upgrades the cluster database
 ///////////////////////////////////////////////////////////////////////////////
 
-  /*
-  void upgradeDatabase (const Instance& instance) {
-
-    // extract the hostname
-    const string& hostname = instance._hostname;
-
-    // and the client port
-    uint32_t port = instance._ports[0];
-
-    // construct the address
-    string address = "http://" + hostname + ":" + to_string(port);
-
-    string command
-      = "curl -s -X POST " + address + "/_admin/cluster/upgradeClusterDatabase -d '{\"isRelaunch\":false}'";
-
-    LOG(INFO)
-    << "COORDINATOR upgrading database using: " << command;
-
-    int res = system(command.c_str());
-
-    LOG(INFO)
-    << "COORDINATOR " << command << " returned " << res;
+static bool upgradeClusterDatabase () {
+  string hostname 
+    = Global::state().current().coordinators().entries(0).hostname();
+  uint32_t port
+    = Global::state().current().coordinators().entries(0).ports(0);
+  string url = "http://" + hostname + ":" + to_string(port) +
+                    "/_admin/cluster/upgradeClusterDatabase";
+  string body = "{\"isRelaunch\":false}";
+  string result;
+  LOG(INFO) << "doing HTTP POST to " << url;
+  int res = doHTTPPost(url, body, result);
+  if (res != 0) {
+    LOG(WARNING)
+    << "upgradeClusterDatabase did not work, curl error: " << res 
+    << ", result:\n" << result;
+    return false;
   }
-  */
+  LOG(INFO) << "upgradeClusterDatabase answered:" << result;
+  return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief bootstraps coordinators
+///////////////////////////////////////////////////////////////////////////////
+
+static bool bootstrapCoordinators () {
+  int number
+    = Global::state().current().coordinators().entries_size();
+  bool error = false;
+  for (int i = 0; i < number; i++) { 
+    string hostname 
+      = Global::state().current().coordinators().entries(i).hostname();
+    uint32_t port
+      = Global::state().current().coordinators().entries(i).ports(0);
+    string url = "http://" + hostname + ":" + to_string(port) +
+                      "/_admin/cluster/bootstrapCoordinator";
+    string body = "{\"isRelaunch\":false}";
+    string result;
+    LOG(INFO) << "doing HTTP POST to " << url;
+    int res = doHTTPPost(url, body, result);
+    if (res != 0) {
+      LOG(WARNING)
+      << "bootstrapCoordinator did not work for " << i 
+      << ", curl error: " << res << ", result:\n"
+      << result;
+      error = true;
+    }
+    else {
+      LOG(INFO) << "bootstrapCoordinator answered:" << result;
+    }
+  }
+  return ! error;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the cluster
+///////////////////////////////////////////////////////////////////////////////
+
+static void initializeCluster() {
+  auto cur = Global::state().current();
+  if (! cur.cluster_bootstrappeddbservers()) {
+    if (! bootstrapDBservers()) {
+      return;
+    }
+    cur.set_cluster_bootstrappeddbservers(true);
+    Global::state().setCurrent(cur);
+  }
+  if (! cur.cluster_upgradeddb()) {
+    if (! upgradeClusterDatabase()) {
+      return;
+    }
+    cur.set_cluster_upgradeddb(true);
+    Global::state().setCurrent(cur);
+  }
+  if (! cur.cluster_bootstrappedcoordinators()) {
+    if (bootstrapCoordinators()) {
+      cur.set_cluster_bootstrappedcoordinators(true);
+      cur.set_cluster_initialized(true);
+      Global::state().setCurrent(cur);
+      LOG(INFO) << "cluster is ready";
+    }
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class ArangoManagerImpl
@@ -373,8 +399,6 @@ vector<string> ArangoManagerImpl::writeEndpoints () {
 void ArangoManagerImpl::dispatch () {
   static const int SLEEP_SEC = 10;
 
-  unordered_set<string> bootstrapped;
-
   while (! _stopDispatcher) {
     bool found;
     Global::state().frameworkId(found);
@@ -392,6 +416,15 @@ void ArangoManagerImpl::dispatch () {
 
     // check if we can start new instances
     startNewInstances();
+
+    // initialise cluster when it is up:
+    auto cur = Global::state().current();
+    if (  cur.cluster_complete() &&
+        ! cur.cluster_initialized()) {
+      LOG(INFO)
+      << "calling initializeCluster()...";
+      initializeCluster();
+    }
 
     // wait for a little while
     if (sleep) {

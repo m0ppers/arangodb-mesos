@@ -119,7 +119,11 @@ message Current {
   required InstancesCurrent primary_dbservers = 7;
   required InstancesCurrent secondary_dbservers = 8;
 
-  required bool             cluster_initialized = 9;
+  required bool             cluster_complete = 9;
+  required bool             cluster_bootstrappedDBservers = 10;
+  required bool             cluster_upgradedDB = 11;
+  required bool             cluster_bootstrappedCoordinators = 12;
+  required bool             cluster_initialized = 13;
 }
 
 // -----------------------------------------------------------------------------

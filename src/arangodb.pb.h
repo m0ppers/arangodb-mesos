@@ -1229,10 +1229,38 @@ class Current : public ::google::protobuf::Message {
   inline ::arangodb::InstancesCurrent* release_secondary_dbservers();
   inline void set_allocated_secondary_dbservers(::arangodb::InstancesCurrent* secondary_dbservers);
 
-  // required bool cluster_initialized = 9;
+  // required bool cluster_complete = 9;
+  inline bool has_cluster_complete() const;
+  inline void clear_cluster_complete();
+  static const int kClusterCompleteFieldNumber = 9;
+  inline bool cluster_complete() const;
+  inline void set_cluster_complete(bool value);
+
+  // required bool cluster_bootstrappedDBservers = 10;
+  inline bool has_cluster_bootstrappeddbservers() const;
+  inline void clear_cluster_bootstrappeddbservers();
+  static const int kClusterBootstrappedDBserversFieldNumber = 10;
+  inline bool cluster_bootstrappeddbservers() const;
+  inline void set_cluster_bootstrappeddbservers(bool value);
+
+  // required bool cluster_upgradedDB = 11;
+  inline bool has_cluster_upgradeddb() const;
+  inline void clear_cluster_upgradeddb();
+  static const int kClusterUpgradedDBFieldNumber = 11;
+  inline bool cluster_upgradeddb() const;
+  inline void set_cluster_upgradeddb(bool value);
+
+  // required bool cluster_bootstrappedCoordinators = 12;
+  inline bool has_cluster_bootstrappedcoordinators() const;
+  inline void clear_cluster_bootstrappedcoordinators();
+  static const int kClusterBootstrappedCoordinatorsFieldNumber = 12;
+  inline bool cluster_bootstrappedcoordinators() const;
+  inline void set_cluster_bootstrappedcoordinators(bool value);
+
+  // required bool cluster_initialized = 13;
   inline bool has_cluster_initialized() const;
   inline void clear_cluster_initialized();
-  static const int kClusterInitializedFieldNumber = 9;
+  static const int kClusterInitializedFieldNumber = 13;
   inline bool cluster_initialized() const;
   inline void set_cluster_initialized(bool value);
 
@@ -1254,6 +1282,14 @@ class Current : public ::google::protobuf::Message {
   inline void clear_has_primary_dbservers();
   inline void set_has_secondary_dbservers();
   inline void clear_has_secondary_dbservers();
+  inline void set_has_cluster_complete();
+  inline void clear_has_cluster_complete();
+  inline void set_has_cluster_bootstrappeddbservers();
+  inline void clear_has_cluster_bootstrappeddbservers();
+  inline void set_has_cluster_upgradeddb();
+  inline void clear_has_cluster_upgradeddb();
+  inline void set_has_cluster_bootstrappedcoordinators();
+  inline void clear_has_cluster_bootstrappedcoordinators();
   inline void set_has_cluster_initialized();
   inline void clear_has_cluster_initialized();
 
@@ -1267,10 +1303,14 @@ class Current : public ::google::protobuf::Message {
   ::arangodb::InstancesCurrent* coordinators_;
   ::arangodb::InstancesCurrent* primary_dbservers_;
   ::arangodb::InstancesCurrent* secondary_dbservers_;
+  bool cluster_complete_;
+  bool cluster_bootstrappeddbservers_;
+  bool cluster_upgradeddb_;
+  bool cluster_bootstrappedcoordinators_;
   bool cluster_initialized_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -2826,15 +2866,103 @@ inline void Current::set_allocated_secondary_dbservers(::arangodb::InstancesCurr
   }
 }
 
-// required bool cluster_initialized = 9;
-inline bool Current::has_cluster_initialized() const {
+// required bool cluster_complete = 9;
+inline bool Current::has_cluster_complete() const {
   return (_has_bits_[0] & 0x00000100u) != 0;
 }
-inline void Current::set_has_cluster_initialized() {
+inline void Current::set_has_cluster_complete() {
   _has_bits_[0] |= 0x00000100u;
 }
-inline void Current::clear_has_cluster_initialized() {
+inline void Current::clear_has_cluster_complete() {
   _has_bits_[0] &= ~0x00000100u;
+}
+inline void Current::clear_cluster_complete() {
+  cluster_complete_ = false;
+  clear_has_cluster_complete();
+}
+inline bool Current::cluster_complete() const {
+  return cluster_complete_;
+}
+inline void Current::set_cluster_complete(bool value) {
+  set_has_cluster_complete();
+  cluster_complete_ = value;
+}
+
+// required bool cluster_bootstrappedDBservers = 10;
+inline bool Current::has_cluster_bootstrappeddbservers() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void Current::set_has_cluster_bootstrappeddbservers() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void Current::clear_has_cluster_bootstrappeddbservers() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void Current::clear_cluster_bootstrappeddbservers() {
+  cluster_bootstrappeddbservers_ = false;
+  clear_has_cluster_bootstrappeddbservers();
+}
+inline bool Current::cluster_bootstrappeddbservers() const {
+  return cluster_bootstrappeddbservers_;
+}
+inline void Current::set_cluster_bootstrappeddbservers(bool value) {
+  set_has_cluster_bootstrappeddbservers();
+  cluster_bootstrappeddbservers_ = value;
+}
+
+// required bool cluster_upgradedDB = 11;
+inline bool Current::has_cluster_upgradeddb() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void Current::set_has_cluster_upgradeddb() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void Current::clear_has_cluster_upgradeddb() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void Current::clear_cluster_upgradeddb() {
+  cluster_upgradeddb_ = false;
+  clear_has_cluster_upgradeddb();
+}
+inline bool Current::cluster_upgradeddb() const {
+  return cluster_upgradeddb_;
+}
+inline void Current::set_cluster_upgradeddb(bool value) {
+  set_has_cluster_upgradeddb();
+  cluster_upgradeddb_ = value;
+}
+
+// required bool cluster_bootstrappedCoordinators = 12;
+inline bool Current::has_cluster_bootstrappedcoordinators() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void Current::set_has_cluster_bootstrappedcoordinators() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void Current::clear_has_cluster_bootstrappedcoordinators() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void Current::clear_cluster_bootstrappedcoordinators() {
+  cluster_bootstrappedcoordinators_ = false;
+  clear_has_cluster_bootstrappedcoordinators();
+}
+inline bool Current::cluster_bootstrappedcoordinators() const {
+  return cluster_bootstrappedcoordinators_;
+}
+inline void Current::set_cluster_bootstrappedcoordinators(bool value) {
+  set_has_cluster_bootstrappedcoordinators();
+  cluster_bootstrappedcoordinators_ = value;
+}
+
+// required bool cluster_initialized = 13;
+inline bool Current::has_cluster_initialized() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void Current::set_has_cluster_initialized() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void Current::clear_has_cluster_initialized() {
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void Current::clear_cluster_initialized() {
   cluster_initialized_ = false;

@@ -431,9 +431,10 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   LOG(INFO) << "Cluster is complete.";
-  if (! Global::state().current().cluster_initialized()) {
-    LOG(INFO) << "Running cluster initialisation procedure...";
-
+  if (! current.cluster_complete()) {
+    LOG(INFO) << "Initiating cluster initialisation procedure...";
+    current.set_cluster_complete(true);
+    Global::state().setCurrent(current);
   }
 
   // All is good, ignore offer:
