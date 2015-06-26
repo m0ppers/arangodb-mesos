@@ -663,7 +663,7 @@ static string getIPAddress (string hostname) {
   hints.ai_flags = AI_ADDRCONFIG;
   int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
   if (res != 0) {
-    LOG_WARNING << "Alarm: res=" << res;
+    LOG(WARNING) << "Alarm: res=" << res;
     return hostname;
   }
   struct addrinfo* b = ai;
@@ -678,7 +678,7 @@ static string getIPAddress (string hostname) {
       }
     }
     else {
-      LOG_WARNING << "error in inet_ntop";
+      LOG(WARNING) << "error in inet_ntop";
     }
     b = b->ai_next;
   }
