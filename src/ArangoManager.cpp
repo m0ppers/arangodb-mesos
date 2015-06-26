@@ -100,36 +100,6 @@ vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief initializes an agency
-///////////////////////////////////////////////////////////////////////////////
-
-  /*
-  bool initializeAgency (const Instance& instance) {
-    static const int SLEEP_SEC = 5;
-    
-    // extract the hostname
-    const string& hostname = instance._hostname;
-
-    // and the client port
-    uint32_t port = instance._ports[1];
-
-    string command
-      = "sleep " + to_string(SLEEP_SEC) 
-      + " && ./bin/initAgency.sh " + hostname + " " + to_string(port);
-
-    LOG(INFO)
-    << "AGENCY about to initialize using: " << command;
-
-    int res = system(command.c_str());
-
-    LOG(INFO)
-    << "AGENCY " << command << " returned " << res;
-
-    return res == 0;
-  }
-  */
-
-///////////////////////////////////////////////////////////////////////////////
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 

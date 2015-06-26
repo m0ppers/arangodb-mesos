@@ -32,6 +32,7 @@
 
 #include "arangodb.pb.h"
 #include "pbjson.hpp"
+#include "utils.h"
 
 using namespace arangodb;
 
@@ -346,9 +347,20 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   // Agency is running, make sure it is initialized:
-  sleep(5);   // FIXME: do an HTTP GET to 
-              // http://<agencyhost>:<agencyport>/v2/keys/arango/InitDone
-              // if this is not successful, ignore offer
+  std::string agentHost 
+    = Global::state().current().agents().entries(0).hostname();
+  uint32_t port 
+    = Global::state().current().agents().entries(0).ports(0);
+  std::string url = "http://" + agentHost + ":" + to_string(port) +
+                    "/v2/keys/arango/InitDone";
+  std::string body;
+  int res = doHTTPGet(url, body);
+  if (res != 0 || body != "true") {
+    // Ignore the offer, since the agency is not yet ready:
+    LOG(INFO)
+    << "agency is not yet properly initialized, decline offer.";
+    return { OfferActionState::IGNORE };
+  }
   
   // Now look after the DBservers:
   plannedInstances = plan.dbservers().entries_size();
@@ -392,7 +404,8 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   LOG(INFO) << "Cluster is complete.";
   if (! Global::state().current().cluster_initialized()) {
-    LOG(INFO) << "Running cluster initialisation procedure... (NOT YET IMPL)";
+    LOG(INFO) << "Running cluster initialisation procedure...";
+
   }
 
   // All is good, ignore offer:
