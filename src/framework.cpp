@@ -189,7 +189,7 @@ int main (int argc, char** argv) {
   }
 
   if (os::hasenv("ARANGODB_USER")) {
-    frameworkUser = getenv("ARANGODB_user");
+    frameworkUser = getenv("ARANGODB_USER");
   }
 
   if (os::hasenv("ARANGODB_ZK")) {
