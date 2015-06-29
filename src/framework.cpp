@@ -103,7 +103,7 @@ int main (int argc, char** argv) {
   flags.add(&mode,
             "mode",
             "Mode of operation (standalone, cluster)",
-            "standalone");
+            "cluster");
 
   string role;
   flags.add(&role,
