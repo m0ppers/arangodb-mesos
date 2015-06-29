@@ -41,6 +41,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <thread>
 
 #include <mesos/mesos.pb.h>
 
@@ -124,9 +125,16 @@ class arangodb::HttpServerImpl {
 /// @brief POST /v1/destroy.json
 ////////////////////////////////////////////////////////////////////////////////
 
+static void doDestroy () {
+  sleep(15);
+  Global::manager().destroy();
+  sleep(5);
+}
 
 string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) {
-  Global::manager().destroy();
+  LOG(INFO) << "Got POST to destroy cluster and framework...";
+  std::thread killer(doDestroy);
+  killer.detach();
 
   picojson::object result;
   result["destroy"] = picojson::value(true);
@@ -322,7 +330,7 @@ static int answerRequest (
   void** ptr) {
   HttpServerImpl* me = reinterpret_cast<HttpServerImpl*>(cls);
 
-  // find correct collback
+  // find correct callback
   if (*ptr == nullptr) {
     ConnectionInfo* conInfo = new ConnectionInfo();
 

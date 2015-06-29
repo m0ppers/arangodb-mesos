@@ -338,6 +338,7 @@ void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::destroy () {
+  LOG(INFO) << "destroy() called, killing off everything...";
   killAllInstances();
 
   Global::state().destroy();
