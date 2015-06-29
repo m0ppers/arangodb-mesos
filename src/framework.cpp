@@ -79,6 +79,13 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
        << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
+       << "  ARANGODB_MODE        overrides '--mode'\n"
+       << "  ARANGODB_MINIMAL_RESOURCES_AGENT\n"
+       << "                       overrides '--minimal_resources_agent'\n"
+       << "  ARANGODB_MINIMAL_RESOURCES_DBSERVER\n"
+          "                       overrides '--minimal_resources_dbserver'\n"
+       << "  ARANGODB_MINIMAL_RESOURCES_COORDINATOR\n"
+          "                       overrides '--minimal_resources_coordinator'\n"
        << "\n";
 }
 
@@ -110,6 +117,24 @@ int main (int argc, char** argv) {
             "role",
             "Role to use when registering",
             "arangodb");
+
+  string minimal_resources_agent;
+  flags.add(&minimal_resources_agent,
+            "minimal_resources_agent",
+            "Minimal resources to accept for an agent",
+            "mem:512(*); cpus:0.2(*); disk:512(*)");
+
+  string minimal_resources_dbserver;
+  flags.add(&minimal_resources_dbserver,
+            "minimal_resources_dbserver",
+            "Minimal resources to accept for a DBServer",
+            "mem:1024(*); cpus:1(*); disk:1024(*)");
+
+  string minimal_resources_coordinator;
+  flags.add(&minimal_resources_coordinator,
+            "minimal_resources_coordinator",
+            "Minimal resources to accept for a coordinator",
+            "mem:1024(*); cpus:1(*); disk:1024(*)");
 
   string principal;
   flags.add(&principal,
@@ -212,6 +237,18 @@ int main (int argc, char** argv) {
     volumePath = getenv("ARANGODB_VOLUME_PATH");
   }
 
+  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_AGENT")) {
+    minimal_resources_agent = getenv("ARANGODB_MINIMAL_RESOURCES_AGENT");
+  }
+
+  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_DBSERVER")) {
+    minimal_resources_dbserver = getenv("ARANGODB_MINIMAL_RESOURCES_DBSERVER");
+  }
+
+  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR")) {
+    minimal_resources_coordinator = getenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR");
+  }
+
   if (master.empty()) {
     cerr << "Missing master, either use flag '--master' or set 'MESOS_MASTER'" << endl;
     usage(argv[0], flags);
@@ -233,6 +270,10 @@ int main (int argc, char** argv) {
 
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);
+
+  Global::setMinResourcesAgent(minimal_resources_agent);
+  Global::setMinResourcesDBServer(minimal_resources_dbserver);
+  Global::setMinResourcesCoordinator(minimal_resources_coordinator);
 
   // ...........................................................................
   // state

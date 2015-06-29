@@ -30,6 +30,7 @@
 #include "ArangoState.h"
 #include "Global.h"
 
+#include "mesos/resources.hpp"
 #include "arangodb.pb.h"
 #include "pbjson.hpp"
 #include "utils.h"
@@ -48,9 +49,27 @@ using namespace arangodb;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CaretakerCluster::CaretakerCluster () {
-  mesos::Resource* m;
+static void SetStandardMinimum (TargetEntry* te) {
+  mesos::Resource* m = te->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("cpus");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(1);
 
+  m = te->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("mem");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(1024);
+  
+  m = te->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("disk");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(1024);
+}
+
+CaretakerCluster::CaretakerCluster () {
   Target target = Global::state().target();
 
   // AGENCY
@@ -58,73 +77,43 @@ CaretakerCluster::CaretakerCluster () {
   agency->set_instances(1);
   agency->clear_minimal_resources();
   agency->set_number_ports(1);
-  // FIXME: make minimal resources for AGENCY configurable via command line
-  m = agency->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("cpus");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1);
-
-  m = agency->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("mem");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(512);
-
-  m = agency->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("disk");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(512);
+  Try<mesos::Resources> x 
+      = mesos::Resources::parse(Global::minResourcesAgent());
+  if (x.isError()) {
+    SetStandardMinimum(agency);
+  }
+  else {
+    auto m = agency->mutable_minimal_resources();
+    m->CopyFrom(x.get());
+  }
 
   // COORDINATOR
   TargetEntry* coordinator = target.mutable_coordinators();
   coordinator->set_instances(1);
   coordinator->clear_minimal_resources();
   coordinator->set_number_ports(1);
-  // FIXME: make minimal resources for COORDINATORS configurable via command line
-  m = coordinator->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("cpus");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1);
-
-  m = coordinator->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("mem");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(512);
-
-  m = coordinator->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("disk");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(512);
+  x = mesos::Resources::parse(Global::minResourcesCoordinator());
+  if (x.isError()) {
+    SetStandardMinimum(coordinator);
+  }
+  else {
+    auto m = coordinator->mutable_minimal_resources();
+    m->CopyFrom(x.get());
+  }
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
   dbserver->set_instances(2);
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
-
-  // FIXME: make minimal resources for DBSERVERS configurable via command line
-  m = dbserver->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("cpus");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1);
-
-  m = dbserver->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("mem");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1024);
-
-  m = dbserver->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("disk");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1024);
+  x = mesos::Resources::parse(Global::minResourcesDBServer());
+  if (x.isError()) {
+    SetStandardMinimum(dbserver);
+  }
+  else {
+    auto m = dbserver->mutable_minimal_resources();
+    m->CopyFrom(x.get());
+  }
 
   Global::state().setTarget(target);
 }
