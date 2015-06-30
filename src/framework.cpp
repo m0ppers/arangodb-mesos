@@ -424,13 +424,17 @@ int main (int argc, char** argv) {
 
   int status = driver->run() == mesos::DRIVER_STOPPED ? 0 : 1;
 
-  http.stop();
-
   // ensure that the driver process terminates
   driver->stop();
 
   delete driver;
   delete manager;
+
+  sleep(120);   // Wait some more time before terminating the process to
+                // allow the user to use 
+                //   dcos package uninstall arangodb
+                // to remove the Marathon job
+  http.stop();
 
   return status;
 }

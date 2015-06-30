@@ -125,16 +125,14 @@ class arangodb::HttpServerImpl {
 /// @brief POST /v1/destroy.json
 ////////////////////////////////////////////////////////////////////////////////
 
-static void doDestroy () {
-  sleep(15);  // give the http server a chance to send away the response
-  Global::manager().destroy();
-  sleep(5);
-}
+//static void doDestroy () {
+//}
 
 string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) {
   LOG(INFO) << "Got POST to destroy cluster and framework...";
-  std::thread killer(doDestroy);
-  killer.detach();
+  Global::manager().destroy();
+  // std::thread killer(doDestroy);
+  // killer.detach();
 
   picojson::object result;
   result["destroy"] = picojson::value(true);
