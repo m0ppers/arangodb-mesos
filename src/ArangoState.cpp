@@ -210,7 +210,8 @@ void ArangoState::destroy () {
   lock_guard<mutex> lock(_lock);
 
   Variable variable = _stateStore->fetch("state").get();
-  _stateStore->expunge(variable);
+  auto r = _stateStore->expunge(variable);
+  r.await();  // Wait until state is actually expunged
 }
 
 ////////////////////////////////////////////////////////////////////////////////

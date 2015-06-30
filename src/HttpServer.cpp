@@ -134,6 +134,9 @@ string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) 
   // std::thread killer(doDestroy);
   // killer.detach();
 
+  sleep(15);  // Give the framework some time to kill all tasks and remove
+              // the state before we answer. Then Marathon can kill us...
+
   picojson::object result;
   result["destroy"] = picojson::value(true);
 
