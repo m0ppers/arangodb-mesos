@@ -126,9 +126,8 @@ class arangodb::HttpServerImpl {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void doDestroy () {
-  sleep(15);
+  sleep(1);  // give the http server a chance to send away the response
   Global::manager().destroy();
-  sleep(5);
 }
 
 string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) {

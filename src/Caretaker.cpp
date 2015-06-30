@@ -116,10 +116,14 @@ static bool isSuitableOffer (const TargetEntry& target,
   mesos::Resources minimum = target.minimal_resources();
 
   if (! offered.contains(minimum)) {
+    std::string offerString;
+    pbjson::pb2json(&offer, offerString);
+     
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
     << "offer " << offer.id().value() << " does not have " 
-    << "minimal resource requirements " << minimum;
+    << "minimal resource requirements " << minimum
+    << "\noffer: " << offerString;
 
     return false;
   }
@@ -142,11 +146,15 @@ static bool isSuitableReservedOffer (const mesos::Resources& resources,
 #endif
 
   if (! offered.contains(required)) {
+    std::string offerString;
+    pbjson::pb2json(&offer, offerString);
+
     LOG(INFO) 
     << "DEBUG isSuitableReservedOffer: "
     << "offer " << offer.id().value() << " [" << offer.resources()
     << "] does not have minimal resource requirements "
-    << required;
+    << required
+    << "\noffer: " << offerString;
 
     return false;
   }
@@ -280,11 +288,15 @@ static mesos::Resources suitablePersistent (const string& name,
 #endif
 
   if (! offerNoneDisk.contains(required)) {
+    std::string offerString;
+    pbjson::pb2json(&offer, offerString);
+
     LOG(INFO) 
     << "DEBUG suitablePersistent(" << name << "): "
     << "offer " << offer.id().value() << " [" << offer.resources()
     << "] does not have minimal resource requirements "
-    << required;
+    << required
+    << "\noffer: " << offerString;
 
     return mesos::Resources();
   }
@@ -911,6 +923,30 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
   }
 
   return { InstanceActionState::DONE };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a default minimum resource set for a Targetentry
+////////////////////////////////////////////////////////////////////////////////
+
+void Caretaker::setStandardMinimum (TargetEntry* te, int size) {
+  mesos::Resource* m = te->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("cpus");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(size == 0 ? 0.2 : 1);
+
+  m = te->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("mem");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(size == 0 ? 512 : 1024);
+  
+  m = te->add_minimal_resources();
+  m->set_role("*");
+  m->set_name("disk");
+  m->set_type(mesos::Value::SCALAR);
+  m->mutable_scalar()->set_value(size == 0 ? 512 : 1024);
 }
 
 // -----------------------------------------------------------------------------

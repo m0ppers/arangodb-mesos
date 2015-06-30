@@ -49,26 +49,6 @@ using namespace arangodb;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-static void SetStandardMinimum (TargetEntry* te) {
-  mesos::Resource* m = te->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("cpus");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1);
-
-  m = te->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("mem");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1024);
-  
-  m = te->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("disk");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1024);
-}
-
 CaretakerCluster::CaretakerCluster () {
   Target target = Global::state().target();
 
@@ -77,14 +57,22 @@ CaretakerCluster::CaretakerCluster () {
   agency->set_instances(1);
   agency->clear_minimal_resources();
   agency->set_number_ports(1);
-  Try<mesos::Resources> x 
-      = mesos::Resources::parse(Global::minResourcesAgent());
-  if (x.isError()) {
-    SetStandardMinimum(agency);
+
+  if (Global::minResourcesAgent().empty()) {
+    setStandardMinimum(agency, 0);
   }
   else {
-    auto m = agency->mutable_minimal_resources();
-    m->CopyFrom(x.get());
+    Try<mesos::Resources> x
+        = mesos::Resources::parse(Global::minResourcesAgent());
+    if (x.isError()) {
+      LOG(ERROR) << "cannot parse minimum resources for agent:\n  '"
+                 << Global::minResourcesAgent() << "'";
+      setStandardMinimum(agency, 0);
+    }
+    else {
+      auto m = agency->mutable_minimal_resources();
+      m->CopyFrom(x.get());
+    }
   }
 
   // COORDINATOR
@@ -92,13 +80,21 @@ CaretakerCluster::CaretakerCluster () {
   coordinator->set_instances(1);
   coordinator->clear_minimal_resources();
   coordinator->set_number_ports(1);
-  x = mesos::Resources::parse(Global::minResourcesCoordinator());
-  if (x.isError()) {
-    SetStandardMinimum(coordinator);
+  if (Global::minResourcesCoordinator().empty()) {
+    setStandardMinimum(coordinator, 1);
   }
   else {
-    auto m = coordinator->mutable_minimal_resources();
-    m->CopyFrom(x.get());
+    Try<mesos::Resources> x
+        = mesos::Resources::parse(Global::minResourcesCoordinator());
+    if (x.isError()) {
+      LOG(ERROR) << "cannot parse minimum resources for coordinator:\n  '"
+                 << Global::minResourcesCoordinator() << "'";
+      setStandardMinimum(coordinator, 1);
+    }
+    else {
+      auto m = coordinator->mutable_minimal_resources();
+      m->CopyFrom(x.get());
+    }
   }
 
   // DBSERVER
@@ -106,13 +102,21 @@ CaretakerCluster::CaretakerCluster () {
   dbserver->set_instances(2);
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
-  x = mesos::Resources::parse(Global::minResourcesDBServer());
-  if (x.isError()) {
-    SetStandardMinimum(dbserver);
+  if (Global::minResourcesDBServer().empty()) {
+    setStandardMinimum(dbserver, 1);
   }
   else {
-    auto m = dbserver->mutable_minimal_resources();
-    m->CopyFrom(x.get());
+    Try<mesos::Resources> x
+        = mesos::Resources::parse(Global::minResourcesDBServer());
+    if (x.isError()) {
+      LOG(ERROR) << "cannot parse minimum resources for DBServer:\n  '"
+                 << Global::minResourcesDBServer() << "'";
+      setStandardMinimum(dbserver, 1);
+    }
+    else {
+      auto m = dbserver->mutable_minimal_resources();
+      m->CopyFrom(x.get());
+    }
   }
 
   Global::state().setTarget(target);

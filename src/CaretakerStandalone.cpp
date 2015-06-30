@@ -47,8 +47,6 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 CaretakerStandalone::CaretakerStandalone () {
-  mesos::Resource* m;
-
   Target target = Global::state().target();
 
   // AGENCY
@@ -66,24 +64,22 @@ CaretakerStandalone::CaretakerStandalone () {
   dbserver->set_instances(1);
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
-
-  m = dbserver->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("cpus");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1);
-
-  m = dbserver->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("mem");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1024);
-
-  m = dbserver->add_minimal_resources();
-  m->set_role("*");
-  m->set_name("disk");
-  m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(1024);
+  if (Global::minResourcesDBServer().empty()) {
+    setStandardMinimum(dbserver, 1);
+  }
+  else {
+    Try<mesos::Resources> x
+        = mesos::Resources::parse(Global::minResourcesDBServer());
+    if (x.isError()) {
+      LOG(ERROR) << "cannot parse minimum resources for DBServer:\n  '"
+                 << Global::minResourcesDBServer() << "'";
+      setStandardMinimum(dbserver, 1);
+    }
+    else {
+      auto m = dbserver->mutable_minimal_resources();
+      m->CopyFrom(x.get());
+    }
+  }
 
   Global::state().setTarget(target);
 }

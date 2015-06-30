@@ -237,6 +237,12 @@ OfferAction checkResourceOffer (std::string const& name,
                                                 ResourcesCurrent*,
                                                 InstancesCurrent*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a default minimum resource set for a Targetentry
+////////////////////////////////////////////////////////////////////////////////
+
+      static void setStandardMinimum (TargetEntry* te, int size = 1);
+
   };
 }
 

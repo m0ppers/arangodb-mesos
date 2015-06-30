@@ -122,19 +122,19 @@ int main (int argc, char** argv) {
   flags.add(&minimal_resources_agent,
             "minimal_resources_agent",
             "Minimal resources to accept for an agent",
-            "mem:512(*); cpus:0.2(*); disk:512(*)");
+            "");
 
   string minimal_resources_dbserver;
   flags.add(&minimal_resources_dbserver,
             "minimal_resources_dbserver",
             "Minimal resources to accept for a DBServer",
-            "mem:1024(*); cpus:1(*); disk:1024(*)");
+            "");
 
   string minimal_resources_coordinator;
   flags.add(&minimal_resources_coordinator,
             "minimal_resources_coordinator",
             "Minimal resources to accept for a coordinator",
-            "mem:1024(*); cpus:1(*); disk:1024(*)");
+            "");
 
   string principal;
   flags.add(&principal,
