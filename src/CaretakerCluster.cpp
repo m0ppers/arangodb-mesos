@@ -54,6 +54,7 @@ CaretakerCluster::CaretakerCluster () {
 
   // AGENCY
   TargetEntry* agency = target.mutable_agents();
+  // Will be: agency->set_instances(Global::nrAgents());
   agency->set_instances(1);
   agency->clear_minimal_resources();
   agency->set_number_ports(1);
@@ -77,7 +78,7 @@ CaretakerCluster::CaretakerCluster () {
 
   // COORDINATOR
   TargetEntry* coordinator = target.mutable_coordinators();
-  coordinator->set_instances(1);
+  coordinator->set_instances(Global::nrCoordinators());
   coordinator->clear_minimal_resources();
   coordinator->set_number_ports(1);
   if (Global::minResourcesCoordinator().empty()) {
@@ -99,7 +100,7 @@ CaretakerCluster::CaretakerCluster () {
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
-  dbserver->set_instances(2);
+  dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
   if (Global::minResourcesDBServer().empty()) {

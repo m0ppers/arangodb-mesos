@@ -61,7 +61,7 @@ CaretakerStandalone::CaretakerStandalone () {
 
   // DBSERVER
   TargetEntry* dbserver = target.mutable_dbservers();
-  dbserver->set_instances(1);
+  dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
   if (Global::minResourcesDBServer().empty()) {
