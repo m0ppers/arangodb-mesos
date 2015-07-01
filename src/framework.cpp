@@ -80,6 +80,8 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
        << "  ARANGODB_MODE        overrides '--mode'\n"
+       << "  ARANGODB_FRAMEWORK_NAME\n"
+       << "                       overrides '--framework_name'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_AGENT\n"
        << "                       overrides '--minimal_resources_agent'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_DBSERVER\n"
@@ -238,6 +240,10 @@ int main (int argc, char** argv) {
 
   if (os::hasenv("ARANGODB_USER")) {
     frameworkUser = getenv("ARANGODB_USER");
+  }
+
+  if (os::hasenv("ARANGODB_FRAMEWORK_NAME")) {
+    frameworkName = getenv("ARANGODB_FRAMEWORK_NAME");
   }
 
   if (os::hasenv("ARANGODB_ZK")) {

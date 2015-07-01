@@ -180,7 +180,7 @@ void ArangoState::init () {
 void ArangoState::load () {
   lock_guard<mutex> lock(_lock);
 
-  Variable variable = _stateStore->fetch("state").get();
+  Variable variable = _stateStore->fetch("state_"+_name).get();
   string value = variable.value();
 
   if (! value.empty()) {
@@ -209,7 +209,7 @@ void ArangoState::load () {
 void ArangoState::destroy () {
   lock_guard<mutex> lock(_lock);
 
-  Variable variable = _stateStore->fetch("state").get();
+  Variable variable = _stateStore->fetch("state_"+_name).get();
   auto r = _stateStore->expunge(variable);
   r.await();  // Wait until state is actually expunged
 }
@@ -387,7 +387,7 @@ void ArangoState::save () {
   string value;
   _state.SerializeToString(&value);
 
-  Variable variable = _stateStore->fetch("state").get();
+  Variable variable = _stateStore->fetch("state_"+_name).get();
   variable = variable.mutate(value);
   _stateStore->store(variable);
 }
