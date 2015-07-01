@@ -835,7 +835,8 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   mapping->set_protocol("tcp");
 
   // volume
-  string path = "arangodb_" + Global::frameworkName() + "_" + myName;
+  string path = "arangodb_" + Global::frameworkName() + "_" 
+                + Global::state().frameworkId() + "_" + myName;
   mesos::Volume* volume = container.add_volumes();
   volume->set_container_path("/data");
   volume->set_host_path(Global::volumePath() + "/" + path);
