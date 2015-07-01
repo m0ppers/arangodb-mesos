@@ -315,11 +315,18 @@ int main (int argc, char** argv) {
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);
 
+  LOG(INFO) << "Minimal resources agent: " << minimal_resources_agent;
   Global::setMinResourcesAgent(minimal_resources_agent);
+  LOG(INFO) << "Minimal resources DBserver: " << minimal_resources_dbserver;
   Global::setMinResourcesDBServer(minimal_resources_dbserver);
+  LOG(INFO) << "Minimal resources coordinator: " 
+            << minimal_resources_coordinator;
   Global::setMinResourcesCoordinator(minimal_resources_coordinator);
+  LOG(INFO) << "Number of agents in agency: " << nragents;
   Global::setNrAgents(nragents);
+  LOG(INFO) << "Number of DBservers: " << nrdbservers;
   Global::setNrDBServers(nrdbservers);
+  LOG(INFO) << "Number of coordinators: " << nrcoordinators;
   Global::setNrCoordinators(nrcoordinators);
 
   // ...........................................................................
