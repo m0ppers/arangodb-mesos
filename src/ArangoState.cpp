@@ -142,13 +142,13 @@ void ArangoState::init () {
   _state.mutable_target()->set_mode(Global::modeLC());
   TargetEntry* te;
   te = _state.mutable_target()->mutable_agents();
-  te->set_instances(1);
+  te->set_instances(Global::nrAgents());
   te->set_number_ports(1);
   te = _state.mutable_target()->mutable_coordinators();
-  te->set_instances(1);
+  te->set_instances(Global::nrCoordinators());
   te->set_number_ports(1);
   te = _state.mutable_target()->mutable_dbservers();
-  te->set_instances(2);
+  te->set_instances(Global::nrDBServers());
   te->set_number_ports(1);
 
   _state.mutable_plan();

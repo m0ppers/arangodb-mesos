@@ -86,6 +86,11 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
           "                       overrides '--minimal_resources_dbserver'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_COORDINATOR\n"
           "                       overrides '--minimal_resources_coordinator'\n"
+       << "  ARANGODB_NR_AGENTS   overrides '--nr_agents'\n"
+       << "  ARANGODB_NR_DBSERVERS\n"
+       << "                       overrides '--nr_dbservers'\n"
+       << "  ARANGODB_NR_COORDINATORS\n"
+       << "                       overrides '--nr_coordinators'\n"
        << "\n";
 }
 
@@ -135,6 +140,24 @@ int main (int argc, char** argv) {
             "minimal_resources_coordinator",
             "Minimal resources to accept for a coordinator",
             "");
+
+  int nragents;
+  flags.add(&nragents,
+            "nr_agents",
+            "Number of agents in agency (etcd)",
+            1);
+
+  int nrdbservers;
+  flags.add(&nrdbservers,
+            "nr_dbservers",
+            "Initial number of DBservers in cluster",
+            2);
+
+  int nrcoordinators;
+  flags.add(&nrcoordinators,
+            "nr_coordinators",
+            "Initial number of coordinators in cluster",
+            1);
 
   string principal;
   flags.add(&principal,
@@ -249,6 +272,27 @@ int main (int argc, char** argv) {
     minimal_resources_coordinator = getenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR");
   }
 
+  if (os::hasenv("ARANGODB_NR_AGENTS")) {
+    nragents = atoi(getenv("ARANGODB_NR_AGENTS"));
+    if (nragents != 1) {
+      nragents = 1;
+    }
+  }
+
+  if (os::hasenv("ARANGODB_NR_DBSERVERS")) {
+    nrdbservers = atoi(getenv("ARANGODB_NR_DBSERVERS"));
+    if (nrdbservers < 1) {
+      nrdbservers = 1;
+    }
+  }
+
+  if (os::hasenv("ARANGODB_NR_COORDINATORS")) {
+    nrcoordinators = atoi(getenv("ARANGODB_NR_COORDINATORS"));
+    if (nrcoordinators < 1) {
+      nrcoordinators = 1;
+    }
+  }
+
   if (master.empty()) {
     cerr << "Missing master, either use flag '--master' or set 'MESOS_MASTER'" << endl;
     usage(argv[0], flags);
@@ -274,6 +318,9 @@ int main (int argc, char** argv) {
   Global::setMinResourcesAgent(minimal_resources_agent);
   Global::setMinResourcesDBServer(minimal_resources_dbserver);
   Global::setMinResourcesCoordinator(minimal_resources_coordinator);
+  Global::setNrAgents(nragents);
+  Global::setNrDBServers(nrdbservers);
+  Global::setNrCoordinators(nrcoordinators);
 
   // ...........................................................................
   // state
