@@ -123,7 +123,7 @@ int main (int argc, char** argv) {
   flags.add(&role,
             "role",
             "Role to use when registering",
-            "arangodb");
+            "*");
 
   string minimal_resources_agent;
   flags.add(&minimal_resources_agent,
