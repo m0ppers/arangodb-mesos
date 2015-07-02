@@ -7,6 +7,10 @@ distributed in binary form in the docker image
 
     arangodb/arangodb-mesos
 
+which is built using the `Dockerfile` in
+
+    https://github.com/ArangoDB/arangodb-mesos-docker
+
 
 Introduction
 ------------
@@ -53,44 +57,240 @@ To start the framework on a Mesos cluster with `docker` service, simply
 do
 
     docker run --net=host \
-        -e HOST=<host-address-or-name-of-framework> \
-        -e PORT0=<port-of-framework> \
-        -e MESOS_MASTER=<address-and-port-of-mesos-master> \
+        -e PORT0=8181 \
+        -e MESOS_MASTER=zk://master.mesos:2181/mesos \
+        -e ARANGODB_ZK=zk://master.mesos:2181/arangodb/arangodb \
         arangodb/arangodb-mesos:latest \
         framework <FURTHER-COMMAND-LINE-OPTIONS>
 
-Where `<host-address-or-name-of-framework>` is an IP-address or name
-that is reachable throughout the cluster and refers to an interface on
-the local machine. Likewise, `<port-of-framework>` must be a free port
-on the local machine. The framework scheduler will put together its own
-webui from these two pieces of information and run an HTTP service on
-that address and port. For a list of possible command line options and
-environment variables see the next section.
+where "8181" must be a free port on the host,
+"zk://master.mesos.2181/mesos" must be replaced by a description of the Mesos
+master, usually through a zookeeper URL, and
+"zk://master.mesos:2181/arangodb/arangodb" must be replaced by a
+zookeeper URL that is specific to the started ArangoDB framework.
+What comes instead of "<FURTHER-COMMAND-LINE-OPTIONS>" is copied
+verbatim to the command line of the scheduler executable.
+
+The framework scheduler will expose an HTTP/REST API on the given port
+listening on all interfaces. For a description of this API see below
+in the corresponding section. 
+
+Note that the "--net=host" is necessary such that the Mesos master and
+other processes in the system can talk to the framework scheduler.
+
+For a description of all observed environment variables and command line
+arguments see the corresponding section below.
+
+
+Shutting down the service
+-------------------------
+
+The service can be shut down by issueing a POST HTTP-request to
+
+    http://<hostname>:<given port>/v1/destroy.json
+
+with an empty body. This shuts down all running instances of processes,
+removes the persisted state in zookeeper and then terminates the
+scheduler.
+
+Note that the scheduler is resilient to failure. If it is terminated, it
+can simply be restarted and will pick up where it was, courtesy of the
+persisted state kept in zookeeper and the Apache Mesos infrastructure.
+Furthermore, it can survive a failover situation with the Mesos master,
+as long as it can find the new one, again via the zookeeper link.
 
 
 Command line arguments and environment variables
 ------------------------------------------------
 
-All options can be specified by a command line argument and by an
+Most options can be specified by a command line argument and by an
 environment variable. If both are given, the environment variable takes
 precedence.
 
-       MESOS_MASTER         overrides '--master'\n"
-       MESOS_AUTHENTICATE   enable authentication\n"
-       ARANGODB_SECRET      secret for authentication\n"
-       ARANGODB_PRINCIPAL   overrides '--principal'\n"
-       ARANGODB_HTTP_PORT   overrides '--http_port'\n"
-       ARANGODB_ROLE        overrides '--role'\n"
-       ARANGODB_USER        overrides '--user'\n"
-       ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
-       ARANGODB_WEBUI       overrides '--webui'\n"
-       ARANGODB_ZK          overrides '--zk'\n"
-       ARANGODB_MODE        overrides '--mode'\n"
-       ARANGODB_FRAMEWORK_NAME\n" overrides '--framework_name'\n"
-       ARANGODB_MINIMAL_RESOURCES_AGENT\n" overrides '--minimal_resources_agent'\n"
-       ARANGODB_MINIMAL_RESOURCES_DBSERVER\n" overrides '--minimal_resources_dbserver'\n"
-       ARANGODB_MINIMAL_RESOURCES_COORDINATOR\n" overrides '--minimal_resources_coordinator'\n"
-       ARANGODB_NR_AGENTS   overrides '--nr_agents'\n"
-       ARANGODB_NR_DBSERVERS\n" overrides '--nr_dbservers'\n"
-       ARANGODB_NR_COORDINATORS\n" overrides '--nr_coordinators'\n"
+  - `MESOS_MASTER`, overriding `--master`:
+
+    This is the URL of the Mesos master, usually given as a zookeeper
+    URL like `zk://master.mesos:2181/mesos`, do not forget the `/mesos`
+    suffix. It is also possible to simply specify `<hostname>:<port>`.
+
+  - `MESOS_AUTHENTICATE`: 
+  
+    If given, this enable authentication with the Mesos master, in that
+    case, `ARANGODB_SECRET` and `ARANGODB_PRINCIPAL` have to be given,
+    too.
+
+  - `ARANGODB_SECRET`:
+  
+    The secret for authentication with the Mesos master.
+
+  - `ARANGODB_PRINCIPAL`, overriding `--principal`:
+
+    The authentication principal for the Mesos master.
+
+  - `ARANGODB_HTTP_PORT`, overriding `--http_port`:
+
+    This is the port the HTTP/REST API and web UI will listen to.
+
+  - `ARANGODB_ROLE`, overriding `--role`:
+
+    This is the Mesos role under which the framework/service is running.
+    The default is "*".
+
+  - `ARANGODB_USER`, overriding `--user`:
+
+    This is the user under which executors will be started by the Mesos
+    slaves. The default is to use the same user name as the framework
+    scheduler is running under.
+
+  - `ARANGODB_VOLUME_PATH`, overriding `--volume_path`:
+
+    All instances of ArangoDB will run in Docker containers and will
+    mount some directory below the path given here as a volume into the
+    container. That is, the actual persisted data and logs of the
+    database will reside below this path. Note that before the age of
+    persisted volumes this does not make much sense, since new instances
+    will usually be started by different Mesos slaves and thus will no
+    longer find the old state. Furthermore, nobody will clean up the
+    space used after termination! This will all be better when we have
+    persistent volumes and Mesos actually controls these resources in a
+    better way.
+
+  - `ARANGODB_WEBUI`, overriding `--webui`:
+
+    This is the URL of the web UI, if not given explicitly it is put
+    together with a guess of the hostname and the given port above.
+
+  - `ARANGODB_ZK`, overriding `--zk`:
+
+    This is the URL to access the persisted state in zookeeper, it will 
+    usually be of the form `zk://master.mesos:2181/arangodb/arangodb`.
+    Note that no two instances of the ArangoDB framework can have the
+    same URL here, unless they have a different framework name (see
+    below), because then their persisted state would be mixed up!
+    It is possible to leave this empty, in this case the framework will
+    use LevelDB and persist the state to a local directory.
+
+  - `ARANGODB_MODE`, overriding `--mode`:
+
+    This can be "cluster" or "standalone", the former is the default,
+    which starts a normal ArangoDB cluster. The "standalone" mode simply
+    starts a configurable number of independent, single server instances
+    of ArangoDB.
+
+  - `ARANGODB_FRAMEWORK_NAME`, overriding `--framework_name`:
+
+    This is an ID which must be unique for the framework, in other
+    words, if one starts multiple instances of the ArangoDB framework,
+    each must have its own framework name. This name goes into the path
+    under which the persisted framework state is kept in zookeeper.
+
+  - `ARANGODB_MINIMAL_RESOURCES_AGENT` overriding `--minimal_resources_agent`:
+
+    Here one can specify minimal resources for an agent process. The
+    value has to be a standard mesos resource string like
+    "cpus(*):1;mem(*):1024;disk(*):1024". Please specify all three types
+    of resources, because otherwise the scheduler will accept offers
+    which have 0 in one of the types, which is unhealthy.
+
+  - `ARANGODB_MINIMAL_RESOURCES_DBSERVER` overriding 
+    `--minimal_resources_dbserver`:
+
+    Same as for the agent, but for a DBserver.
+
+  - `ARANGODB_MINIMAL_RESOURCES_COORDINATOR` overriding 
+    `--minimal_resources_coordinator`:
+
+    Same as for the agent, but for a coordinator.
+
+  - `ARANGODB_NR_DBSERVERS` overriding `--nr_dbservers`:
+
+    Initial number of DBservers to launch. This number can later be
+    scaled up, and in future versions also scaled down.
+
+  - `ARANGODB_NR_COORDINATORS` overriding `--nr_coordinators`:
+
+    Initial number of coordinators to launch. Thus number can later be
+    scaled up and down.
+
+
+The HTTP/REST API
+-----------------
+
+The API supports the following routes:
+
+  - `GET /v1/state.json`: This route produces a JSON document describing
+    the overall state of the service, similar to this one:
+
+        {
+           "framework_name" : "arangodb",
+           "health" : true,
+           "volume_path" : "/tmp",
+           "role" : "*",
+           "mode" : "cluster",
+           "master_url" : "http://master0-dcos.westeurope.cloudapp.azure.com:5050/"
+        }
+
+  - `GET /v1/mode.json`: This produces a JSON document describing the
+    mode of the service, which can either be "cluster" or "standalone"
+    as in this:
+
+        {"mode":"cluster"}
+
+  - `GET /v1/endpoints.json`: This produces a JSON document describing
+    the reading and writing endpoints for communication with the Mesos
+    system, as in this:
+
+        {
+           "read" : [
+              "http://10.0.0.4:2406",
+              "http://10.0.0.9:5450"
+           ],
+           "write" : [
+              "http://10.0.0.4:2406",
+              "http://10.0.0.9:5450"
+           ]
+        }
+
+  - `GET /v1/health.json`: This is a healthcheck for the service,
+    formatted as in:
+
+        {"health":true}
+
+  - `GET /index.html`: On this route the web UI is exposed.
+
+  - `POST /v1/destroy.json`: As mentioned above, sending a POST request
+    to this route shuts down the entire service, removes all persisted
+    state and terminates the framework scheduler. A JSON of this form is
+    returned:
+
+        {"destroy":true}
+
+    When this POST request has come back successfully, the framework 
+    scheduler can safely be killed without leaving any state behind.
+    Note that there is a 120 second delay before the scheduler process
+    actually terminates. This is intentional and is used in the
+    Mesosphere DCOS CLI utility to first shut down the service
+    gracefully, and then having an opportunity to remove the entry 
+    in Marathon for the ArangoDB framework to prevent an automatic
+    restart.
+
+  - `GET /debug/target`: This and the three following ones are for
+    debugging purposes only. They expose the internal state of the
+    framework scheduler. The general concept is the trinity of "target",
+    "plan" and "current". The target part describes the state in which 
+    the user of the service wishes it to be in. The plan part is what
+    the state the scheduler derives from the target, sanitizing settings
+    and adding further internal details. The current part is the state
+    the service is actually currently in. So the purpose of the
+    scheduler is to constantly adjust the plan to any target changes and
+    then in turn to see to it that the current situation is according to
+    the plan. The latter manipulations are done by communicating with
+    the Mesos infrastructure. This setup is flexible and robust and
+    leads to a self-healing and self-balancing system.
+
+  - `GET /debug/plan`: See above.
+
+  - `GET /debug/current`: See above.
+
+  - `GET /debug/overview`: See above.
 
