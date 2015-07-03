@@ -31,6 +31,8 @@
 #include "Global.h"
 #include "utils.h"
 
+#include <random>
+
 #include "pbjson.hpp"
 
 using namespace arangodb;
