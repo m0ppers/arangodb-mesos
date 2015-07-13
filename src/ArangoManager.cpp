@@ -50,8 +50,6 @@
 using namespace arangodb;
 using namespace std;
 
-using std::chrono::system_clock;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -213,6 +211,17 @@ static void initializeCluster() {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              class ReconcileTasks
+// -----------------------------------------------------------------------------
+
+class ReconcileTasks {
+  public:
+    mesos::TaskStatus _status;
+    chrono::steady_clock::time_point _nextReconcile;
+    chrono::steady_clock::duration _backoff;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                           class ArangoManagerImpl
 // -----------------------------------------------------------------------------
 
@@ -231,6 +240,8 @@ class ArangoManagerImpl : public ArangoManager {
 
   private:
     void dispatch ();
+    void prepareReconciliation ();
+    void reconcileTasks ();
     void applyStatusUpdates ();
     bool checkOutstandOffers ();
     void startNewInstances ();
@@ -243,6 +254,12 @@ class ArangoManagerImpl : public ArangoManager {
   private:
     mutex _lock;
     thread* _dispatcher;
+
+    chrono::steady_clock::time_point _nextImplicitReconciliation;
+    chrono::steady_clock::duration _implicitReconciliationIntervall;
+    chrono::steady_clock::duration _maxReconcileIntervall;
+
+    unordered_map<string, ReconcileTasks> _reconcilationTasks;
 
     unordered_map<string, AspectPosition> _task2position;
     unordered_map<string, mesos::Offer> _storedOffers;
@@ -272,6 +289,10 @@ ArangoManagerImpl::ArangoManagerImpl ()
   fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
   fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.primary_dbservers());
   fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());
+
+  _nextImplicitReconciliation = chrono::steady_clock::now();
+  _implicitReconciliationIntervall = chrono::minutes(5);
+  _maxReconcileIntervall = chrono::minutes(5);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,6 +421,8 @@ vector<string> ArangoManagerImpl::writeEndpoints () {
 void ArangoManagerImpl::dispatch () {
   static const int SLEEP_SEC = 10;
 
+  prepareReconciliation();
+
   while (! _stopDispatcher) {
     bool found;
     Global::state().frameworkId(found);
@@ -408,6 +431,9 @@ void ArangoManagerImpl::dispatch () {
       this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
       continue;
     }
+
+    // start reconciliation
+    reconcileTasks();
 
     // apply received status updates
     applyStatusUpdates();
@@ -435,6 +461,70 @@ void ArangoManagerImpl::dispatch () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief prepares the reconciliation of tasks
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::prepareReconciliation () {
+  vector<mesos::TaskStatus> status = Global::state().knownTaskStatus();
+  auto now = chrono::steady_clock::now();
+
+  for (auto&& taskStatus : status) {
+    const string& taskId = taskStatus.task_id().value();
+
+    auto nextReconcile = now;
+    auto backoff = chrono::seconds(1);
+
+    ReconcileTasks reconcile = {
+      taskStatus,
+      nextReconcile,
+      backoff
+    };
+
+    _reconcilationTasks[taskId] = reconcile;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tries to recover tasks
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::reconcileTasks () {
+
+  // see http://mesos.apache.org/documentation/latest/reconciliation/
+  // for details about reconciliation
+
+  auto now = chrono::steady_clock::now();
+
+  // first, we as implicit reconciliation periodically
+  if (_nextImplicitReconciliation >= now) {
+    LOG(INFO)
+    << "DEBUG implicit reconciliation";
+
+    Global::scheduler().reconcileTasks();
+    _nextImplicitReconciliation = now + _implicitReconciliationIntervall;
+  }
+
+  // check for unknown tasks
+  for (auto&& task : _reconcilationTasks) {
+    if (task.second._nextReconcile > now) {
+      LOG(INFO)
+      << "DEBUG explicit reconciliation for "
+      << task.first;
+
+      Global::scheduler().reconcileTask(task.second._status);
+
+      task.second._backoff *= 2;
+
+      if (task.second._backoff >= _maxReconcileIntervall) {
+        task.second._backoff = _maxReconcileIntervall;
+      }
+
+      task.second._nextReconcile = now + task.second._backoff;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief applies status updates
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -445,7 +535,11 @@ void ArangoManagerImpl::applyStatusUpdates () {
 
   for (auto&& status : _taskStatusUpdates) {
     mesos::TaskID taskId = status.task_id();
-    const AspectPosition& pos = _task2position[taskId.value()];
+    string taskIdStr = taskId.value();
+
+    _reconcilationTasks.erase(taskIdStr);
+
+    const AspectPosition& pos = _task2position[taskIdStr];
 
     caretaker.setTaskStatus(pos, status);
 
