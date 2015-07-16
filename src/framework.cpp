@@ -392,7 +392,7 @@ int main (int argc, char** argv) {
     Try<string> hostnameTry = net::hostname();
     string hostname = hostnameTry.get();
 
-    webui = "http://" + hostname + ":" + to_string(webuiPort) + "/index.html";
+    webui = "http://" + hostname + ":" + to_string(webuiPort);
   }
 
   LOG(INFO) << "webui url: " << webui;

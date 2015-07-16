@@ -279,6 +279,27 @@ void ArangoScheduler::stop () {
   _driver->stop();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reconciles all tasks
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::reconcileTasks () {
+  vector<mesos::TaskStatus> status;
+  _driver->reconcileTasks(status);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reconciles a single task
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::reconcileTask (const mesos::TaskStatus& taskStatus) {
+  vector<mesos::TaskStatus> status;
+
+  status.push_back(taskStatus);
+
+  _driver->reconcileTasks(status);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods
 // -----------------------------------------------------------------------------
@@ -295,15 +316,6 @@ void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
   << " at master " << master.id();
 
   Global::state().setFrameworkId(frameworkId);
-
-  vector<mesos::TaskStatus> status;
-  driver->reconcileTasks(status);
-
-  status = Global::state().knownTaskStatus();
-
-  if (! status.empty()) {
-    driver->reconcileTasks(status);
-  }
 
   checkVersion(master.hostname(), master.port());
 

@@ -350,6 +350,18 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
                                            ResourcesCurrent* current,
                                            mesos::Offer const& offer) {
 
+  // Note
+  // ====
+  //
+  // We have added support for dynamic reservation and persistent
+  // volumes. They should become available (at least experimental)
+  // in Mesos 0.23.
+  //
+  // However, the current Mesos 0.22 does not support these. Therefore
+  // we force 'persistent' to be false. In this case, none of the 
+  // persistent code below will be used.
+
+
 #if MESOS_DYNAMIC_RESERVATION
 #else
   persistent = false;
@@ -375,6 +387,13 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   // ...........................................................................
   // we do not want to start two instances on the same slave
   // ...........................................................................
+
+  // Note
+  // ====
+  //
+  // Most if this code is in preparation of persistent volumes and currently
+  // not used. See above. As Mesos 0.23 should contain at least experimental
+  // code for persistent volumes, we did not remove this part.
 
   int required = -1;
   const string& offerSlaveId = offer.slave_id().value();
@@ -419,18 +438,18 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
         string persistenceId;
         string containerPath;
 
-        mesos::Resources persistent = suitablePersistent(upper,
-                                                         resources,
-                                                         offer,
-                                                         persistenceId,
-                                                         containerPath);
+        mesos::Resources persistentRes = suitablePersistent(upper,
+                                                            resources,
+                                                            offer,
+                                                            persistenceId,
+                                                            containerPath);
 
-        if (! persistent.empty()) {
+        if (! persistentRes.empty()) {
           entry->set_persistence_id(persistenceId);
 
           resEntry->set_state(RESOURCE_STATE_USEABLE);
           resEntry->mutable_offer_id()->CopyFrom(offer.id());
-          resEntry->mutable_resources()->CopyFrom(persistent);
+          resEntry->mutable_resources()->CopyFrom(persistentRes);
           resEntry->set_container_path(containerPath);
 
           return { OfferActionState::USABLE };
