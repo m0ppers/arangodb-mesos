@@ -52,7 +52,6 @@
     render: function () {
       $(this.el).html(this.template.render());
 
-      //TODO ajax not available
       //this.renderSelectBox();
 
       var selected = $('.cluster-select option:selected').text();
@@ -231,49 +230,23 @@
     el: '#content',
 
     events: {
-      "click #dashboard-content .t-row" : "drawServerModal"
+      //"click #dashboard-content .t-row" : "drawServerModal"
     },
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
 
     render: function () {
-
-      //render dashboard
-
       var self = this;
       $(this.el).html(this.template.render());
-      //TODO v1/cluster not available
       //this.drawServers();
+      this.drawServers2();
 
       setInterval(function(){
         if (window.location.hash === '#dashboard' && $('#modal-dialog').is(':visible') === false) {
-          //TODO v1/cluster not available
           //self.drawServers();
+          self.drawServers2();
         }
       }, 15000);
-
-      this.drawServers2();
-
-    },
-
-    drawServers2: function () {
-      var self = this;
-
-      //ajax req for data before
-      $.ajax({
-        type : 'GET',
-        dataType : 'json',
-        async: true,
-        url: '/v1/state.json'
-      }).done(function(data) {
-        $('.t-cluster-body').empty();
-        self.drawServerLine2([
-          data.framework_name,
-          data.mode,
-          data.health
-        ]);
-      });
-
     },
 
     drawServers: function () {
@@ -302,6 +275,25 @@
 
     },
 
+    drawServers2: function () {
+      var self = this;
+
+      //ajax req for data before
+      $.ajax({
+        type : 'GET',
+        dataType : 'json',
+        async: true,
+        url: '/v1/state.json'
+      }).done(function(data) {
+        $('.t-cluster-body').empty();
+        self.drawServerLine2([
+          data.framework_name,
+          data.mode,
+          data.health
+        ]);
+      });
+    },
+
     hideServerModal: function() {
       window.modalView.hide();
     },
@@ -327,7 +319,7 @@
         type : 'GET',
         dataType : 'json',
         async: true,
-        url: '/v1/cluster/' + name
+        url: 'Videos.json'
         }).done(function(json) {
 
           tableContent = [
@@ -501,18 +493,6 @@
       newCluster.dbservers = JSON.parse($('#id_dbservers').text());
     },
 
-    drawServerLine2: function(parameters) {
-      var htmlString = '<div class="t-row pure-g">';
-
-      _.each(parameters, function(val) {
-        htmlString += '<div class="pure-u-1-3"><p class="t-content">'+val+'</p></div>';
-      });
-      htmlString += '</div>';
-
-      $('.t-cluster-body').append(htmlString);
-
-    },
-
     drawServerLine: function(parameters) {
       var htmlString = '<div class="t-row pure-g">';
 
@@ -523,7 +503,19 @@
 
       $('.t-cluster-body').append(htmlString);
 
-    }
+    },
+
+    drawServerLine2: function(parameters) {
+      var htmlString = '<div class="t-row pure-g">';
+
+      _.each(parameters, function(val) {
+        htmlString += '<div class="pure-u-1-3"><p class="t-content">'+val+'</p></div>';
+      });
+      htmlString += '</div>';
+
+      $('.t-cluster-body').append(htmlString);
+
+     },
 
   });
 }());
@@ -541,13 +533,13 @@
 
     events: {
       "click .debug-offers"    : "renderOfferTable",
-      "click .debug-target"    : "renderJSON",
-      "click .debug-plan"      : "renderJSON",
-      "click .debug-current"   : "renderJSON",
       "click .debug-instances" : "renderInstancesTable",
       "click .fa-refresh"      : "refresh",
       "click .sorting"         : "sorting",
-      "change .blue-select"    : "rerenderCurrent"
+      "change .blue-select"    : "rerenderCurrent",
+      "click .debug-target"    : "renderJSON",
+      "click .debug-plan"      : "renderJSON",
+      "click .debug-current"   : "renderJSON"
     },
 
     sortKey: "",
@@ -557,26 +549,8 @@
     template2: templateEngine.createTemplate("debugView2.ejs"),
 
     render: function () {
+      //this.renderOfferTable();
       this.renderJSON(undefined);
-    },
-
-    refresh: function() {
-      $('.fa-refresh').addClass('fa-spin');
-
-      this.rerenderCurrent();
-
-      setTimeout(function() {
-        $('.fa-refresh').removeClass('fa-spin');
-      }, 1000);
-    },
-
-    rerenderCurrent: function() {
-      if ($('.debug-instances').hasClass('active')) {
-        this.drawInstanceTable();
-      }
-      else {
-        this.drawOfferTable();
-      }
     },
 
     renderJSON: function(e) {
@@ -589,7 +563,6 @@
 
       if (e) {
         url = $(e.currentTarget).attr('data-url');
-        console.log(url);
       }
       else {
         url = "target";
@@ -609,7 +582,26 @@
       //TODO: disable not used stuff for the moment
       $('.select-box').css('visibility', 'hidden');
       $('.fa-refresh').css('visibility', 'hidden');
-  
+
+    },
+
+    refresh: function() {
+      $('.fa-refresh').addClass('fa-spin');
+
+      this.rerenderCurrent();
+
+      setTimeout(function() {
+        $('.fa-refresh').removeClass('fa-spin');
+      }, 1000);
+    },
+
+    rerenderCurrent: function() {
+      if ($('.debug-instances').hasClass('active')) {
+        this.drawInstanceTable();
+      }
+      else {
+        this.drawOfferTable();
+      }
     },
 
     renderOfferTable: function() {

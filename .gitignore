@@ -20,3 +20,9 @@ logging
 bin
 lib
 tst/res
+
+# WebIF
+assets/node_modules/
+
+# OS X
+.DS_Store

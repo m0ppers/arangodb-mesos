@@ -1,0 +1,7 @@
+<script src="js/generated/libs.js"></script>
+
+<script src="js/arango/templateEngine.js"></script>
+
+<script src="js/generated/views.js"></script>
+
+<script src="js/generated/routers.js"></script>

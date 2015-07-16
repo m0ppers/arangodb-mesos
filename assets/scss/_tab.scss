@@ -1,0 +1,59 @@
+.tab-bar {
+  background-color: #323333;
+
+  .tab-div {
+    cursor: pointer;
+
+    p {
+      margin-top: 8px;
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
+  }
+
+  .tab-div {
+    p:hover {
+      background-color: #4e9bea;
+      -webkit-transition:0.3s ease all;
+      -moz-transition:0.3s ease all;
+      -ms-transition:0.3s ease all;
+      -o-transition:0.3s ease all;
+      transition:0.3s ease all;
+    }
+  }
+
+  .active {
+    p {
+      background-color: #4e9bea;
+    }
+  }
+
+  .tab-select {
+
+    select {
+      margin-right: 5px !important;
+      width: 100%;
+    }
+
+  }
+
+  .fa-refresh {
+    float: right;
+    position: relative;
+    font-size: 15pt;
+    top: 13px;
+    right: 10px;
+    color: #4fb67a;
+  }
+
+  .fa-refresh:hover {
+    cursor: pointer;
+    color: $m-button-pos-hover;
+    -webkit-transition:0.3s ease all;
+    -moz-transition:0.3s ease all;
+    -ms-transition:0.3s ease all;
+    -o-transition:0.3s ease all;
+    transition:0.3s ease all;
+  }
+
+}

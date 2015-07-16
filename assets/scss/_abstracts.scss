@@ -1,0 +1,216 @@
+%pull-left {
+  float: left;
+}
+
+%pull-right {
+  float: right;
+}
+
+%clear-float {
+  &:after {
+    clear: both;
+    content: '.';
+    display: block;
+    font-size: 0;
+    height: 0;
+    visibility: hidden;
+  }
+}
+
+%clickable {
+  cursor: pointer;
+}
+
+%fixedbar {
+  background-color: $c-nav-bg;
+  color: $c-white;
+  left: 0;
+  position: fixed;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+%negative {
+  background-color: $c-negative;
+
+  &:hover,
+  &:focus {
+    background-color: $c-negative-hover;
+  }
+}
+
+%icon-negative {
+  color: $c-negative;
+
+  &:hover,
+  &:focus {
+    color: $c-negative-hover;
+  }
+}
+
+%svg-negative {
+  fill: $c-negative;
+
+  &:hover,
+  &:focus {
+    fill: $c-negative-hover;
+  }
+}
+
+%positive {
+  background-color: $c-positive;
+
+  &:hover,
+  &:focus {
+    background-color: $c-positive-hover;
+  }
+}
+
+%icon-positive {
+  color: $c-positive;
+
+  &:hover,
+  &:focus {
+    color: $c-positive-hover;
+  }
+}
+
+%svg-positive {
+  fill: $c-positive;
+
+  &:hover,
+  &:focus {
+    fill: $c-positive-hover;
+  }
+}
+
+%warning {
+  background-color: $c-warning;
+
+  &:hover,
+  &:focus {
+    background-color: $c-warning-hover;
+  }
+}
+
+%icon-warning {
+  color: $c-warning;
+
+  &:hover,
+  &:focus {
+    color: $c-warning-hover;
+  }
+}
+
+%svg-warning {
+  fill: $c-warning;
+
+  &:hover,
+  &:focus {
+    fill: $c-warning-hover;
+  }
+}
+
+%neutral {
+  background-color: $c-neutral;
+
+  &:hover,
+  &:focus {
+    background-color: $c-neutral-hover;
+  }
+}
+
+%icon-neutral {
+  color: $c-neutral;
+
+  &:hover,
+  &:focus {
+    color: $c-neutral-hover;
+  }
+}
+
+%svg-neutral {
+  fill: $c-neutral;
+
+  &:hover,
+  &:focus {
+    fill: $c-neutral-hover;
+  }
+}
+
+%primary {
+  background-color: $c-primary;
+
+  &:hover,
+  &:focus {
+    background-color: $c-primary-hover;
+  }
+}
+
+%icon-primary {
+  color: $c-primary;
+
+  &:hover,
+  &:focus {
+    color: $c-primary-hover;
+  }
+}
+
+%header {
+  background-color: $c-header-btn-bg;
+  border: 1px solid $c-header-btn-border;
+  color: $c-header-btn-fg;
+
+  &:hover,
+  &:focus {
+    background-color: $c-white;
+    color: $c-black;
+  }
+}
+
+%notification {
+  background-color: $c-notification;
+
+  &:hover,
+  &:focus {
+    background-color: $c-notification-hover;
+  }
+}
+
+%icon-notification {
+  color: $c-notification;
+
+  &:hover,
+  &:focus {
+    color: $c-notification-hover;
+  }
+}
+
+
+%inactive {
+  background-color: $c-inactive;
+
+  &:hover,
+  &:focus {
+    background-color: $c-inactive-hover;
+  }
+}
+
+%icon-inactive {
+  color: $c-inactive;
+
+  &:hover,
+  &:focus {
+    color: $c-inactive-hover;
+  }
+}
+
+%svg-inactive {
+  fill: $c-inactive;
+
+  &:hover,
+  &:focus {
+    fill: $c-inactive-hover;
+  }
+}

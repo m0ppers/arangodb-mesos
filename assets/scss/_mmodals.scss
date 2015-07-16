@@ -1,0 +1,95 @@
+.modal {
+  width: 500px;
+
+  .fa-plus {
+    color: #00B482;
+  }
+
+  .fa-minus {
+    color: #f22929;
+  }
+}
+
+.tableRow {
+  color: #fff;
+  font-weight: 100;
+  border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+  height: 40px !important;
+
+  th {
+    font-weight: 100;
+  }
+}
+
+.tableRow th:first-child {
+  width: 20%;
+  text-align: left;
+}
+
+.tableRow th:last-child {
+  width: 80%;
+  text-align: left;
+  padding-left: 50px;
+
+  i {
+    float: right;
+  }
+
+  i:hover {
+    cursor: pointer;
+  }
+
+  i:first-child {
+    margin-right: 30px;
+  }
+
+  .fa-minus {
+    margin-right: 10px;
+  }
+
+}
+
+.modal-body .collectionTh {
+  height: 40px !important;
+}
+
+.modal-body {
+
+  .accordion {
+    margin-top: 20px;
+
+    .accordion-group {
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      border-radius: 0;
+    }
+
+    a {
+      color: #fff;
+    }
+
+    .tableRow {
+      border-bottom: 0 !important;
+    }
+
+    .tableRow th:first-child {
+      padding-left: 20px !important;
+    }
+
+    .tableRow th:last-child {
+      .fa-plus {
+        margin-right: 42px;
+      }
+    }
+
+    .caret {
+      color: #fff;
+      border-top-color: #fff !important;
+    }
+
+  }
+
+}
+
+.modal-footer {
+  display: none;
+}

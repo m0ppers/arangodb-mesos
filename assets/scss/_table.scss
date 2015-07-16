@@ -1,0 +1,56 @@
+.t-head {
+  color: $m-thead;
+  border-bottom: 1px solid $m-thead;
+
+  i {
+    float: right;
+    margin-top: 2px;
+    margin-right: 5px;
+  }
+
+  i:hover {
+    cursor:pointer;
+  }
+
+  .t-label {
+    padding-left: 10px;
+    font-weight: bold;
+
+    border-right: 1px solid rgba(255,255,255,0.05) !important;
+    margin: 0;
+    padding-top: 11px;
+    padding-bottom: 17px;
+  }
+
+  div:last-child {
+    .t-label {
+      border-right: 0px !important;
+    }
+  }
+
+  .active {
+    color: #fff;
+  }
+
+}
+
+.t-body {
+
+  .t-row {
+    width: 100%;
+  }
+
+  .t-row:hover {
+    cursor: pointer;
+    background-color: #252525;
+  }
+
+  .t-content {
+    padding-left: 10px;
+
+    a {
+      color: white;
+    }
+  }
+
+}

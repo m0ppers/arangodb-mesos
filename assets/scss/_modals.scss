@@ -1,0 +1,354 @@
+%modal-header {
+  background-color: $m-nav;
+  border-bottom: 0 !important;
+  margin-top: 5px;
+  padding-left: 5px;
+  padding-right: 10px;
+  padding-top: 4px;
+
+  .arangoHeader {
+    color: $c-white;
+    font-size: 16px;
+    left: 5px;
+    position: relative;
+    top: 2px;
+  }
+
+  a {
+    top: 2px !important;
+  }
+
+  .close {
+    color: $c-modal-header;
+    font-weight: 300;
+    margin-top: 2px;
+    opacity: .5;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+
+}
+
+
+.modal-body {
+  border-bottom: 2px solid #2b2c2f !important;
+  background-color: $m-body;
+  color: $c-btn-inverse;
+  font-family: 'Open Sans', sans-serif !important;
+  font-size: 14px;
+  font-weight: 300;
+
+  input,
+  select,
+  textarea {
+    margin-top: 10px;
+  }
+
+  input[type='checkbox'] {
+    margin-bottom: 10px;
+  }
+
+  input[type='text'].invalid-input {
+    border-color: $c-invalid-red;
+
+    &:focus {
+      @include box-shadow(inset 0 1px 1px $c-scenario-bg-transp, 0 0 8px $c-invalid-red);
+    }
+  }
+
+  input[type='file'] {
+    line-height: 17px;
+  }
+
+  th {
+    %cell-centered {
+      text-align: center;
+    }
+
+    &.actionCell {
+      @extend %cell-centered;
+      width: 30px;
+    }
+
+    &.keyCell {
+      @extend %cell-centered;
+      width: 170px;
+
+      input {
+        width: 150px;
+      }
+    }
+
+    .valueCell {
+      @extend %cell-centered;
+      width: 300px;
+
+      input {
+        width: 290px;
+      }
+    }
+
+    div.select2-container {
+      margin-bottom: 10px;
+      margin-top: 10px;
+    }
+
+  }
+
+  .icon-info-sign {
+    margin-bottom: 10px;
+    margin-left: 10px;
+    opacity: .7;
+    padding-bottom: 5px;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+
+  .icon_arangodb_info {
+    color: $c-neutral-hover;
+    font-size: 18px;
+    margin-top: -10px;
+    position: absolute;
+    right: 12px;
+
+    &:hover {
+      color: $c-black;
+    }
+  }
+
+  .collapse {
+    margin-right: -14px;
+    position: relative;
+  }
+
+  .accordion-inner {
+    border-top: 0;
+    margin-left: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .accordion-toggle {
+
+    span {
+
+      b.caret {
+        border-top-color: $c-black;
+        float: right;
+        margin-top: 5px;
+      }
+    }
+
+    &.collapsed {
+      span {
+
+        b.caret {
+          -ms-transform: rotate(90deg);
+          -webkit-transform: rotate(90deg);
+          transform: rotate(90deg);
+        }
+      }
+
+    }
+  }
+
+  input {
+    width: 384px;
+  }
+
+  select {
+    width: 398px;
+  }
+
+  .collectionTh {
+    height: 55px;
+  }
+
+  .tab-content {
+    min-height: 200px;
+
+    .tab-pane {
+      border-top: 1px solid $c-collection-tab-border-bottom !important;
+      margin-left: 0 !important;
+      padding-top: 10px;
+    }
+  }
+
+  .errorMessage {
+    color: #f00;
+    font-size: 9pt;
+    margin-bottom: 5px;
+    margin-top: -9px;
+    position: absolute;
+  }
+
+  .nav img.tab-icon {
+    margin-right: 5px;
+    width: 20px;
+  }
+
+}
+
+.modal-text {
+  font-weight: 300;
+  padding-bottom: 3px;
+  padding-top: 3px;
+}
+
+.modal-backdrop,
+.modal-backdrop.fade.in {
+  opacity: .4;
+}
+
+.modal {
+  border-radius: 0 !important;
+
+  .fade.in {
+    top: 12.1% !important;
+  }
+
+  table tr:last-child {
+    border-bottom: 0 !important;
+  }
+}
+
+.waitModal {
+  @include box-shadow(none);
+  background: $c-transp;
+  border: 0;
+  color: $c-white;
+}
+
+
+.waitModalBackdrop {
+  opacity: .7 !important;
+}
+
+
+.modalTooltips span {
+  color: $c-btn-inverse;
+  font-size: 20px;
+
+  &:hover {
+    color: $c-black;
+  }
+}
+
+
+pre.gv-object-view {
+  text-align: left;
+  white-space: pre;
+}
+
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+#modal-dialog {
+  background-color: $m-body !important;
+}
+
+.modal-footer {
+  margin-top: -2px;
+  background-color: $m-body !important;
+  padding-right: 17px;
+}
+
+.modal-header {
+  @extend %modal-header;
+  margin-left: 5px;
+  margin-right: 5px;
+  color: #e8e5df;
+}
+
+.modal-dashboard-header {
+  @extend %modal-header;
+  margin-left: 0;
+  margin-right: 0;
+  padding-bottom: 9px;
+}
+
+
+
+
+
+.modal table tr,
+.thBorderBottom {
+  border-bottom: 1px solid $c-modal-table-border-bottom !important;
+}
+
+
+
+.modal-delete-confirmation {
+  display: none;
+
+  button {
+    margin-right: 10px;
+    margin-top: -4px;
+
+    .modal-confirm-delete {
+      margin-right: -18px;
+    }
+  }
+}
+
+.createModalDialog {
+
+  table {
+    width: 100%;
+  }
+
+  .collection-info-figures table {
+    float: left;
+    margin-left: 0;
+    margin-right: 0;
+    margin-top: 0;
+    min-width: 200px;
+    padding: 3px;
+    text-align: left;
+  }
+
+  .figures1,
+  .figures2 {
+    margin-bottom: 20px;
+    width: 255px;
+  }
+
+  .figures2 {
+    margin-left: 20px !important;
+  }
+
+  .figures3 {
+    margin-bottom: 0;
+    width: 100%;
+  }
+
+}
+
+.foxx-store-row {
+  .foxx-name {
+    font-weight: 700;
+  }
+
+  .foxx-author {
+    font-size: 10pt;
+    font-weight: 300;
+    margin-top: -4px;
+  }
+
+  .foxx-version {
+    font-weight: 400;
+  }
+}
+
+#new-app-mount {
+  margin-right: 24px;
+  width: 360px;
+}

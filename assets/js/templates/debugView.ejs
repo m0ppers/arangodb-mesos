@@ -1,0 +1,32 @@
+<script id="debugView.ejs" type="text/template">
+
+  <div id="debug-content" class="innerContent">
+
+  <div class="pure-g tab-bar">
+    <div class="pure-u-1-5 tab-div header debug-target" data-url="target"><p>Target</p></div>
+    <div class="pure-u-1-5 tab-div header debug-plan" data-url="plan"><p>Plan</p></div>
+    <div class="pure-u-1-5 tab-div header debug-current" data-url="current"><p>Current</p></div>
+    <div class="pure-u-1-5 header">
+      <i class="fa fa-refresh"></i>
+    </div>
+    <div class="pure-u-1-5 header select-box tab-select">
+      <select class="blue-select">
+        <optgroup class="cluster-select" label="Clusters">
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="pure-g t-head t-cluster">
+    <div class="pure-u-1-1"><p class="t-label">Content</p></div>
+  </div>
+
+  <div class="pure-g t-body t-cluster-body">
+    <pre style="width: 100%; background: #323539; color: #fff; border: 0;">
+      <div class="pure-u-1-1 json-content"><p class="t-label"></p></div>
+    </pre>
+  </div>
+
+  </div>
+
+</script>
