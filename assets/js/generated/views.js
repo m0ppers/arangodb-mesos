@@ -288,7 +288,7 @@
         dataType : 'json',
         async: true,
         url: '/debug/target.json'
-      }).done(function(data) {console.log(data); 
+      }).done(function(data) {
         $('#dashboard-content .coordirnatorsValue').text(data.coordinators.instances);
         $('#dashboard-content .dbServersValue').text(data.dbservers.instances);
         /*
@@ -1922,4 +1922,3 @@ function buildHierarchy(csv) {
 }
 });
 }());
-        
