@@ -6699,6 +6699,13 @@ nav.navbar {
   color: #fff;
   font-weight: 100; }
 
+.button-icon {
+  width: 38px;
+  height: 38px; }
+  .button-icon .fa {
+    font-size: 11px;
+    margin-left: -1px; }
+
 .button-success {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -8569,6 +8576,9 @@ body {
 .align-center {
   text-align: center; }
 
+.innerContent {
+  padding: 5px; }
+
 .t-head {
   color: #8F8F98;
   border-bottom: 1px solid #8F8F98; }
@@ -8881,6 +8891,10 @@ pre.gv-object-view {
   -o-transition: 0.3s ease all;
   transition: 0.3s ease all; }
 
+.cluster-functions {
+  margin-top: 10px;
+  margin-bottom: 10px; }
+
 .header p {
   padding-left: 10px; }
 
@@ -9019,6 +9033,15 @@ select:focus, select:active {
     -ms-transition: 0.3s ease all;
     -o-transition: 0.3s ease all;
     transition: 0.3s ease all; }
+
+.t-key-value div:first-child {
+  font-weight: 400; }
+
+.m-l-5 {
+  margin-left: 5px; }
+
+.m-l-10 {
+  margin-left: 10px; }
 
 /*!
 Pure v0.5.0

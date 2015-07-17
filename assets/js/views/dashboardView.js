@@ -18,12 +18,12 @@
     render: function () {
       var self = this;
       $(this.el).html(this.template.render());
-      //this.drawServers();
+      this.drawServers();
       this.drawServers2();
 
       setInterval(function(){
         if (window.location.hash === '#dashboard' && $('#modal-dialog').is(':visible') === false) {
-          //self.drawServers();
+          self.drawServers();
           self.drawServers2();
         }
       }, 15000);
@@ -37,8 +37,11 @@
         type : 'GET',
         dataType : 'json',
         async: true,
-        url: '/v1/cluster'
-      }).done(function(data) {
+        url: '/debug/target.json'
+      }).done(function(data) {console.log(data); 
+        $('#dashboard-content .coordirnatorsValue').text(data.coordinators.instances);
+        $('#dashboard-content .dbServersValue').text(data.dbservers.instances);
+        /*
         if (data.clusters.length > 0) {
           $('.t-cluster-body').empty();
           _.each(data.clusters, function(val, key) {
@@ -51,6 +54,7 @@
             ]);
           });
         }
+      */
       });
 
     },
@@ -286,14 +290,16 @@
     },
 
     drawServerLine2: function(parameters) {
-      var htmlString = '<div class="t-row pure-g">';
+      $('#dashboard-content .nameValue').append(parameters[0]);
+      $('#dashboard-content .modeValue').append(parameters[1]);
+      $('#dashboard-content .healthValue').append(parameters[2]);
+      //var htmlString = '<div class="t-row pure-g">';
 
-      _.each(parameters, function(val) {
-        htmlString += '<div class="pure-u-1-3"><p class="t-content">'+val+'</p></div>';
-      });
-      htmlString += '</div>';
+      //_.each(parameters, function(val) {
+        //htmlString += '<div class="pure-u-1-3"><p class="t-content">'+val+'</p></div>';
+      //});
+      //htmlString += '</div>';
 
-      $('.t-cluster-body').append(htmlString);
 
      },
 
