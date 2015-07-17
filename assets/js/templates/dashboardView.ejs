@@ -2,43 +2,64 @@
 
   <div id="dashboard-content" class="innerContent">
 
-    <div class="pure-g t-cluster t-key-value">
-      <div class="pure-u-1-6"><p class="t-label">Name:</p></div>
-      <div class="pure-u-5-6"><p class="t-label nameValue"></p></div>
-    </div>
+    <div class="">
+      <div class="pure-g t-cluster t-key-value t-head">
+        <div class="pure-u-1-1"><p class="t-label">General</p></div>
+      </div>
 
-    <div class="pure-g t-cluster t-key-value">
-      <div class="pure-u-1-6"><p class="t-label">Mode:</p></div>
-      <div class="pure-u-5-6"><p class="t-label modeValue"></p></div>
-    </div>
+      <div class="pure-g t-cluster t-key-value">
+        <div class="pure-u-1-6"><p class="t-label">Name:</p></div>
+        <div class="pure-u-5-6"><p class="t-label nameValue"></p></div>
+      </div>
 
-    <div class="pure-g t-cluster t-key-value">
-      <div class="pure-u-1-6"><p class="t-label">Health:</p></div>
-      <div class="pure-u-5-6"><p class="t-label healthValue"></p></div>
+      <div class="pure-g t-cluster t-key-value">
+        <div class="pure-u-1-6"><p class="t-label">Mode:</p></div>
+        <div class="pure-u-5-6"><p class="t-label modeValue"></p></div>
+      </div>
+
+      <div class="pure-g t-cluster t-key-value">
+        <div class="pure-u-1-6"><p class="t-label">Running:</p></div>
+        <div class="pure-u-1-6"><p class="t-label healthValue"></p></div>
+        <div class="pure-u-4-6">
+          <button class="button-close fixed-w-button">Shutdown</button>
+        </div>
+      </div>
+
+      <div class="pure-g t-cluster t-key-value">
+        <div class="pure-u-1-6"><p class="t-label">Nodes:</p></div>
+        <div class="pure-u-1-6"><p class="t-label nodesValue">5</p></div>
+        <div class="pure-u-4-6">
+          <button class="scale-cluster button-success fixed-w-button">Scale</button>
+        </div>
+      </div>
+
     </div>
 
     <div class="cluster-functions">
-      <button class="scale-cluster button-success">Scale</button>
-      <button class="scale-shutdown button-close">Shutdown</button>
-    </div>
-
-    <div class="pure-g t-cluster t-key-value">
-      <div class="pure-u-1-6"><p class="t-label">Coordinators:</p></div>
-      <div class="pure-u-1-6"><p class="t-label coordirnatorsValue pull-left"></p></div>
-      <div class="pure-u-4-6">
-        <button class="add-coordinator button-success button-icon"><i class="fa fa-plus"></i></button>
-        <button class="remove-coordinator m-l-5 button-close button-icon"><i class="fa fa-minus"></i></button>
-        <button class="m-l-10 dashboard-coordinator button-success">Web UI</button>
-        <button class="m-l-5 download-coordinator button-success">Download</button>
+      <div class="pure-g t-cluster t-key-value t-head">
+        <div class="pure-u-1-1 advanced-menu">
+          <p class="t-label pull-left">Advanced<i class="fa active fa-plus-square pull-left m-l-10"></i></p>
+        </div>
       </div>
     </div>
 
-    <div class="pure-g t-cluster t-key-value">
-      <div class="pure-u-1-6"><p class="t-label">DB Servers:</p></div>
-      <div class="pure-u-1-6"><p class="t-label dbServersValue"></p></div>
-      <div class="pure-u-4-6">
-        <button class="add-coordinator button-success button-icon"><i class="fa fa-plus"></i></button>
-        <button class="remove-coordinator m-l-5 button-close button-icon"><i class="fa fa-minus"></i></button>
+    <div class="advanced-content hidden">
+      <div class="pure-g t-cluster t-key-value">
+        <div class="pure-u-1-6"><p class="t-label">Coordinators:</p></div>
+        <div class="pure-u-1-6"><p class="t-label coordirnatorsValue pull-left"></p></div>
+        <div class="pure-u-4-6">
+          <button class="add-coordinator button-success button-icon"><i class="fa fa-plus"></i></button>
+          <button class="remove-coordinator m-l-5 button-close button-icon"><i class="fa fa-minus"></i></button>
+        </div>
+      </div>
+
+      <div class="pure-g t-cluster t-key-value">
+        <div class="pure-u-1-6"><p class="t-label">DB Servers:</p></div>
+        <div class="pure-u-1-6"><p class="t-label dbServersValue"></p></div>
+        <div class="pure-u-4-6">
+          <button class="add-coordinator button-success button-icon"><i class="fa fa-plus"></i></button>
+          <button class="remove-coordinator m-l-5 button-close button-icon"><i class="fa fa-minus"></i></button>
+        </div>
       </div>
     </div>
 

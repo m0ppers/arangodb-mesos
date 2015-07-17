@@ -10,7 +10,8 @@
     el: '#content',
 
     events: {
-      //"click #dashboard-content .t-row" : "drawServerModal"
+      //"click #dashboard-content .t-row" : "drawServerModal",
+      "click .advanced-menu" : "toggleAdvanced"
     },
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
@@ -27,6 +28,22 @@
           self.drawServers2();
         }
       }, 15000);
+    },
+
+    toggleAdvanced: function () {
+
+      if ($('.advanced-content').hasClass('hidden')) {
+        $('.advanced-content').removeClass('hidden');
+        $('.advanced-menu .fa-plus-square').removeClass('active');
+        $('.advanced-menu .fa-plus-square').addClass('fa-minus-square');
+        $('.advanced-menu .fa-minus-square').removeClass('fa-plus-square');
+      }
+      else {
+        $('.advanced-content').addClass('hidden');
+        $('.advanced-menu .fa-minus-square').addClass('fa-plus-square');
+        $('.advanced-menu .fa-plus-square').removeClass('fa-minus-square');
+        $('.advanced-menu .fa-plus-square').addClass('active');
+      }
     },
 
     drawServers: function () {
@@ -290,9 +307,9 @@
     },
 
     drawServerLine2: function(parameters) {
-      $('#dashboard-content .nameValue').append(parameters[0]);
-      $('#dashboard-content .modeValue').append(parameters[1]);
-      $('#dashboard-content .healthValue').append(parameters[2]);
+      $('#dashboard-content .nameValue').text(parameters[0]);
+      $('#dashboard-content .modeValue').text(parameters[1]);
+      $('#dashboard-content .healthValue').text(parameters[2]);
       //var htmlString = '<div class="t-row pure-g">';
 
       //_.each(parameters, function(val) {

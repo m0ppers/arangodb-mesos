@@ -6706,6 +6706,9 @@ nav.navbar {
     font-size: 11px;
     margin-left: -1px; }
 
+.fixed-w-button {
+  width: 100px; }
+
 .button-success {
   padding-top: 10px;
   padding-bottom: 10px;
@@ -8576,8 +8579,14 @@ body {
 .align-center {
   text-align: center; }
 
-.innerContent {
-  padding: 5px; }
+.pure-g div p:first-child {
+  padding-left: 5px; }
+
+.hidden {
+  display: none; }
+
+.active {
+  color: #fff; }
 
 .t-head {
   color: #8F8F98;
@@ -8890,6 +8899,12 @@ pre.gv-object-view {
   -ms-transition: 0.3s ease all;
   -o-transition: 0.3s ease all;
   transition: 0.3s ease all; }
+
+.advanced-content {
+  transition: opacity 1s ease-out; }
+
+.pure-g button {
+  margin-top: 6px; }
 
 .cluster-functions {
   margin-top: 10px;
