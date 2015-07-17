@@ -231,7 +231,8 @@
 
     events: {
       //"click #dashboard-content .t-row" : "drawServerModal",
-      "click .advanced-menu" : "toggleAdvanced"
+      "click .advanced-menu" : "toggleAdvanced",
+      "click .shutdown-cluster" : "shutdown"
     },
 
     template: templateEngine.createTemplate("dashboardView.ejs"),
@@ -264,6 +265,18 @@
         $('.advanced-menu .fa-plus-square').removeClass('fa-minus-square');
         $('.advanced-menu .fa-plus-square').addClass('active');
       }
+    },
+
+    shutdown: function () {
+      $.ajax({
+        type : 'POST',
+        dataType : 'json',
+        data: {},
+        async: true,
+        url: '/v1/destroy.json'
+      }).done(function(data) {
+        alert("Shutdown initiated.");
+      });
     },
 
     drawServers: function () {
@@ -1909,3 +1922,4 @@ function buildHierarchy(csv) {
 }
 });
 }());
+        
