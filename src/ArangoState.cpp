@@ -156,6 +156,7 @@ void ArangoState::init () {
   _state.mutable_plan()->mutable_agents();
   _state.mutable_plan()->mutable_coordinators();
   _state.mutable_plan()->mutable_dbservers();
+  _state.mutable_plan()->mutable_secondaries();
 
   _state.mutable_current();
   _state.mutable_current()->mutable_agents();
