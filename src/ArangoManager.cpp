@@ -376,13 +376,13 @@ void ArangoManagerImpl::destroy () {
 
 vector<string> ArangoManagerImpl::readEndpoints () {
   Current current = Global::state().current();
-  auto const& dbservers = current.primary_dbservers();
+  auto const& coordinators = current.coordinators();
 
   vector<string> endpoints;
 
-  for (int i = 0;  i < dbservers.entries_size();  ++i) {
-    auto const& dbserver = dbservers.entries(i);
-    string endpoint = "http://" + dbserver.hostname() + ":" + to_string(dbserver.ports(0));
+  for (int i = 0;  i < coordinators.entries_size();  ++i) {
+    auto const& coordinator = coordinators.entries(i);
+    string endpoint = "http://" + coordinator.hostname() + ":" + to_string(coordinator.ports(0));
 
     endpoints.push_back(endpoint);
   }
@@ -396,13 +396,13 @@ vector<string> ArangoManagerImpl::readEndpoints () {
 
 vector<string> ArangoManagerImpl::writeEndpoints () {
   Current current = Global::state().current();
-  auto const& dbservers = current.primary_dbservers();
+  auto const& coordinators = current.coordinators();
 
   vector<string> endpoints;
 
-  for (int i = 0;  i < dbservers.entries_size();  ++i) {
-    auto const& dbserver = dbservers.entries(i);
-    string endpoint = "http://" + dbserver.hostname() + ":" + to_string(dbserver.ports(0));
+  for (int i = 0;  i < coordinators.entries_size();  ++i) {
+    auto const& coordinator = coordinators.entries(i);
+    string endpoint = "http://" + coordinator.hostname() + ":" + to_string(coordinator.ports(0));
 
     endpoints.push_back(endpoint);
   }
@@ -867,6 +867,10 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
       p = environment.add_variables();
       p->set_name("numberOfCoordinators");
       p->set_value(to_string(Global::state().target().coordinators().instances()));
+      p = environment.add_variables();
+      p->set_name("asyncReplication");
+      p->set_value(Global::asyncReplication() ? string("true")
+                                              : string("false"));
       break;
     }
     case InstanceActionState::START_PRIMARY_DBSERVER:

@@ -80,6 +80,8 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_WEBUI       overrides '--webui'\n"
        << "  ARANGODB_ZK          overrides '--zk'\n"
        << "  ARANGODB_MODE        overrides '--mode'\n"
+       << "  ARANGODB_ASYNC_REPLICATION\n"
+          "                       overrides '--async_replication'\n"
        << "  ARANGODB_FRAMEWORK_NAME\n"
        << "                       overrides '--framework_name'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_AGENT\n"
@@ -118,6 +120,12 @@ int main (int argc, char** argv) {
             "mode",
             "Mode of operation (standalone, cluster)",
             "cluster");
+
+  string async_repl;
+  flags.add(&async_repl,
+            "async_repl",
+            "Flag, whether we run secondaries for asynchronous replication",
+            "yes");
 
   string role;
   flags.add(&role,
@@ -238,6 +246,14 @@ int main (int argc, char** argv) {
     role = getenv("ARANGODB_ROLE");
   }
 
+  if (os::hasenv("ARANGODB_MODE")) {
+    mode = getenv("ARANGODB_MODE");
+  }
+
+  if (os::hasenv("ARANGODB_ASYNC_REPLICATION")) {
+    async_repl = getenv("ARANGODB_ASYNC_REPLICATION");
+  }
+
   if (os::hasenv("ARANGODB_USER")) {
     frameworkUser = getenv("ARANGODB_USER");
   }
@@ -317,6 +333,14 @@ int main (int argc, char** argv) {
     cerr << argv[0] << ": expecting mode '" << mode << "' to be "
          << "standalone, cluster" << "\n";
   }
+
+  if (async_repl == "yes" || async_repl == "true" || async_repl == "y") {
+    Global::setAsyncReplication(true);
+  }
+  else {
+    Global::setAsyncReplication(false);
+  }
+  LOG(INFO) << "Asynchronous replication flag: " << Global::asyncReplication();
 
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);

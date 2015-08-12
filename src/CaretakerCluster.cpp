@@ -223,6 +223,18 @@ void CaretakerCluster::updatePlan () {
 
       InstancesCurrent* instances = current.mutable_primary_dbservers();
       instances->add_entries();
+
+      if (Global::asyncReplication()) {
+        planEntry = tasks->add_entries();
+        planEntry->set_is_primary(false);
+
+        resources = current.mutable_secondary_dbserver_resources();
+        resEntry = resources->add_entries();
+        resEntry->set_state(RESOURCE_STATE_REQUIRED);
+
+        instances = current.mutable_secondary_dbservers();
+        instances->add_entries();
+      }
     }
   }
 
@@ -300,8 +312,9 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   //   properly. If not, we wait and decline the offer.
   //   Otherwise, if not all DBservers are up and running, we check first
   //   whether this offer is good for one of them.
-  //   If all DBservers are up, we check with the coordinators.
-  //   If all is well, we decline politely.
+  //   If all DBservers are up, and we use asynchronous replication,
+  //   we check whether all secondaries are up, lastly, we check with 
+  //   the coordinators. If all is well, we decline politely.
 
   Target target = Global::state().target();
   Plan plan = Global::state().plan();
@@ -404,6 +417,28 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     return action;
   }
 
+  // Now the secondaries, if needed:
+  if (Global::asyncReplication()) {
+    plannedInstances = plan.dbservers().entries_size();
+    runningInstances = countRunningInstances(current.secondary_dbservers());
+    LOG(INFO)
+    << "planned secondary DBServer instances: " << plannedInstances << ", "
+    << "running secondary DBServer instances: " << runningInstances;
+    if (runningInstances < plannedInstances) {
+      // Try to use the offer for a new DBserver:
+      action = checkResourceOffer("secondary", true,
+                                  target.dbservers(),
+                                  plan.mutable_secondaries(),
+                                  current.mutable_secondary_dbserver_resources(),
+                                  offer);
+
+      // Save new state:
+      Global::state().setPlan(plan);
+      Global::state().setCurrent(current);
+      return action;
+    }
+  }
+
   // Finally, look after the coordinators:
   plannedInstances = plan.coordinators().entries_size();
   runningInstances = countRunningInstances(current.coordinators());
@@ -474,6 +509,25 @@ InstanceAction CaretakerCluster::checkInstance () {
     Global::state().setCurrent(current);
 
     return res;
+  }
+
+  // OK, DBServers are fine, move on to secondaries:
+
+  if (Global::asyncReplication()) {
+    res = checkStartInstance(
+      "secondary",
+      AspectType::SECONDARY_DBSERVER,
+      InstanceActionState::START_SECONDARY_DBSERVER,
+      plan.dbservers(),
+      current.mutable_secondary_dbserver_resources(),
+      current.mutable_secondary_dbservers());
+
+    if (res._state != InstanceActionState::DONE) {
+      Global::state().setPlan(plan);
+      Global::state().setCurrent(current);
+
+      return res;
+    }
   }
 
   // Finally, the coordinators:

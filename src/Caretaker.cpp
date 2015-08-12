@@ -584,6 +584,14 @@ void Caretaker::updatePlan () {
              current.mutable_primary_dbserver_resources(),
              current.mutable_primary_dbservers());
 
+  if (Global::asyncReplication()) {
+    adjustPlan("secondaries",
+               target.dbservers(),  // This is also the number of secondaries
+               plan.mutable_secondaries(),
+               current.mutable_secondary_dbserver_resources(),
+               current.mutable_secondary_dbservers());
+  }
+
   adjustPlan("coordinator",
              target.coordinators(),
              plan.mutable_coordinators(),

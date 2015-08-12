@@ -140,6 +140,7 @@ void ArangoState::init () {
 
   _state.mutable_target();
   _state.mutable_target()->set_mode(Global::modeLC());
+  _state.mutable_target()->set_asynchronous_replication(Global::asyncReplication());
   TargetEntry* te;
   te = _state.mutable_target()->mutable_agents();
   te->set_instances(Global::nrAgents());
@@ -194,6 +195,19 @@ void ArangoState::load () {
 
       exit(EXIT_FAILURE);
     }
+
+    bool stateAsyncRepl 
+        = _state.target().has_asynchronous_replication() &&
+          _state.target().asynchronous_replication();
+    if (stateAsyncRepl != Global::asyncReplication()) {
+      LOG(ERROR)
+      << "FATAL stored state is for asyncReplication flag '"
+      << stateAsyncRepl << "', "
+      << "requested value is '" << Global::asyncReplication() << "'";
+
+      exit(EXIT_FAILURE);
+    }
+
   }
 
   string json;

@@ -305,6 +305,13 @@ class Target : public ::google::protobuf::Message {
   inline ::arangodb::TargetEntry* release_dbservers();
   inline void set_allocated_dbservers(::arangodb::TargetEntry* dbservers);
 
+  // optional bool asynchronous_replication = 5;
+  inline bool has_asynchronous_replication() const;
+  inline void clear_asynchronous_replication();
+  static const int kAsynchronousReplicationFieldNumber = 5;
+  inline bool asynchronous_replication() const;
+  inline void set_asynchronous_replication(bool value);
+
   // @@protoc_insertion_point(class_scope:arangodb.Target)
  private:
   inline void set_has_mode();
@@ -315,6 +322,8 @@ class Target : public ::google::protobuf::Message {
   inline void clear_has_coordinators();
   inline void set_has_dbservers();
   inline void clear_has_dbservers();
+  inline void set_has_asynchronous_replication();
+  inline void clear_has_asynchronous_replication();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -322,9 +331,10 @@ class Target : public ::google::protobuf::Message {
   ::arangodb::TargetEntry* agents_;
   ::arangodb::TargetEntry* coordinators_;
   ::arangodb::TargetEntry* dbservers_;
+  bool asynchronous_replication_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -610,6 +620,15 @@ class Plan : public ::google::protobuf::Message {
   inline ::arangodb::TasksPlan* release_dbservers();
   inline void set_allocated_dbservers(::arangodb::TasksPlan* dbservers);
 
+  // required .arangodb.TasksPlan secondaries = 4;
+  inline bool has_secondaries() const;
+  inline void clear_secondaries();
+  static const int kSecondariesFieldNumber = 4;
+  inline const ::arangodb::TasksPlan& secondaries() const;
+  inline ::arangodb::TasksPlan* mutable_secondaries();
+  inline ::arangodb::TasksPlan* release_secondaries();
+  inline void set_allocated_secondaries(::arangodb::TasksPlan* secondaries);
+
   // @@protoc_insertion_point(class_scope:arangodb.Plan)
  private:
   inline void set_has_agents();
@@ -618,15 +637,18 @@ class Plan : public ::google::protobuf::Message {
   inline void clear_has_coordinators();
   inline void set_has_dbservers();
   inline void clear_has_dbservers();
+  inline void set_has_secondaries();
+  inline void clear_has_secondaries();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::arangodb::TasksPlan* agents_;
   ::arangodb::TasksPlan* coordinators_;
   ::arangodb::TasksPlan* dbservers_;
+  ::arangodb::TasksPlan* secondaries_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -1728,6 +1750,28 @@ inline void Target::set_allocated_dbservers(::arangodb::TargetEntry* dbservers) 
   }
 }
 
+// optional bool asynchronous_replication = 5;
+inline bool Target::has_asynchronous_replication() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void Target::set_has_asynchronous_replication() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void Target::clear_has_asynchronous_replication() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void Target::clear_asynchronous_replication() {
+  asynchronous_replication_ = false;
+  clear_has_asynchronous_replication();
+}
+inline bool Target::asynchronous_replication() const {
+  return asynchronous_replication_;
+}
+inline void Target::set_asynchronous_replication(bool value) {
+  set_has_asynchronous_replication();
+  asynchronous_replication_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // TasksPlanEntry
@@ -2006,6 +2050,44 @@ inline void Plan::set_allocated_dbservers(::arangodb::TasksPlan* dbservers) {
     set_has_dbservers();
   } else {
     clear_has_dbservers();
+  }
+}
+
+// required .arangodb.TasksPlan secondaries = 4;
+inline bool Plan::has_secondaries() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void Plan::set_has_secondaries() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void Plan::clear_has_secondaries() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void Plan::clear_secondaries() {
+  if (secondaries_ != NULL) secondaries_->::arangodb::TasksPlan::Clear();
+  clear_has_secondaries();
+}
+inline const ::arangodb::TasksPlan& Plan::secondaries() const {
+  return secondaries_ != NULL ? *secondaries_ : *default_instance_->secondaries_;
+}
+inline ::arangodb::TasksPlan* Plan::mutable_secondaries() {
+  set_has_secondaries();
+  if (secondaries_ == NULL) secondaries_ = new ::arangodb::TasksPlan;
+  return secondaries_;
+}
+inline ::arangodb::TasksPlan* Plan::release_secondaries() {
+  clear_has_secondaries();
+  ::arangodb::TasksPlan* temp = secondaries_;
+  secondaries_ = NULL;
+  return temp;
+}
+inline void Plan::set_allocated_secondaries(::arangodb::TasksPlan* secondaries) {
+  delete secondaries_;
+  secondaries_ = secondaries;
+  if (secondaries) {
+    set_has_secondaries();
+  } else {
+    clear_has_secondaries();
   }
 }
 

@@ -177,6 +177,14 @@ precedence.
     starts a configurable number of independent, single server instances
     of ArangoDB.
 
+  - `ARANGODB_ASYNC_REPLICATION`, overriding `--async_replication`:
+
+    This can be "yes" or "no" or "true" or "false", and "no" is the default,
+    which starts an ArangoDB cluster without secondary DBServers doing
+    asynchronous replication. If this is set to "true", then for each
+    primary DBServer a secondary one is started which replicates the
+    data from the primary.
+
   - `ARANGODB_FRAMEWORK_NAME`, overriding `--framework_name`:
 
     This is an ID which must be unique for the framework, in other
@@ -237,8 +245,8 @@ The API supports the following routes:
         {"mode":"cluster"}
 
   - `GET /v1/endpoints.json`: This produces a JSON document describing
-    the reading and writing endpoints for communication with the Mesos
-    system, as in this:
+    the reading and writing endpoints for communication with the
+    ArangoDB cluster, as in this:
 
         {
            "read" : [
@@ -250,6 +258,8 @@ The API supports the following routes:
               "http://10.0.0.9:5450"
            ]
         }
+
+    These are the endpoints of the coordinator instances.
 
   - `GET /v1/health.json`: This is a healthcheck for the service,
     formatted as in:

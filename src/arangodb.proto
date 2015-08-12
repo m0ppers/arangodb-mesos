@@ -20,6 +20,7 @@ message Target {
   required TargetEntry agents = 2;
   required TargetEntry coordinators = 3;
   required TargetEntry dbservers = 4;
+  optional bool asynchronous_replication = 5;
 }
 
 // -----------------------------------------------------------------------------
@@ -44,6 +45,7 @@ message Plan {
   required TasksPlan agents = 1;
   required TasksPlan coordinators = 2;
   required TasksPlan dbservers = 3;
+  required TasksPlan secondaries = 4;
 }
 
 // -----------------------------------------------------------------------------
