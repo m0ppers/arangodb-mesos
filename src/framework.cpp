@@ -125,7 +125,7 @@ int main (int argc, char** argv) {
   flags.add(&async_repl,
             "async_replication",
             "Flag, whether we run secondaries for asynchronous replication",
-            "yes");
+            "false");
 
   string role;
   flags.add(&role,

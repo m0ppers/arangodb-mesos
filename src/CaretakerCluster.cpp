@@ -200,6 +200,7 @@ void CaretakerCluster::updatePlan () {
   }
 
   tasks = plan.mutable_dbservers();
+  TasksPlan* tasks2 = plan.mutable_secondaries();
   p = tasks->entries_size();
 
   if (t < p) {
@@ -225,7 +226,7 @@ void CaretakerCluster::updatePlan () {
       instances->add_entries();
 
       if (Global::asyncReplication()) {
-        planEntry = tasks->add_entries();
+        planEntry = tasks2->add_entries();
         planEntry->set_is_primary(false);
 
         resources = current.mutable_secondary_dbserver_resources();

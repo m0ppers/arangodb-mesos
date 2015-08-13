@@ -70,7 +70,7 @@ static OperationMode MODE = OperationMode::STANDALONE;
 /// @brief asynchronous replication flag
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ASYNC_REPL = true;
+static bool ASYNC_REPL = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimal resources for an agent, mesos string specification
