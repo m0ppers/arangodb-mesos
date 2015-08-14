@@ -81,6 +81,11 @@ CaretakerStandalone::CaretakerStandalone () {
     }
   }
 
+  // SECONDARIES
+  TargetEntry* secondaries = target.mutable_secondaries();
+  secondaries->set_instances(0);
+  secondaries->clear_minimal_resources();
+
   Global::state().setTarget(target);
 }
 

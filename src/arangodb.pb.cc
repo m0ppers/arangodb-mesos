@@ -69,7 +69,7 @@ void protobuf_AssignDesc_arangodb_2eproto() {
   static const int TargetEntry_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, instances_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, minimal_resources_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, additional_resouces_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, additional_resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, number_ports_),
   };
   TargetEntry_reflection_ =
@@ -84,11 +84,12 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(TargetEntry));
   Target_descriptor_ = file->message_type(1);
-  static const int Target_offsets_[5] = {
+  static const int Target_offsets_[6] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, mode_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, agents_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, coordinators_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, dbservers_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, secondaries_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, asynchronous_replication_),
   };
   Target_reflection_ =
@@ -341,67 +342,68 @@ void protobuf_AddDesc_arangodb_2eproto() {
   ::mesos::protobuf_AddDesc_mesos_2fmesos_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\016arangodb.proto\022\010arangodb\032\021mesos/mesos."
-    "proto\"\220\001\n\013TargetEntry\022\021\n\tinstances\030\001 \002(\r"
+    "proto\"\221\001\n\013TargetEntry\022\021\n\tinstances\030\001 \002(\r"
     "\022*\n\021minimal_resources\030\002 \003(\0132\017.mesos.Reso"
-    "urce\022,\n\023additional_resouces\030\003 \003(\0132\017.meso"
-    "s.Resource\022\024\n\014number_ports\030\004 \002(\r\"\266\001\n\006Tar"
-    "get\022\014\n\004mode\030\001 \002(\t\022%\n\006agents\030\002 \002(\0132\025.aran"
-    "godb.TargetEntry\022+\n\014coordinators\030\003 \002(\0132\025"
-    ".arangodb.TargetEntry\022(\n\tdbservers\030\004 \002(\013"
-    "2\025.arangodb.TargetEntry\022 \n\030asynchronous_"
-    "replication\030\005 \001(\010\"^\n\016TasksPlanEntry\022\022\n\ni"
-    "s_primary\030\001 \002(\010\022 \n\010slave_id\030\002 \001(\0132\016.meso"
-    "s.SlaveID\022\026\n\016persistence_id\030\003 \001(\t\"6\n\tTas"
-    "ksPlan\022)\n\007entries\030\001 \003(\0132\030.arangodb.Tasks"
-    "PlanEntry\"\250\001\n\004Plan\022#\n\006agents\030\001 \002(\0132\023.ara"
-    "ngodb.TasksPlan\022)\n\014coordinators\030\002 \002(\0132\023."
-    "arangodb.TasksPlan\022&\n\tdbservers\030\003 \002(\0132\023."
-    "arangodb.TasksPlan\022(\n\013secondaries\030\004 \002(\0132"
-    "\023.arangodb.TasksPlan\"\200\002\n\025ResourcesCurren"
-    "tEntry\022F\n\005state\030\001 \001(\0162\037.arangodb.Resourc"
-    "esCurrentState:\026RESOURCE_STATE_UNKNOWN\022 "
-    "\n\010slave_id\030\002 \001(\0132\016.mesos.SlaveID\022 \n\010offe"
-    "r_id\030\003 \001(\0132\016.mesos.OfferID\022\"\n\tresources\030"
-    "\004 \003(\0132\017.mesos.Resource\022\r\n\005ports\030\005 \003(\r\022\020\n"
-    "\010hostname\030\006 \001(\t\022\026\n\016container_path\030\007 \001(\t\""
-    "D\n\020ResourcesCurrent\0220\n\007entries\030\001 \003(\0132\037.a"
-    "rangodb.ResourcesCurrentEntry\"\313\001\n\025Instan"
-    "cesCurrentEntry\022E\n\005state\030\001 \001(\0162\037.arangod"
-    "b.InstancesCurrentState:\025INSTANCE_STATE_"
-    "UNUSED\022\"\n\ttask_info\030\002 \001(\0132\017.mesos.TaskIn"
-    "fo\022&\n\013task_status\030\003 \001(\0132\021.mesos.TaskStat"
-    "us\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t\"D\n\020I"
-    "nstancesCurrent\0220\n\007entries\030\001 \003(\0132\037.arang"
-    "odb.InstancesCurrentEntry\"\356\004\n\007Current\0224\n"
-    "\020agency_resources\030\001 \002(\0132\032.arangodb.Resou"
-    "rcesCurrent\0229\n\025coordinator_resources\030\002 \002"
-    "(\0132\032.arangodb.ResourcesCurrent\022>\n\032primar"
-    "y_dbserver_resources\030\003 \002(\0132\032.arangodb.Re"
-    "sourcesCurrent\022@\n\034secondary_dbserver_res"
-    "ources\030\004 \002(\0132\032.arangodb.ResourcesCurrent"
-    "\022*\n\006agents\030\005 \002(\0132\032.arangodb.InstancesCur"
-    "rent\0220\n\014coordinators\030\006 \002(\0132\032.arangodb.In"
-    "stancesCurrent\0225\n\021primary_dbservers\030\007 \002("
-    "\0132\032.arangodb.InstancesCurrent\0227\n\023seconda"
-    "ry_dbservers\030\010 \002(\0132\032.arangodb.InstancesC"
-    "urrent\022\030\n\020cluster_complete\030\t \002(\010\022%\n\035clus"
-    "ter_bootstrappedDBservers\030\n \002(\010\022\032\n\022clust"
-    "er_upgradedDB\030\013 \002(\010\022(\n cluster_bootstrap"
-    "pedCoordinators\030\014 \002(\010\022\033\n\023cluster_initial"
-    "ized\030\r \002(\010\"\225\001\n\005State\022(\n\014framework_id\030\001 \001"
-    "(\0132\022.mesos.FrameworkID\022 \n\006target\030\002 \002(\0132\020"
-    ".arangodb.Target\022\034\n\004plan\030\003 \002(\0132\016.arangod"
-    "b.Plan\022\"\n\007current\030\004 \002(\0132\021.arangodb.Curre"
-    "nt*\352\001\n\025ResourcesCurrentState\022\032\n\026RESOURCE"
-    "_STATE_UNKNOWN\020\001\022\033\n\027RESOURCE_STATE_REQUI"
-    "RED\020\002\022$\n RESOURCE_STATE_TRYING_TO_RESERV"
-    "E\020\003\022$\n RESOURCE_STATE_TRYING_TO_PERSIST\020"
-    "\004\022\032\n\026RESOURCE_STATE_USEABLE\020\005\022\027\n\023RESOURC"
-    "E_STATE_USED\020\006\022\027\n\023RESOURCE_STATE_LOST\020\007*"
-    "\207\001\n\025InstancesCurrentState\022\031\n\025INSTANCE_ST"
-    "ATE_UNUSED\020\001\022\033\n\027INSTANCE_STATE_STARTING\020"
-    "\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003\022\032\n\026INSTANC"
-    "E_STATE_STOPPED\020\004", 2457);
+    "urce\022-\n\024additional_resources\030\003 \003(\0132\017.mes"
+    "os.Resource\022\024\n\014number_ports\030\004 \002(\r\"\342\001\n\006Ta"
+    "rget\022\014\n\004mode\030\001 \002(\t\022%\n\006agents\030\002 \002(\0132\025.ara"
+    "ngodb.TargetEntry\022+\n\014coordinators\030\003 \002(\0132"
+    "\025.arangodb.TargetEntry\022(\n\tdbservers\030\004 \002("
+    "\0132\025.arangodb.TargetEntry\022*\n\013secondaries\030"
+    "\005 \002(\0132\025.arangodb.TargetEntry\022 \n\030asynchro"
+    "nous_replication\030\006 \001(\010\"^\n\016TasksPlanEntry"
+    "\022\022\n\nis_primary\030\001 \002(\010\022 \n\010slave_id\030\002 \001(\0132\016"
+    ".mesos.SlaveID\022\026\n\016persistence_id\030\003 \001(\t\"6"
+    "\n\tTasksPlan\022)\n\007entries\030\001 \003(\0132\030.arangodb."
+    "TasksPlanEntry\"\250\001\n\004Plan\022#\n\006agents\030\001 \002(\0132"
+    "\023.arangodb.TasksPlan\022)\n\014coordinators\030\002 \002"
+    "(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030\003 \002"
+    "(\0132\023.arangodb.TasksPlan\022(\n\013secondaries\030\004"
+    " \002(\0132\023.arangodb.TasksPlan\"\200\002\n\025ResourcesC"
+    "urrentEntry\022F\n\005state\030\001 \001(\0162\037.arangodb.Re"
+    "sourcesCurrentState:\026RESOURCE_STATE_UNKN"
+    "OWN\022 \n\010slave_id\030\002 \001(\0132\016.mesos.SlaveID\022 \n"
+    "\010offer_id\030\003 \001(\0132\016.mesos.OfferID\022\"\n\tresou"
+    "rces\030\004 \003(\0132\017.mesos.Resource\022\r\n\005ports\030\005 \003"
+    "(\r\022\020\n\010hostname\030\006 \001(\t\022\026\n\016container_path\030\007"
+    " \001(\t\"D\n\020ResourcesCurrent\0220\n\007entries\030\001 \003("
+    "\0132\037.arangodb.ResourcesCurrentEntry\"\313\001\n\025I"
+    "nstancesCurrentEntry\022E\n\005state\030\001 \001(\0162\037.ar"
+    "angodb.InstancesCurrentState:\025INSTANCE_S"
+    "TATE_UNUSED\022\"\n\ttask_info\030\002 \001(\0132\017.mesos.T"
+    "askInfo\022&\n\013task_status\030\003 \001(\0132\021.mesos.Tas"
+    "kStatus\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t"
+    "\"D\n\020InstancesCurrent\0220\n\007entries\030\001 \003(\0132\037."
+    "arangodb.InstancesCurrentEntry\"\356\004\n\007Curre"
+    "nt\0224\n\020agency_resources\030\001 \002(\0132\032.arangodb."
+    "ResourcesCurrent\0229\n\025coordinator_resource"
+    "s\030\002 \002(\0132\032.arangodb.ResourcesCurrent\022>\n\032p"
+    "rimary_dbserver_resources\030\003 \002(\0132\032.arango"
+    "db.ResourcesCurrent\022@\n\034secondary_dbserve"
+    "r_resources\030\004 \002(\0132\032.arangodb.ResourcesCu"
+    "rrent\022*\n\006agents\030\005 \002(\0132\032.arangodb.Instanc"
+    "esCurrent\0220\n\014coordinators\030\006 \002(\0132\032.arango"
+    "db.InstancesCurrent\0225\n\021primary_dbservers"
+    "\030\007 \002(\0132\032.arangodb.InstancesCurrent\0227\n\023se"
+    "condary_dbservers\030\010 \002(\0132\032.arangodb.Insta"
+    "ncesCurrent\022\030\n\020cluster_complete\030\t \002(\010\022%\n"
+    "\035cluster_bootstrappedDBservers\030\n \002(\010\022\032\n\022"
+    "cluster_upgradedDB\030\013 \002(\010\022(\n cluster_boot"
+    "strappedCoordinators\030\014 \002(\010\022\033\n\023cluster_in"
+    "itialized\030\r \002(\010\"\225\001\n\005State\022(\n\014framework_i"
+    "d\030\001 \001(\0132\022.mesos.FrameworkID\022 \n\006target\030\002 "
+    "\002(\0132\020.arangodb.Target\022\034\n\004plan\030\003 \002(\0132\016.ar"
+    "angodb.Plan\022\"\n\007current\030\004 \002(\0132\021.arangodb."
+    "Current*\352\001\n\025ResourcesCurrentState\022\032\n\026RES"
+    "OURCE_STATE_UNKNOWN\020\001\022\033\n\027RESOURCE_STATE_"
+    "REQUIRED\020\002\022$\n RESOURCE_STATE_TRYING_TO_R"
+    "ESERVE\020\003\022$\n RESOURCE_STATE_TRYING_TO_PER"
+    "SIST\020\004\022\032\n\026RESOURCE_STATE_USEABLE\020\005\022\027\n\023RE"
+    "SOURCE_STATE_USED\020\006\022\027\n\023RESOURCE_STATE_LO"
+    "ST\020\007*\207\001\n\025InstancesCurrentState\022\031\n\025INSTAN"
+    "CE_STATE_UNUSED\020\001\022\033\n\027INSTANCE_STATE_STAR"
+    "TING\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003\022\032\n\026IN"
+    "STANCE_STATE_STOPPED\020\004", 2502);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   TargetEntry::default_instance_ = new TargetEntry();
@@ -476,7 +478,7 @@ bool InstancesCurrentState_IsValid(int value) {
 #ifndef _MSC_VER
 const int TargetEntry::kInstancesFieldNumber;
 const int TargetEntry::kMinimalResourcesFieldNumber;
-const int TargetEntry::kAdditionalResoucesFieldNumber;
+const int TargetEntry::kAdditionalResourcesFieldNumber;
 const int TargetEntry::kNumberPortsFieldNumber;
 #endif  // !_MSC_VER
 
@@ -537,7 +539,7 @@ void TargetEntry::Clear() {
     number_ports_ = 0u;
   }
   minimal_resources_.Clear();
-  additional_resouces_.Clear();
+  additional_resources_.Clear();
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
@@ -574,21 +576,21 @@ bool TargetEntry::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(18)) goto parse_minimal_resources;
-        if (input->ExpectTag(26)) goto parse_additional_resouces;
+        if (input->ExpectTag(26)) goto parse_additional_resources;
         break;
       }
 
-      // repeated .mesos.Resource additional_resouces = 3;
+      // repeated .mesos.Resource additional_resources = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_additional_resouces:
+         parse_additional_resources:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-                input, add_additional_resouces()));
+                input, add_additional_resources()));
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_additional_resouces;
+        if (input->ExpectTag(26)) goto parse_additional_resources;
         if (input->ExpectTag(32)) goto parse_number_ports;
         break;
       }
@@ -638,10 +640,10 @@ void TargetEntry::SerializeWithCachedSizes(
       2, this->minimal_resources(i), output);
   }
 
-  // repeated .mesos.Resource additional_resouces = 3;
-  for (int i = 0; i < this->additional_resouces_size(); i++) {
+  // repeated .mesos.Resource additional_resources = 3;
+  for (int i = 0; i < this->additional_resources_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      3, this->additional_resouces(i), output);
+      3, this->additional_resources(i), output);
   }
 
   // required uint32 number_ports = 4;
@@ -669,11 +671,11 @@ void TargetEntry::SerializeWithCachedSizes(
         2, this->minimal_resources(i), target);
   }
 
-  // repeated .mesos.Resource additional_resouces = 3;
-  for (int i = 0; i < this->additional_resouces_size(); i++) {
+  // repeated .mesos.Resource additional_resources = 3;
+  for (int i = 0; i < this->additional_resources_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        3, this->additional_resouces(i), target);
+        3, this->additional_resources(i), target);
   }
 
   // required uint32 number_ports = 4;
@@ -715,12 +717,12 @@ int TargetEntry::ByteSize() const {
         this->minimal_resources(i));
   }
 
-  // repeated .mesos.Resource additional_resouces = 3;
-  total_size += 1 * this->additional_resouces_size();
-  for (int i = 0; i < this->additional_resouces_size(); i++) {
+  // repeated .mesos.Resource additional_resources = 3;
+  total_size += 1 * this->additional_resources_size();
+  for (int i = 0; i < this->additional_resources_size(); i++) {
     total_size +=
       ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-        this->additional_resouces(i));
+        this->additional_resources(i));
   }
 
   if (!unknown_fields().empty()) {
@@ -749,7 +751,7 @@ void TargetEntry::MergeFrom(const ::google::protobuf::Message& from) {
 void TargetEntry::MergeFrom(const TargetEntry& from) {
   GOOGLE_CHECK_NE(&from, this);
   minimal_resources_.MergeFrom(from.minimal_resources_);
-  additional_resouces_.MergeFrom(from.additional_resouces_);
+  additional_resources_.MergeFrom(from.additional_resources_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_instances()) {
       set_instances(from.instances());
@@ -779,8 +781,8 @@ bool TargetEntry::IsInitialized() const {
   for (int i = 0; i < minimal_resources_size(); i++) {
     if (!this->minimal_resources(i).IsInitialized()) return false;
   }
-  for (int i = 0; i < additional_resouces_size(); i++) {
-    if (!this->additional_resouces(i).IsInitialized()) return false;
+  for (int i = 0; i < additional_resources_size(); i++) {
+    if (!this->additional_resources(i).IsInitialized()) return false;
   }
   return true;
 }
@@ -789,7 +791,7 @@ void TargetEntry::Swap(TargetEntry* other) {
   if (other != this) {
     std::swap(instances_, other->instances_);
     minimal_resources_.Swap(&other->minimal_resources_);
-    additional_resouces_.Swap(&other->additional_resouces_);
+    additional_resources_.Swap(&other->additional_resources_);
     std::swap(number_ports_, other->number_ports_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
@@ -813,6 +815,7 @@ const int Target::kModeFieldNumber;
 const int Target::kAgentsFieldNumber;
 const int Target::kCoordinatorsFieldNumber;
 const int Target::kDbserversFieldNumber;
+const int Target::kSecondariesFieldNumber;
 const int Target::kAsynchronousReplicationFieldNumber;
 #endif  // !_MSC_VER
 
@@ -825,6 +828,7 @@ void Target::InitAsDefaultInstance() {
   agents_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
   coordinators_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
   dbservers_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
+  secondaries_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
 }
 
 Target::Target(const Target& from)
@@ -839,6 +843,7 @@ void Target::SharedCtor() {
   agents_ = NULL;
   coordinators_ = NULL;
   dbservers_ = NULL;
+  secondaries_ = NULL;
   asynchronous_replication_ = false;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -855,6 +860,7 @@ void Target::SharedDtor() {
     delete agents_;
     delete coordinators_;
     delete dbservers_;
+    delete secondaries_;
   }
 }
 
@@ -894,6 +900,9 @@ void Target::Clear() {
     }
     if (has_dbservers()) {
       if (dbservers_ != NULL) dbservers_->::arangodb::TargetEntry::Clear();
+    }
+    if (has_secondaries()) {
+      if (secondaries_ != NULL) secondaries_->::arangodb::TargetEntry::Clear();
     }
     asynchronous_replication_ = false;
   }
@@ -961,12 +970,26 @@ bool Target::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(40)) goto parse_asynchronous_replication;
+        if (input->ExpectTag(42)) goto parse_secondaries;
         break;
       }
 
-      // optional bool asynchronous_replication = 5;
+      // required .arangodb.TargetEntry secondaries = 5;
       case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_secondaries:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_secondaries()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(48)) goto parse_asynchronous_replication;
+        break;
+      }
+
+      // optional bool asynchronous_replication = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_asynchronous_replication:
@@ -1026,9 +1049,15 @@ void Target::SerializeWithCachedSizes(
       4, this->dbservers(), output);
   }
 
-  // optional bool asynchronous_replication = 5;
+  // required .arangodb.TargetEntry secondaries = 5;
+  if (has_secondaries()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      5, this->secondaries(), output);
+  }
+
+  // optional bool asynchronous_replication = 6;
   if (has_asynchronous_replication()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBool(5, this->asynchronous_replication(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteBool(6, this->asynchronous_replication(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -1070,9 +1099,16 @@ void Target::SerializeWithCachedSizes(
         4, this->dbservers(), target);
   }
 
-  // optional bool asynchronous_replication = 5;
+  // required .arangodb.TargetEntry secondaries = 5;
+  if (has_secondaries()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        5, this->secondaries(), target);
+  }
+
+  // optional bool asynchronous_replication = 6;
   if (has_asynchronous_replication()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(5, this->asynchronous_replication(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(6, this->asynchronous_replication(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -1114,7 +1150,14 @@ int Target::ByteSize() const {
           this->dbservers());
     }
 
-    // optional bool asynchronous_replication = 5;
+    // required .arangodb.TargetEntry secondaries = 5;
+    if (has_secondaries()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->secondaries());
+    }
+
+    // optional bool asynchronous_replication = 6;
     if (has_asynchronous_replication()) {
       total_size += 1 + 1;
     }
@@ -1158,6 +1201,9 @@ void Target::MergeFrom(const Target& from) {
     if (from.has_dbservers()) {
       mutable_dbservers()->::arangodb::TargetEntry::MergeFrom(from.dbservers());
     }
+    if (from.has_secondaries()) {
+      mutable_secondaries()->::arangodb::TargetEntry::MergeFrom(from.secondaries());
+    }
     if (from.has_asynchronous_replication()) {
       set_asynchronous_replication(from.asynchronous_replication());
     }
@@ -1178,7 +1224,7 @@ void Target::CopyFrom(const Target& from) {
 }
 
 bool Target::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000f) != 0x0000000f) return false;
+  if ((_has_bits_[0] & 0x0000001f) != 0x0000001f) return false;
 
   if (has_agents()) {
     if (!this->agents().IsInitialized()) return false;
@@ -1189,6 +1235,9 @@ bool Target::IsInitialized() const {
   if (has_dbservers()) {
     if (!this->dbservers().IsInitialized()) return false;
   }
+  if (has_secondaries()) {
+    if (!this->secondaries().IsInitialized()) return false;
+  }
   return true;
 }
 
@@ -1198,6 +1247,7 @@ void Target::Swap(Target* other) {
     std::swap(agents_, other->agents_);
     std::swap(coordinators_, other->coordinators_);
     std::swap(dbservers_, other->dbservers_);
+    std::swap(secondaries_, other->secondaries_);
     std::swap(asynchronous_replication_, other->asynchronous_replication_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);

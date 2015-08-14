@@ -9,7 +9,7 @@ package arangodb;
 message TargetEntry {
   required uint32 instances = 1;
   repeated mesos.Resource minimal_resources = 2;
-  repeated mesos.Resource additional_resouces = 3;
+  repeated mesos.Resource additional_resources = 3;
   required uint32 number_ports = 4;
 }
 
@@ -20,7 +20,8 @@ message Target {
   required TargetEntry agents = 2;
   required TargetEntry coordinators = 3;
   required TargetEntry dbservers = 4;
-  optional bool asynchronous_replication = 5;
+  required TargetEntry secondaries = 5;
+  optional bool asynchronous_replication = 6;
 }
 
 // -----------------------------------------------------------------------------

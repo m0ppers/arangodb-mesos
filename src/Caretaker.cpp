@@ -456,15 +456,11 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
         }
       }
 
-      /*
       LOG(INFO)
       << "DEBUG checkResourceOffer(" << name << "): "
       << "already using slave " << entry->slave_id().value();
-      */
 
-      // return { OfferActionState::STORE_FOR_LATER };
-      // For testing, we allow more than one instance on the same slave
-      // for now, simply to allow for local testing.
+      return { OfferActionState::STORE_FOR_LATER };
     }
   }
 
@@ -485,6 +481,41 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
 
   if (required == -1) {
     return { OfferActionState::STORE_FOR_LATER };
+  }
+
+  // ...........................................................................
+  // do not put a secondary on the same slave than its primary:
+  // ...........................................................................
+
+  if (name == "secondary") {
+    Plan globalPlan = Global::state().plan();
+    TasksPlanEntry const& primaryEntry = globalPlan.dbservers().entries(required);
+    if (offer.slave_id().value() == primaryEntry.slave_id().value()) {
+      // we decline this offer, there will be another one
+      return { OfferActionState::STORE_FOR_LATER };
+    }
+  }
+
+  // ...........................................................................
+  // a hack: do not put a secondary on a slave that we have not yet used
+  // at all for a primary:
+  // ...........................................................................
+
+  if (name == "secondary") {
+    Plan globalPlan = Global::state().plan();
+    TasksPlan const& primaryEntries = globalPlan.dbservers();
+    int found = -1;
+    for (int i = 0; i < primaryEntries.entries_size(); i++) {
+      if (offer.slave_id().value() == 
+          primaryEntries.entries(i).slave_id().value()) {
+        found = i;
+        break;
+      }
+    }
+    if (found == -1) {
+      // we decline this offer, there will be another one
+      return { OfferActionState::STORE_FOR_LATER };
+    }
   }
 
   // ...........................................................................

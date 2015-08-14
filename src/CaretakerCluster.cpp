@@ -120,6 +120,28 @@ CaretakerCluster::CaretakerCluster () {
     }
   }
 
+  // SECONDARIES
+  TargetEntry* secondary = target.mutable_secondaries();
+  secondary->set_instances(Global::nrDBServers());
+  secondary->clear_minimal_resources();
+  secondary->set_number_ports(1);
+  if (Global::minResourcesSecondary().empty()) {
+    setStandardMinimum(secondary, 1);
+  }
+  else {
+    Try<mesos::Resources> x
+        = mesos::Resources::parse(Global::minResourcesSecondary());
+    if (x.isError()) {
+      LOG(ERROR) << "cannot parse minimum resources for Secondary:\n  '"
+                 << Global::minResourcesSecondary() << "'";
+      setStandardMinimum(secondary, 1);
+    }
+    else {
+      auto m = secondary->mutable_minimal_resources();
+      m->CopyFrom(x.get());
+    }
+  }
+
   Global::state().setTarget(target);
 }
 
@@ -428,7 +450,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     if (runningInstances < plannedInstances) {
       // Try to use the offer for a new DBserver:
       action = checkResourceOffer("secondary", true,
-                                  target.dbservers(),
+                                  target.secondaries(),
                                   plan.mutable_secondaries(),
                                   current.mutable_secondary_dbserver_resources(),
                                   offer);

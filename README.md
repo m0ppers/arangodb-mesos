@@ -205,6 +205,11 @@ precedence.
 
     Same as for the agent, but for a DBserver.
 
+  - `ARANGODB_MINIMAL_RESOURCES_SECONDARY` overriding 
+    `--minimal_resources_secondary`:
+
+    Same as for the agent, but for a secondary.
+
   - `ARANGODB_MINIMAL_RESOURCES_COORDINATOR` overriding 
     `--minimal_resources_coordinator`:
 

@@ -167,17 +167,17 @@ class TargetEntry : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
       mutable_minimal_resources();
 
-  // repeated .mesos.Resource additional_resouces = 3;
-  inline int additional_resouces_size() const;
-  inline void clear_additional_resouces();
-  static const int kAdditionalResoucesFieldNumber = 3;
-  inline const ::mesos::Resource& additional_resouces(int index) const;
-  inline ::mesos::Resource* mutable_additional_resouces(int index);
-  inline ::mesos::Resource* add_additional_resouces();
+  // repeated .mesos.Resource additional_resources = 3;
+  inline int additional_resources_size() const;
+  inline void clear_additional_resources();
+  static const int kAdditionalResourcesFieldNumber = 3;
+  inline const ::mesos::Resource& additional_resources(int index) const;
+  inline ::mesos::Resource* mutable_additional_resources(int index);
+  inline ::mesos::Resource* add_additional_resources();
   inline const ::google::protobuf::RepeatedPtrField< ::mesos::Resource >&
-      additional_resouces() const;
+      additional_resources() const;
   inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
-      mutable_additional_resouces();
+      mutable_additional_resources();
 
   // required uint32 number_ports = 4;
   inline bool has_number_ports() const;
@@ -198,7 +198,7 @@ class TargetEntry : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::mesos::Resource > minimal_resources_;
   ::google::protobuf::uint32 instances_;
   ::google::protobuf::uint32 number_ports_;
-  ::google::protobuf::RepeatedPtrField< ::mesos::Resource > additional_resouces_;
+  ::google::protobuf::RepeatedPtrField< ::mesos::Resource > additional_resources_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
@@ -305,10 +305,19 @@ class Target : public ::google::protobuf::Message {
   inline ::arangodb::TargetEntry* release_dbservers();
   inline void set_allocated_dbservers(::arangodb::TargetEntry* dbservers);
 
-  // optional bool asynchronous_replication = 5;
+  // required .arangodb.TargetEntry secondaries = 5;
+  inline bool has_secondaries() const;
+  inline void clear_secondaries();
+  static const int kSecondariesFieldNumber = 5;
+  inline const ::arangodb::TargetEntry& secondaries() const;
+  inline ::arangodb::TargetEntry* mutable_secondaries();
+  inline ::arangodb::TargetEntry* release_secondaries();
+  inline void set_allocated_secondaries(::arangodb::TargetEntry* secondaries);
+
+  // optional bool asynchronous_replication = 6;
   inline bool has_asynchronous_replication() const;
   inline void clear_asynchronous_replication();
-  static const int kAsynchronousReplicationFieldNumber = 5;
+  static const int kAsynchronousReplicationFieldNumber = 6;
   inline bool asynchronous_replication() const;
   inline void set_asynchronous_replication(bool value);
 
@@ -322,6 +331,8 @@ class Target : public ::google::protobuf::Message {
   inline void clear_has_coordinators();
   inline void set_has_dbservers();
   inline void clear_has_dbservers();
+  inline void set_has_secondaries();
+  inline void clear_has_secondaries();
   inline void set_has_asynchronous_replication();
   inline void clear_has_asynchronous_replication();
 
@@ -331,10 +342,11 @@ class Target : public ::google::protobuf::Message {
   ::arangodb::TargetEntry* agents_;
   ::arangodb::TargetEntry* coordinators_;
   ::arangodb::TargetEntry* dbservers_;
+  ::arangodb::TargetEntry* secondaries_;
   bool asynchronous_replication_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -1515,29 +1527,29 @@ TargetEntry::mutable_minimal_resources() {
   return &minimal_resources_;
 }
 
-// repeated .mesos.Resource additional_resouces = 3;
-inline int TargetEntry::additional_resouces_size() const {
-  return additional_resouces_.size();
+// repeated .mesos.Resource additional_resources = 3;
+inline int TargetEntry::additional_resources_size() const {
+  return additional_resources_.size();
 }
-inline void TargetEntry::clear_additional_resouces() {
-  additional_resouces_.Clear();
+inline void TargetEntry::clear_additional_resources() {
+  additional_resources_.Clear();
 }
-inline const ::mesos::Resource& TargetEntry::additional_resouces(int index) const {
-  return additional_resouces_.Get(index);
+inline const ::mesos::Resource& TargetEntry::additional_resources(int index) const {
+  return additional_resources_.Get(index);
 }
-inline ::mesos::Resource* TargetEntry::mutable_additional_resouces(int index) {
-  return additional_resouces_.Mutable(index);
+inline ::mesos::Resource* TargetEntry::mutable_additional_resources(int index) {
+  return additional_resources_.Mutable(index);
 }
-inline ::mesos::Resource* TargetEntry::add_additional_resouces() {
-  return additional_resouces_.Add();
+inline ::mesos::Resource* TargetEntry::add_additional_resources() {
+  return additional_resources_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::mesos::Resource >&
-TargetEntry::additional_resouces() const {
-  return additional_resouces_;
+TargetEntry::additional_resources() const {
+  return additional_resources_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
-TargetEntry::mutable_additional_resouces() {
-  return &additional_resouces_;
+TargetEntry::mutable_additional_resources() {
+  return &additional_resources_;
 }
 
 // required uint32 number_ports = 4;
@@ -1750,15 +1762,53 @@ inline void Target::set_allocated_dbservers(::arangodb::TargetEntry* dbservers) 
   }
 }
 
-// optional bool asynchronous_replication = 5;
-inline bool Target::has_asynchronous_replication() const {
+// required .arangodb.TargetEntry secondaries = 5;
+inline bool Target::has_secondaries() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void Target::set_has_asynchronous_replication() {
+inline void Target::set_has_secondaries() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void Target::clear_has_asynchronous_replication() {
+inline void Target::clear_has_secondaries() {
   _has_bits_[0] &= ~0x00000010u;
+}
+inline void Target::clear_secondaries() {
+  if (secondaries_ != NULL) secondaries_->::arangodb::TargetEntry::Clear();
+  clear_has_secondaries();
+}
+inline const ::arangodb::TargetEntry& Target::secondaries() const {
+  return secondaries_ != NULL ? *secondaries_ : *default_instance_->secondaries_;
+}
+inline ::arangodb::TargetEntry* Target::mutable_secondaries() {
+  set_has_secondaries();
+  if (secondaries_ == NULL) secondaries_ = new ::arangodb::TargetEntry;
+  return secondaries_;
+}
+inline ::arangodb::TargetEntry* Target::release_secondaries() {
+  clear_has_secondaries();
+  ::arangodb::TargetEntry* temp = secondaries_;
+  secondaries_ = NULL;
+  return temp;
+}
+inline void Target::set_allocated_secondaries(::arangodb::TargetEntry* secondaries) {
+  delete secondaries_;
+  secondaries_ = secondaries;
+  if (secondaries) {
+    set_has_secondaries();
+  } else {
+    clear_has_secondaries();
+  }
+}
+
+// optional bool asynchronous_replication = 6;
+inline bool Target::has_asynchronous_replication() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void Target::set_has_asynchronous_replication() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void Target::clear_has_asynchronous_replication() {
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void Target::clear_asynchronous_replication() {
   asynchronous_replication_ = false;

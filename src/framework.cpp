@@ -88,6 +88,8 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "                       overrides '--minimal_resources_agent'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_DBSERVER\n"
           "                       overrides '--minimal_resources_dbserver'\n"
+       << "  ARANGODB_MINIMAL_RESOURCES_SECONDARY\n"
+          "                       overrides '--minimal_resources_secondary'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_COORDINATOR\n"
           "                       overrides '--minimal_resources_coordinator'\n"
        << "  ARANGODB_NR_AGENTS   overrides '--nr_agents'\n"
@@ -143,6 +145,12 @@ int main (int argc, char** argv) {
   flags.add(&minimal_resources_dbserver,
             "minimal_resources_dbserver",
             "Minimal resources to accept for a DBServer",
+            "");
+
+  string minimal_resources_secondary;
+  flags.add(&minimal_resources_secondary,
+            "minimal_resources_secondary",
+            "Minimal resources to accept for a secondary DBServer",
             "");
 
   string minimal_resources_coordinator;
@@ -290,6 +298,10 @@ int main (int argc, char** argv) {
     minimal_resources_dbserver = getenv("ARANGODB_MINIMAL_RESOURCES_DBSERVER");
   }
 
+  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_SECONDARY")) {
+    minimal_resources_secondary = getenv("ARANGODB_MINIMAL_RESOURCES_SECONDARY");
+  }
+
   if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR")) {
     minimal_resources_coordinator = getenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR");
   }
@@ -349,6 +361,9 @@ int main (int argc, char** argv) {
   Global::setMinResourcesAgent(minimal_resources_agent);
   LOG(INFO) << "Minimal resources DBserver: " << minimal_resources_dbserver;
   Global::setMinResourcesDBServer(minimal_resources_dbserver);
+  LOG(INFO) << "Minimal resources secondary DBserver: " 
+            << minimal_resources_secondary;
+  Global::setMinResourcesSecondary(minimal_resources_secondary);
   LOG(INFO) << "Minimal resources coordinator: " 
             << minimal_resources_coordinator;
   Global::setMinResourcesCoordinator(minimal_resources_coordinator);

@@ -151,6 +151,9 @@ void ArangoState::init () {
   te = _state.mutable_target()->mutable_dbservers();
   te->set_instances(Global::nrDBServers());
   te->set_number_ports(1);
+  te = _state.mutable_target()->mutable_secondaries();
+  te->set_instances(Global::nrDBServers());
+  te->set_number_ports(1);
 
   _state.mutable_plan();
   _state.mutable_plan()->mutable_agents();
