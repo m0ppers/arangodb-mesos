@@ -58,6 +58,30 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update from env
+////////////////////////////////////////////////////////////////////////////////
+
+static void updateFromEnv (const string& name, string& var) {
+  Option<string> env = os::getenv(name);
+
+  if (env.isSome()) {
+    var = env.get();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update from env
+////////////////////////////////////////////////////////////////////////////////
+
+static void updateFromEnv (const string& name, int& var) {
+  Option<string> env = os::getenv(name);
+
+  if (env.isSome()) {
+    var = atoi(env.get().c_str());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -246,85 +270,38 @@ int main (int argc, char** argv) {
     exit(1);
   }
 
-  if (os::hasenv("MESOS_MASTER")) {
-    master = getenv("MESOS_MASTER");
+  updateFromEnv("MESOS_MASTER", master);
+  updateFromEnv("ARANGODB_ROLE", role);
+  updateFromEnv("ARANGODB_MODE", mode);
+  updateFromEnv("ARANGODB_ASYNC_REPLICATION", async_repl);
+  updateFromEnv("ARANGODB_USER", frameworkUser);
+  updateFromEnv("ARANGODB_FRAMEWORK_NAME", frameworkName);
+  updateFromEnv("ARANGODB_ZK", zk);
+  updateFromEnv("ARANGODB_WEBUI", webui);
+  updateFromEnv("ARANGODB_HTTP_PORT", webuiPort);
+  updateFromEnv("ARANGODB_PRINCIPAL", principal);
+  updateFromEnv("ARANGODB_VOLUME_PATH", volumePath);
+  updateFromEnv("ARANGODB_MINIMAL_RESOURCES_AGENT", minimal_resources_agent);
+  updateFromEnv("ARANGODB_MINIMAL_RESOURCES_DBSERVER", minimal_resources_dbserver);
+  updateFromEnv("ARANGODB_MINIMAL_RESOURCES_SECONDARY",  minimal_resources_secondary);
+  updateFromEnv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR", minimal_resources_coordinator);
+
+  updateFromEnv("ARANGODB_NR_AGENTS", nragents);
+
+  if (nragents != 1) {
+    nragents = 1;
   }
 
-  if (os::hasenv("ARANGODB_ROLE")) {
-    role = getenv("ARANGODB_ROLE");
+  updateFromEnv("ARANGODB_NR_DBSERVERS", nrdbservers);
+
+  if (nrdbservers < 1) {
+    nrdbservers = 1;
   }
 
-  if (os::hasenv("ARANGODB_MODE")) {
-    mode = getenv("ARANGODB_MODE");
-  }
+  updateFromEnv("ARANGODB_NR_COORDINATORS", nrcoordinators);
 
-  if (os::hasenv("ARANGODB_ASYNC_REPLICATION")) {
-    async_repl = getenv("ARANGODB_ASYNC_REPLICATION");
-  }
-
-  if (os::hasenv("ARANGODB_USER")) {
-    frameworkUser = getenv("ARANGODB_USER");
-  }
-
-  if (os::hasenv("ARANGODB_FRAMEWORK_NAME")) {
-    frameworkName = getenv("ARANGODB_FRAMEWORK_NAME");
-  }
-
-  if (os::hasenv("ARANGODB_ZK")) {
-    zk = getenv("ARANGODB_ZK");
-  }
-
-  if (os::hasenv("ARANGODB_WEBUI")) {
-    webui = getenv("ARANGODB_WEBUI");
-  }
-
-  if (os::hasenv("ARANGODB_HTTP_PORT")) {
-    webuiPort = atoi(getenv("ARANGODB_HTTP_PORT"));
-  }
-
-  if (os::hasenv("ARANGODB_PRINCIPAL")) {
-    principal = getenv("ARANGODB_PRINCIPAL");
-  }
-
-  if (os::hasenv("ARANGODB_VOLUME_PATH")) {
-    volumePath = getenv("ARANGODB_VOLUME_PATH");
-  }
-
-  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_AGENT")) {
-    minimal_resources_agent = getenv("ARANGODB_MINIMAL_RESOURCES_AGENT");
-  }
-
-  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_DBSERVER")) {
-    minimal_resources_dbserver = getenv("ARANGODB_MINIMAL_RESOURCES_DBSERVER");
-  }
-
-  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_SECONDARY")) {
-    minimal_resources_secondary = getenv("ARANGODB_MINIMAL_RESOURCES_SECONDARY");
-  }
-
-  if (os::hasenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR")) {
-    minimal_resources_coordinator = getenv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR");
-  }
-
-  if (os::hasenv("ARANGODB_NR_AGENTS")) {
-    nragents = atoi(getenv("ARANGODB_NR_AGENTS"));
-    if (nragents != 1) {
-      nragents = 1;
-    }
-  }
-
-  if (os::hasenv("ARANGODB_NR_DBSERVERS")) {
-    nrdbservers = atoi(getenv("ARANGODB_NR_DBSERVERS"));
-    if (nrdbservers < 1) {
-      nrdbservers = 1;
-    }
-  }
-
-  if (os::hasenv("ARANGODB_NR_COORDINATORS")) {
-    nrcoordinators = atoi(getenv("ARANGODB_NR_COORDINATORS"));
-    if (nrcoordinators < 1) {
-      nrcoordinators = 1;
-    }
+  if (nrcoordinators < 1) {
+    nrcoordinators = 1;
   }
 
   if (master.empty()) {
@@ -438,8 +415,10 @@ int main (int argc, char** argv) {
 
   framework.set_webui_url(webui);
 
-  if (os::hasenv("MESOS_CHECKPOINT")) {
-    framework.set_checkpoint(numify<bool>(os::getenv("MESOS_CHECKPOINT")).get());
+  Option<string> mesosCheckpoint =  os::getenv("MESOS_CHECKPOINT");
+
+  if (mesosCheckpoint.isSome()) {
+    framework.set_checkpoint(numify<bool>(mesosCheckpoint).get());
   }
 
   // ...........................................................................
@@ -483,20 +462,24 @@ int main (int argc, char** argv) {
 
   mesos::MesosSchedulerDriver* driver;
 
-  if (os::hasenv("MESOS_AUTHENTICATE")) {
+  Option<string> mesosAuthenticate = os::getenv("MESOS_AUTHENTICATE");
+
+  if (mesosAuthenticate.isSome()) {
     cout << "Enabling authentication for the framework" << endl;
 
     if (principal.empty()) {
       EXIT(1) << "Expecting authentication principal in the environment";
     }
 
-    if (!os::hasenv("ARANGODB_SECRET")) {
+    Option<string> arangodbSecret = os::getenv("ARANGODB_SECRET");
+
+    if (arangodbSecret.isNone()) {
       EXIT(1) << "Expecting authentication secret in the environment";
     }
 
     mesos::Credential credential;
     credential.set_principal(principal);
-    credential.set_secret(getenv("ARANGODB_SECRET"));
+    credential.set_secret(arangodbSecret.get());
 
     framework.set_principal(principal);
     driver = new mesos::MesosSchedulerDriver(&scheduler, framework, master, credential);
