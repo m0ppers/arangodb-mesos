@@ -82,6 +82,30 @@ static void updateFromEnv (const string& name, int& var) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update from env
+////////////////////////////////////////////////////////////////////////////////
+
+static void updateFromEnv (const string& name, double& var) {
+  Option<string> env = os::getenv(name);
+
+  if (env.isSome()) {
+    var = atof(env.get().c_str());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update from env
+////////////////////////////////////////////////////////////////////////////////
+
+static void updateFromEnv (const string& name, bool& var) {
+  Option<string> env = os::getenv(name);
+
+  if (env.isSome()) {
+    var = env.get() == "true";
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -249,6 +273,18 @@ int main (int argc, char** argv) {
             "ignore any old state",
             false);
 
+  bool coordinatorsPublic;
+  flags.add(&coordinatorsPublic,
+            "coordinators_public",
+            "run coordinator tasks on public agents",
+            false);
+
+  bool secondariesWithDBservers;
+  flags.add(&secondariesWithDBservers,
+            "secondaries_with_dbservers",
+            "run secondaries only on agents with DBservers",
+            false);
+
   // address of master and zookeeper
   string master;
   flags.add(&master,
@@ -270,22 +306,13 @@ int main (int argc, char** argv) {
     exit(1);
   }
 
-  updateFromEnv("MESOS_MASTER", master);
-  updateFromEnv("ARANGODB_ROLE", role);
   updateFromEnv("ARANGODB_MODE", mode);
   updateFromEnv("ARANGODB_ASYNC_REPLICATION", async_repl);
-  updateFromEnv("ARANGODB_USER", frameworkUser);
-  updateFromEnv("ARANGODB_FRAMEWORK_NAME", frameworkName);
-  updateFromEnv("ARANGODB_ZK", zk);
-  updateFromEnv("ARANGODB_WEBUI", webui);
-  updateFromEnv("ARANGODB_HTTP_PORT", webuiPort);
-  updateFromEnv("ARANGODB_PRINCIPAL", principal);
-  updateFromEnv("ARANGODB_VOLUME_PATH", volumePath);
+  updateFromEnv("ARANGODB_ROLE", role);
   updateFromEnv("ARANGODB_MINIMAL_RESOURCES_AGENT", minimal_resources_agent);
   updateFromEnv("ARANGODB_MINIMAL_RESOURCES_DBSERVER", minimal_resources_dbserver);
   updateFromEnv("ARANGODB_MINIMAL_RESOURCES_SECONDARY",  minimal_resources_secondary);
   updateFromEnv("ARANGODB_MINIMAL_RESOURCES_COORDINATOR", minimal_resources_coordinator);
-
   updateFromEnv("ARANGODB_NR_AGENTS", nragents);
 
   if (nragents != 1) {
@@ -303,6 +330,20 @@ int main (int argc, char** argv) {
   if (nrcoordinators < 1) {
     nrcoordinators = 1;
   }
+
+  updateFromEnv("ARANGODB_PRINCIPAL", principal);
+  updateFromEnv("ARANGODB_USER", frameworkUser);
+  updateFromEnv("ARANGODB_FRAMEWORK_NAME", frameworkName);
+  updateFromEnv("ARANGODB_WEBUI", webui);
+  updateFromEnv("ARANGODB_HTTP_PORT", webuiPort);
+  updateFromEnv("ARANGODB_FAILOVER_TIMEOUT", failoverTimeout);
+  updateFromEnv("ARANGODB_VOLUME_PATH", volumePath);
+  updateFromEnv("ARANGODB_RESET_STATE", resetState);
+  updateFromEnv("ARANGODB_COORDINATORS_PUBLIC", coordinatorsPublic);
+  updateFromEnv("ARANGODB_SECONDARIES_WITH_DBSERVERS", secondariesWithDBservers);
+
+  updateFromEnv("MESOS_MASTER", master);
+  updateFromEnv("ARANGODB_ZK", zk);
 
   if (master.empty()) {
     cerr << "Missing master, either use flag '--master' or set 'MESOS_MASTER'" << endl;
@@ -322,6 +363,7 @@ int main (int argc, char** argv) {
     cerr << argv[0] << ": expecting mode '" << mode << "' to be "
          << "standalone, cluster" << "\n";
   }
+  LOG(INFO) << "Mode: " << mode;
 
   if (async_repl == "yes" || async_repl == "true" || async_repl == "y") {
     Global::setAsyncReplication(true);
@@ -333,6 +375,9 @@ int main (int argc, char** argv) {
 
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);
+
+  Global::setCoordinatorsPublic(coordinatorsPublic);
+  Global::setSecondariesWithDBservers(secondariesWithDBservers);
 
   LOG(INFO) << "Minimal resources agent: " << minimal_resources_agent;
   Global::setMinResourcesAgent(minimal_resources_agent);
@@ -376,6 +421,7 @@ int main (int argc, char** argv) {
   // create the framework
   mesos::FrameworkInfo framework;
   framework.set_user(frameworkUser);
+  LOG(INFO) << "framework user: " << frameworkUser;
   framework.set_checkpoint(true);
 
   framework.set_name(frameworkName);
@@ -464,7 +510,7 @@ int main (int argc, char** argv) {
 
   Option<string> mesosAuthenticate = os::getenv("MESOS_AUTHENTICATE");
 
-  if (mesosAuthenticate.isSome()) {
+  if (mesosAuthenticate.isSome() && mesosAuthenticate.get() == "true") {
     cout << "Enabling authentication for the framework" << endl;
 
     if (principal.empty()) {

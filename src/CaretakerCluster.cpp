@@ -345,7 +345,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   OfferAction action;
 
-#if 0
+#if 1
   // Further debugging output:
   LOG(INFO) 
   << "checkOffer, here is the state:\n"

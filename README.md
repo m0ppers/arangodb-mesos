@@ -250,15 +250,11 @@ The API supports the following routes:
         {"mode":"cluster"}
 
   - `GET /v1/endpoints.json`: This produces a JSON document describing
-    the reading and writing endpoints for communication with the
-    ArangoDB cluster, as in this:
+    the endpoints for communication with the ArangoDB cluster, as in
+    this:
 
         {
-           "read" : [
-              "http://10.0.0.4:2406",
-              "http://10.0.0.9:5450"
-           ],
-           "write" : [
+           "coordinators" : [
               "http://10.0.0.4:2406",
               "http://10.0.0.9:5450"
            ]

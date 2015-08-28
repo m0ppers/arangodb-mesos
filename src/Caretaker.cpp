@@ -375,12 +375,14 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   // ...........................................................................
 
   if (! isSuitableOffer(target, offer)) {
+    LOG(INFO) << "offer not suitable";
     return { OfferActionState::IGNORE };
   }
 
   int p = plan->entries_size();
 
   if (p == 0) {
+    LOG(INFO) << "p == 0";
     return { OfferActionState::IGNORE };
   }
 
@@ -480,6 +482,7 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   }
 
   if (required == -1) {
+    LOG(INFO) << "nothing required";
     return { OfferActionState::STORE_FOR_LATER };
   }
 
@@ -492,16 +495,17 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
     TasksPlanEntry const& primaryEntry = globalPlan.dbservers().entries(required);
     if (offer.slave_id().value() == primaryEntry.slave_id().value()) {
       // we decline this offer, there will be another one
+      LOG(INFO) << "secondary not on same slave as its primary";
       return { OfferActionState::STORE_FOR_LATER };
     }
   }
 
   // ...........................................................................
-  // a hack: do not put a secondary on a slave that we have not yet used
+  // do not put a secondary on a slave that we have not yet used
   // at all for a primary:
   // ...........................................................................
 
-  if (name == "secondary") {
+  if (Global::secondariesWithDBservers() && name == "secondary") {
     Plan globalPlan = Global::state().plan();
     TasksPlan const& primaryEntries = globalPlan.dbservers();
     int found = -1;
@@ -514,6 +518,7 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
     }
     if (found == -1) {
       // we decline this offer, there will be another one
+      LOG(INFO) << "secondary not alone on a slave";
       return { OfferActionState::STORE_FOR_LATER };
     }
   }
