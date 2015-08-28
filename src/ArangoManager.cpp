@@ -235,8 +235,8 @@ class ArangoManagerImpl : public ArangoManager {
     void removeOffer (const mesos::OfferID& offerId) override;
     void taskStatusUpdate (const mesos::TaskStatus& status) override;
     void destroy () override;
-    vector<string> readEndpoints () override;
-    vector<string> writeEndpoints () override;
+    vector<string> coordinatorEndpoints () override;
+    vector<string> dbserverEndpoints () override;
 
   private:
     void dispatch ();
@@ -371,10 +371,10 @@ void ArangoManagerImpl::destroy () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoints for reading
+/// @brief endpoints of the coordinators
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> ArangoManagerImpl::readEndpoints () {
+vector<string> ArangoManagerImpl::coordinatorEndpoints () {
   Current current = Global::state().current();
   auto const& coordinators = current.coordinators();
 
@@ -382,29 +382,31 @@ vector<string> ArangoManagerImpl::readEndpoints () {
 
   for (int i = 0;  i < coordinators.entries_size();  ++i) {
     auto const& coordinator = coordinators.entries(i);
-    string endpoint = "http://" + coordinator.hostname() + ":" + to_string(coordinator.ports(0));
-
-    endpoints.push_back(endpoint);
+    if (coordinator.has_hostname() && coordinator.ports_size() > 0) {
+      string endpoint = "http://" + coordinator.hostname() + ":" + to_string(coordinator.ports(0));
+      endpoints.push_back(endpoint);
+    }
   }
 
   return endpoints;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoints for writing
+/// @brief endpoints of the DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> ArangoManagerImpl::writeEndpoints () {
+vector<string> ArangoManagerImpl::dbserverEndpoints () {
   Current current = Global::state().current();
-  auto const& coordinators = current.coordinators();
+  auto const& dbservers = current.primary_dbservers();
 
   vector<string> endpoints;
 
-  for (int i = 0;  i < coordinators.entries_size();  ++i) {
-    auto const& coordinator = coordinators.entries(i);
-    string endpoint = "http://" + coordinator.hostname() + ":" + to_string(coordinator.ports(0));
-
-    endpoints.push_back(endpoint);
+  for (int i = 0;  i < dbservers.entries_size();  ++i) {
+    auto const& dbserver = dbservers.entries(i);
+    if (dbserver.has_hostname() && dbserver.ports_size() > 0) {
+      string endpoint = "http://" + dbserver.hostname() + ":" + to_string(dbserver.ports(0));
+      endpoints.push_back(endpoint);
+    }
   }
 
   return endpoints;

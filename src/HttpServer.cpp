@@ -176,24 +176,24 @@ string HttpServerImpl::GET_V1_MODE (const string&) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_V1_ENDPOINTS (const string&) {
-  vector<string> read = Global::manager().readEndpoints();
-  vector<string> write = Global::manager().writeEndpoints();
+  vector<string> coordinators = Global::manager().coordinatorEndpoints();
+  vector<string> dbservers = Global::manager().dbserverEndpoints();
 
-  picojson::array readA;
+  picojson::array coorA;
 
-  for (auto i : read) {
-    readA.push_back(picojson::value(i));
+  for (auto i : coordinators) {
+    coorA.push_back(picojson::value(i));
   }
 
-  picojson::array writeA;
+  picojson::array dbsA;
 
-  for (auto i : write) {
-    writeA.push_back(picojson::value(i));
+  for (auto i : dbservers) {
+    dbsA.push_back(picojson::value(i));
   }
 
   picojson::object result;
-  result["read"] = picojson::value(readA);
-  result["write"] = picojson::value(writeA);
+  result["coordinators"] = picojson::value(coorA);
+  result["dbservers"] = picojson::value(dbsA);
 
   return picojson::value(result).serialize();
 }

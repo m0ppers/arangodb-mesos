@@ -120,13 +120,13 @@ namespace arangodb {
 /// @brief endpoints for reading
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual std::vector<std::string> readEndpoints () = 0;
+      virtual std::vector<std::string> coordinatorEndpoints () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief endpoints for writing
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual std::vector<std::string> writeEndpoints () = 0;
+      virtual std::vector<std::string> dbserverEndpoints () = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
