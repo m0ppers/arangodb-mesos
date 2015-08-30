@@ -78,28 +78,6 @@ static double memoryResource (const mesos::Resource& resource) {
   return 0;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @brief filter function
-///////////////////////////////////////////////////////////////////////////////
-
-#if MESOS_FILTER
-#else
-
-static mesos::Resources filterResource (const mesos::Resources& resources,
-                                        bool (*pred)(const mesos::Resource&)) {
-  mesos::Resources result;
-
-  for (const auto& res : resources) {
-    if (pred(res)) {
-      result += res;
-    }
-  }
-
-  return result;
-}
-
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -276,11 +254,7 @@ size_t arangodb::numberPorts (const mesos::Offer& offer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 mesos::Resources arangodb::filterIsDisk (const mesos::Resources& resources) {
-#if MESOS_FILTER
   return resources.filter(isDisk);
-#else
-  return filterResource(resources, isDisk);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -288,11 +262,7 @@ mesos::Resources arangodb::filterIsDisk (const mesos::Resources& resources) {
 ////////////////////////////////////////////////////////////////////////////////
 
 mesos::Resources arangodb::filterNotIsDisk (const mesos::Resources& resources) {
-#if MESOS_FILTER
   return resources.filter(notIsDisk);
-#else
-  return filterResource(resources, notIsDisk);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,11 +270,7 @@ mesos::Resources arangodb::filterNotIsDisk (const mesos::Resources& resources) {
 ////////////////////////////////////////////////////////////////////////////////
 
 mesos::Resources arangodb::filterIsPersistentVolume (const mesos::Resources& resources) {
-#if MESOS_FILTER
-  return resources.filter(Resources::isPersistentVolume);
-#else
-  return filterResource(resources, mesos::Resources::isPersistentVolume);
-#endif
+  return resources.filter(mesos::Resources::isPersistentVolume);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,11 +278,7 @@ mesos::Resources arangodb::filterIsPersistentVolume (const mesos::Resources& res
 ////////////////////////////////////////////////////////////////////////////////
 
 mesos::Resources arangodb::filterNotIsPorts (const mesos::Resources& resources) {
-#if MESOS_FILTER
   return resources.filter(notIsPorts);
-#else
-  return filterResource(resources, notIsDisk);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

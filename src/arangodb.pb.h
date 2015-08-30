@@ -35,73 +35,74 @@ void  protobuf_AddDesc_arangodb_2eproto();
 void protobuf_AssignDesc_arangodb_2eproto();
 void protobuf_ShutdownFile_arangodb_2eproto();
 
-class TargetEntry;
 class Target;
-class TasksPlanEntry;
+class Targets;
+class TaskPlan;
 class TasksPlan;
 class Plan;
-class ResourcesCurrentEntry;
+class ResourceCurrent;
 class ResourcesCurrent;
-class InstancesCurrentEntry;
+class InstanceCurrent;
 class InstancesCurrent;
 class Current;
 class State;
 
-enum ResourcesCurrentState {
-  RESOURCE_STATE_UNKNOWN = 1,
-  RESOURCE_STATE_REQUIRED = 2,
-  RESOURCE_STATE_TRYING_TO_RESERVE = 3,
-  RESOURCE_STATE_TRYING_TO_PERSIST = 4,
-  RESOURCE_STATE_USEABLE = 5,
-  RESOURCE_STATE_USED = 6,
-  RESOURCE_STATE_LOST = 7
+enum TaskPlanState {
+  TASK_STATE_NEW = 1,
+  TASK_STATE_TRYING_TO_RESERVE = 2,
+  TASK_STATE_TRYING_TO_PERSIST = 3,
+  TASK_STATE_TRYING_TO_START = 4,
+  TASK_STATE_TRYING_TO_RESTART = 5,
+  TASK_STATE_RUNNING = 6,
+  TASK_STATE_KILLED = 7,
+  TASK_STATE_FAILED_OVER = 8
 };
-bool ResourcesCurrentState_IsValid(int value);
-const ResourcesCurrentState ResourcesCurrentState_MIN = RESOURCE_STATE_UNKNOWN;
-const ResourcesCurrentState ResourcesCurrentState_MAX = RESOURCE_STATE_LOST;
-const int ResourcesCurrentState_ARRAYSIZE = ResourcesCurrentState_MAX + 1;
+bool TaskPlanState_IsValid(int value);
+const TaskPlanState TaskPlanState_MIN = TASK_STATE_NEW;
+const TaskPlanState TaskPlanState_MAX = TASK_STATE_FAILED_OVER;
+const int TaskPlanState_ARRAYSIZE = TaskPlanState_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* ResourcesCurrentState_descriptor();
-inline const ::std::string& ResourcesCurrentState_Name(ResourcesCurrentState value) {
+const ::google::protobuf::EnumDescriptor* TaskPlanState_descriptor();
+inline const ::std::string& TaskPlanState_Name(TaskPlanState value) {
   return ::google::protobuf::internal::NameOfEnum(
-    ResourcesCurrentState_descriptor(), value);
+    TaskPlanState_descriptor(), value);
 }
-inline bool ResourcesCurrentState_Parse(
-    const ::std::string& name, ResourcesCurrentState* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<ResourcesCurrentState>(
-    ResourcesCurrentState_descriptor(), name, value);
+inline bool TaskPlanState_Parse(
+    const ::std::string& name, TaskPlanState* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<TaskPlanState>(
+    TaskPlanState_descriptor(), name, value);
 }
-enum InstancesCurrentState {
+enum InstanceCurrentState {
   INSTANCE_STATE_UNUSED = 1,
   INSTANCE_STATE_STARTING = 2,
   INSTANCE_STATE_RUNNING = 3,
   INSTANCE_STATE_STOPPED = 4
 };
-bool InstancesCurrentState_IsValid(int value);
-const InstancesCurrentState InstancesCurrentState_MIN = INSTANCE_STATE_UNUSED;
-const InstancesCurrentState InstancesCurrentState_MAX = INSTANCE_STATE_STOPPED;
-const int InstancesCurrentState_ARRAYSIZE = InstancesCurrentState_MAX + 1;
+bool InstanceCurrentState_IsValid(int value);
+const InstanceCurrentState InstanceCurrentState_MIN = INSTANCE_STATE_UNUSED;
+const InstanceCurrentState InstanceCurrentState_MAX = INSTANCE_STATE_STOPPED;
+const int InstanceCurrentState_ARRAYSIZE = InstanceCurrentState_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* InstancesCurrentState_descriptor();
-inline const ::std::string& InstancesCurrentState_Name(InstancesCurrentState value) {
+const ::google::protobuf::EnumDescriptor* InstanceCurrentState_descriptor();
+inline const ::std::string& InstanceCurrentState_Name(InstanceCurrentState value) {
   return ::google::protobuf::internal::NameOfEnum(
-    InstancesCurrentState_descriptor(), value);
+    InstanceCurrentState_descriptor(), value);
 }
-inline bool InstancesCurrentState_Parse(
-    const ::std::string& name, InstancesCurrentState* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<InstancesCurrentState>(
-    InstancesCurrentState_descriptor(), name, value);
+inline bool InstanceCurrentState_Parse(
+    const ::std::string& name, InstanceCurrentState* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<InstanceCurrentState>(
+    InstanceCurrentState_descriptor(), name, value);
 }
 // ===================================================================
 
-class TargetEntry : public ::google::protobuf::Message {
+class Target : public ::google::protobuf::Message {
  public:
-  TargetEntry();
-  virtual ~TargetEntry();
+  Target();
+  virtual ~Target();
 
-  TargetEntry(const TargetEntry& from);
+  Target(const Target& from);
 
-  inline TargetEntry& operator=(const TargetEntry& from) {
+  inline Target& operator=(const Target& from) {
     CopyFrom(from);
     return *this;
   }
@@ -115,17 +116,17 @@ class TargetEntry : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const TargetEntry& default_instance();
+  static const Target& default_instance();
 
-  void Swap(TargetEntry* other);
+  void Swap(Target* other);
 
   // implements Message ----------------------------------------------
 
-  TargetEntry* New() const;
+  Target* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const TargetEntry& from);
-  void MergeFrom(const TargetEntry& from);
+  void CopyFrom(const Target& from);
+  void MergeFrom(const Target& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -186,7 +187,7 @@ class TargetEntry : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 number_ports() const;
   inline void set_number_ports(::google::protobuf::uint32 value);
 
-  // @@protoc_insertion_point(class_scope:arangodb.TargetEntry)
+  // @@protoc_insertion_point(class_scope:arangodb.Target)
  private:
   inline void set_has_instances();
   inline void clear_has_instances();
@@ -208,18 +209,18 @@ class TargetEntry : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static TargetEntry* default_instance_;
+  static Target* default_instance_;
 };
 // -------------------------------------------------------------------
 
-class Target : public ::google::protobuf::Message {
+class Targets : public ::google::protobuf::Message {
  public:
-  Target();
-  virtual ~Target();
+  Targets();
+  virtual ~Targets();
 
-  Target(const Target& from);
+  Targets(const Targets& from);
 
-  inline Target& operator=(const Target& from) {
+  inline Targets& operator=(const Targets& from) {
     CopyFrom(from);
     return *this;
   }
@@ -233,17 +234,17 @@ class Target : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const Target& default_instance();
+  static const Targets& default_instance();
 
-  void Swap(Target* other);
+  void Swap(Targets* other);
 
   // implements Message ----------------------------------------------
 
-  Target* New() const;
+  Targets* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const Target& from);
-  void MergeFrom(const Target& from);
+  void CopyFrom(const Targets& from);
+  void MergeFrom(const Targets& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -278,41 +279,41 @@ class Target : public ::google::protobuf::Message {
   inline ::std::string* release_mode();
   inline void set_allocated_mode(::std::string* mode);
 
-  // required .arangodb.TargetEntry agents = 2;
+  // required .arangodb.Target agents = 2;
   inline bool has_agents() const;
   inline void clear_agents();
   static const int kAgentsFieldNumber = 2;
-  inline const ::arangodb::TargetEntry& agents() const;
-  inline ::arangodb::TargetEntry* mutable_agents();
-  inline ::arangodb::TargetEntry* release_agents();
-  inline void set_allocated_agents(::arangodb::TargetEntry* agents);
+  inline const ::arangodb::Target& agents() const;
+  inline ::arangodb::Target* mutable_agents();
+  inline ::arangodb::Target* release_agents();
+  inline void set_allocated_agents(::arangodb::Target* agents);
 
-  // required .arangodb.TargetEntry coordinators = 3;
+  // required .arangodb.Target coordinators = 3;
   inline bool has_coordinators() const;
   inline void clear_coordinators();
   static const int kCoordinatorsFieldNumber = 3;
-  inline const ::arangodb::TargetEntry& coordinators() const;
-  inline ::arangodb::TargetEntry* mutable_coordinators();
-  inline ::arangodb::TargetEntry* release_coordinators();
-  inline void set_allocated_coordinators(::arangodb::TargetEntry* coordinators);
+  inline const ::arangodb::Target& coordinators() const;
+  inline ::arangodb::Target* mutable_coordinators();
+  inline ::arangodb::Target* release_coordinators();
+  inline void set_allocated_coordinators(::arangodb::Target* coordinators);
 
-  // required .arangodb.TargetEntry dbservers = 4;
+  // required .arangodb.Target dbservers = 4;
   inline bool has_dbservers() const;
   inline void clear_dbservers();
   static const int kDbserversFieldNumber = 4;
-  inline const ::arangodb::TargetEntry& dbservers() const;
-  inline ::arangodb::TargetEntry* mutable_dbservers();
-  inline ::arangodb::TargetEntry* release_dbservers();
-  inline void set_allocated_dbservers(::arangodb::TargetEntry* dbservers);
+  inline const ::arangodb::Target& dbservers() const;
+  inline ::arangodb::Target* mutable_dbservers();
+  inline ::arangodb::Target* release_dbservers();
+  inline void set_allocated_dbservers(::arangodb::Target* dbservers);
 
-  // required .arangodb.TargetEntry secondaries = 5;
+  // required .arangodb.Target secondaries = 5;
   inline bool has_secondaries() const;
   inline void clear_secondaries();
   static const int kSecondariesFieldNumber = 5;
-  inline const ::arangodb::TargetEntry& secondaries() const;
-  inline ::arangodb::TargetEntry* mutable_secondaries();
-  inline ::arangodb::TargetEntry* release_secondaries();
-  inline void set_allocated_secondaries(::arangodb::TargetEntry* secondaries);
+  inline const ::arangodb::Target& secondaries() const;
+  inline ::arangodb::Target* mutable_secondaries();
+  inline ::arangodb::Target* release_secondaries();
+  inline void set_allocated_secondaries(::arangodb::Target* secondaries);
 
   // optional bool asynchronous_replication = 6;
   inline bool has_asynchronous_replication() const;
@@ -321,7 +322,7 @@ class Target : public ::google::protobuf::Message {
   inline bool asynchronous_replication() const;
   inline void set_asynchronous_replication(bool value);
 
-  // @@protoc_insertion_point(class_scope:arangodb.Target)
+  // @@protoc_insertion_point(class_scope:arangodb.Targets)
  private:
   inline void set_has_mode();
   inline void clear_has_mode();
@@ -339,10 +340,10 @@ class Target : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* mode_;
-  ::arangodb::TargetEntry* agents_;
-  ::arangodb::TargetEntry* coordinators_;
-  ::arangodb::TargetEntry* dbservers_;
-  ::arangodb::TargetEntry* secondaries_;
+  ::arangodb::Target* agents_;
+  ::arangodb::Target* coordinators_;
+  ::arangodb::Target* dbservers_;
+  ::arangodb::Target* secondaries_;
   bool asynchronous_replication_;
 
   mutable int _cached_size_;
@@ -353,18 +354,18 @@ class Target : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static Target* default_instance_;
+  static Targets* default_instance_;
 };
 // -------------------------------------------------------------------
 
-class TasksPlanEntry : public ::google::protobuf::Message {
+class TaskPlan : public ::google::protobuf::Message {
  public:
-  TasksPlanEntry();
-  virtual ~TasksPlanEntry();
+  TaskPlan();
+  virtual ~TaskPlan();
 
-  TasksPlanEntry(const TasksPlanEntry& from);
+  TaskPlan(const TaskPlan& from);
 
-  inline TasksPlanEntry& operator=(const TasksPlanEntry& from) {
+  inline TaskPlan& operator=(const TaskPlan& from) {
     CopyFrom(from);
     return *this;
   }
@@ -378,17 +379,17 @@ class TasksPlanEntry : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const TasksPlanEntry& default_instance();
+  static const TaskPlan& default_instance();
 
-  void Swap(TasksPlanEntry* other);
+  void Swap(TaskPlan* other);
 
   // implements Message ----------------------------------------------
 
-  TasksPlanEntry* New() const;
+  TaskPlan* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const TasksPlanEntry& from);
-  void MergeFrom(const TasksPlanEntry& from);
+  void CopyFrom(const TaskPlan& from);
+  void MergeFrom(const TaskPlan& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -411,21 +412,19 @@ class TasksPlanEntry : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required bool is_primary = 1;
+  // required .arangodb.TaskPlanState state = 1 [default = TASK_STATE_NEW];
+  inline bool has_state() const;
+  inline void clear_state();
+  static const int kStateFieldNumber = 1;
+  inline ::arangodb::TaskPlanState state() const;
+  inline void set_state(::arangodb::TaskPlanState value);
+
+  // required bool is_primary = 2;
   inline bool has_is_primary() const;
   inline void clear_is_primary();
-  static const int kIsPrimaryFieldNumber = 1;
+  static const int kIsPrimaryFieldNumber = 2;
   inline bool is_primary() const;
   inline void set_is_primary(bool value);
-
-  // optional .mesos.SlaveID slave_id = 2;
-  inline bool has_slave_id() const;
-  inline void clear_slave_id();
-  static const int kSlaveIdFieldNumber = 2;
-  inline const ::mesos::SlaveID& slave_id() const;
-  inline ::mesos::SlaveID* mutable_slave_id();
-  inline ::mesos::SlaveID* release_slave_id();
-  inline void set_allocated_slave_id(::mesos::SlaveID* slave_id);
 
   // optional string persistence_id = 3;
   inline bool has_persistence_id() const;
@@ -439,30 +438,40 @@ class TasksPlanEntry : public ::google::protobuf::Message {
   inline ::std::string* release_persistence_id();
   inline void set_allocated_persistence_id(::std::string* persistence_id);
 
-  // @@protoc_insertion_point(class_scope:arangodb.TasksPlanEntry)
+  // required double started = 4;
+  inline bool has_started() const;
+  inline void clear_started();
+  static const int kStartedFieldNumber = 4;
+  inline double started() const;
+  inline void set_started(double value);
+
+  // @@protoc_insertion_point(class_scope:arangodb.TaskPlan)
  private:
+  inline void set_has_state();
+  inline void clear_has_state();
   inline void set_has_is_primary();
   inline void clear_has_is_primary();
-  inline void set_has_slave_id();
-  inline void clear_has_slave_id();
   inline void set_has_persistence_id();
   inline void clear_has_persistence_id();
+  inline void set_has_started();
+  inline void clear_has_started();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::mesos::SlaveID* slave_id_;
-  ::std::string* persistence_id_;
+  int state_;
   bool is_primary_;
+  ::std::string* persistence_id_;
+  double started_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static TasksPlanEntry* default_instance_;
+  static TaskPlan* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -520,16 +529,16 @@ class TasksPlan : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // repeated .arangodb.TasksPlanEntry entries = 1;
+  // repeated .arangodb.TaskPlan entries = 1;
   inline int entries_size() const;
   inline void clear_entries();
   static const int kEntriesFieldNumber = 1;
-  inline const ::arangodb::TasksPlanEntry& entries(int index) const;
-  inline ::arangodb::TasksPlanEntry* mutable_entries(int index);
-  inline ::arangodb::TasksPlanEntry* add_entries();
-  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::TasksPlanEntry >&
+  inline const ::arangodb::TaskPlan& entries(int index) const;
+  inline ::arangodb::TaskPlan* mutable_entries(int index);
+  inline ::arangodb::TaskPlan* add_entries();
+  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::TaskPlan >&
       entries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::arangodb::TasksPlanEntry >*
+  inline ::google::protobuf::RepeatedPtrField< ::arangodb::TaskPlan >*
       mutable_entries();
 
   // @@protoc_insertion_point(class_scope:arangodb.TasksPlan)
@@ -537,7 +546,7 @@ class TasksPlan : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::RepeatedPtrField< ::arangodb::TasksPlanEntry > entries_;
+  ::google::protobuf::RepeatedPtrField< ::arangodb::TaskPlan > entries_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
@@ -671,14 +680,14 @@ class Plan : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class ResourcesCurrentEntry : public ::google::protobuf::Message {
+class ResourceCurrent : public ::google::protobuf::Message {
  public:
-  ResourcesCurrentEntry();
-  virtual ~ResourcesCurrentEntry();
+  ResourceCurrent();
+  virtual ~ResourceCurrent();
 
-  ResourcesCurrentEntry(const ResourcesCurrentEntry& from);
+  ResourceCurrent(const ResourceCurrent& from);
 
-  inline ResourcesCurrentEntry& operator=(const ResourcesCurrentEntry& from) {
+  inline ResourceCurrent& operator=(const ResourceCurrent& from) {
     CopyFrom(from);
     return *this;
   }
@@ -692,17 +701,17 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const ResourcesCurrentEntry& default_instance();
+  static const ResourceCurrent& default_instance();
 
-  void Swap(ResourcesCurrentEntry* other);
+  void Swap(ResourceCurrent* other);
 
   // implements Message ----------------------------------------------
 
-  ResourcesCurrentEntry* New() const;
+  ResourceCurrent* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const ResourcesCurrentEntry& from);
-  void MergeFrom(const ResourcesCurrentEntry& from);
+  void CopyFrom(const ResourceCurrent& from);
+  void MergeFrom(const ResourceCurrent& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -725,35 +734,28 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // optional .arangodb.ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
-  inline bool has_state() const;
-  inline void clear_state();
-  static const int kStateFieldNumber = 1;
-  inline ::arangodb::ResourcesCurrentState state() const;
-  inline void set_state(::arangodb::ResourcesCurrentState value);
-
-  // optional .mesos.SlaveID slave_id = 2;
+  // optional .mesos.SlaveID slave_id = 1;
   inline bool has_slave_id() const;
   inline void clear_slave_id();
-  static const int kSlaveIdFieldNumber = 2;
+  static const int kSlaveIdFieldNumber = 1;
   inline const ::mesos::SlaveID& slave_id() const;
   inline ::mesos::SlaveID* mutable_slave_id();
   inline ::mesos::SlaveID* release_slave_id();
   inline void set_allocated_slave_id(::mesos::SlaveID* slave_id);
 
-  // optional .mesos.OfferID offer_id = 3;
+  // optional .mesos.OfferID offer_id = 2;
   inline bool has_offer_id() const;
   inline void clear_offer_id();
-  static const int kOfferIdFieldNumber = 3;
+  static const int kOfferIdFieldNumber = 2;
   inline const ::mesos::OfferID& offer_id() const;
   inline ::mesos::OfferID* mutable_offer_id();
   inline ::mesos::OfferID* release_offer_id();
   inline void set_allocated_offer_id(::mesos::OfferID* offer_id);
 
-  // repeated .mesos.Resource resources = 4;
+  // repeated .mesos.Resource resources = 3;
   inline int resources_size() const;
   inline void clear_resources();
-  static const int kResourcesFieldNumber = 4;
+  static const int kResourcesFieldNumber = 3;
   inline const ::mesos::Resource& resources(int index) const;
   inline ::mesos::Resource* mutable_resources(int index);
   inline ::mesos::Resource* add_resources();
@@ -762,10 +764,10 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
       mutable_resources();
 
-  // repeated uint32 ports = 5;
+  // repeated uint32 ports = 4;
   inline int ports_size() const;
   inline void clear_ports();
-  static const int kPortsFieldNumber = 5;
+  static const int kPortsFieldNumber = 4;
   inline ::google::protobuf::uint32 ports(int index) const;
   inline void set_ports(int index, ::google::protobuf::uint32 value);
   inline void add_ports(::google::protobuf::uint32 value);
@@ -774,10 +776,10 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_ports();
 
-  // optional string hostname = 6;
+  // optional string hostname = 5;
   inline bool has_hostname() const;
   inline void clear_hostname();
-  static const int kHostnameFieldNumber = 6;
+  static const int kHostnameFieldNumber = 5;
   inline const ::std::string& hostname() const;
   inline void set_hostname(const ::std::string& value);
   inline void set_hostname(const char* value);
@@ -786,10 +788,10 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
   inline ::std::string* release_hostname();
   inline void set_allocated_hostname(::std::string* hostname);
 
-  // optional string container_path = 7;
+  // optional string container_path = 6;
   inline bool has_container_path() const;
   inline void clear_container_path();
-  static const int kContainerPathFieldNumber = 7;
+  static const int kContainerPathFieldNumber = 6;
   inline const ::std::string& container_path() const;
   inline void set_container_path(const ::std::string& value);
   inline void set_container_path(const char* value);
@@ -798,10 +800,8 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
   inline ::std::string* release_container_path();
   inline void set_allocated_container_path(::std::string* container_path);
 
-  // @@protoc_insertion_point(class_scope:arangodb.ResourcesCurrentEntry)
+  // @@protoc_insertion_point(class_scope:arangodb.ResourceCurrent)
  private:
-  inline void set_has_state();
-  inline void clear_has_state();
   inline void set_has_slave_id();
   inline void clear_has_slave_id();
   inline void set_has_offer_id();
@@ -819,17 +819,16 @@ class ResourcesCurrentEntry : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > ports_;
   ::std::string* hostname_;
   ::std::string* container_path_;
-  int state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static ResourcesCurrentEntry* default_instance_;
+  static ResourceCurrent* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -887,16 +886,16 @@ class ResourcesCurrent : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // repeated .arangodb.ResourcesCurrentEntry entries = 1;
+  // repeated .arangodb.ResourceCurrent entries = 1;
   inline int entries_size() const;
   inline void clear_entries();
   static const int kEntriesFieldNumber = 1;
-  inline const ::arangodb::ResourcesCurrentEntry& entries(int index) const;
-  inline ::arangodb::ResourcesCurrentEntry* mutable_entries(int index);
-  inline ::arangodb::ResourcesCurrentEntry* add_entries();
-  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::ResourcesCurrentEntry >&
+  inline const ::arangodb::ResourceCurrent& entries(int index) const;
+  inline ::arangodb::ResourceCurrent* mutable_entries(int index);
+  inline ::arangodb::ResourceCurrent* add_entries();
+  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >&
       entries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::arangodb::ResourcesCurrentEntry >*
+  inline ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >*
       mutable_entries();
 
   // @@protoc_insertion_point(class_scope:arangodb.ResourcesCurrent)
@@ -904,7 +903,7 @@ class ResourcesCurrent : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::RepeatedPtrField< ::arangodb::ResourcesCurrentEntry > entries_;
+  ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent > entries_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
@@ -918,14 +917,14 @@ class ResourcesCurrent : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class InstancesCurrentEntry : public ::google::protobuf::Message {
+class InstanceCurrent : public ::google::protobuf::Message {
  public:
-  InstancesCurrentEntry();
-  virtual ~InstancesCurrentEntry();
+  InstanceCurrent();
+  virtual ~InstanceCurrent();
 
-  InstancesCurrentEntry(const InstancesCurrentEntry& from);
+  InstanceCurrent(const InstanceCurrent& from);
 
-  inline InstancesCurrentEntry& operator=(const InstancesCurrentEntry& from) {
+  inline InstanceCurrent& operator=(const InstanceCurrent& from) {
     CopyFrom(from);
     return *this;
   }
@@ -939,17 +938,17 @@ class InstancesCurrentEntry : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const InstancesCurrentEntry& default_instance();
+  static const InstanceCurrent& default_instance();
 
-  void Swap(InstancesCurrentEntry* other);
+  void Swap(InstanceCurrent* other);
 
   // implements Message ----------------------------------------------
 
-  InstancesCurrentEntry* New() const;
+  InstanceCurrent* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const InstancesCurrentEntry& from);
-  void MergeFrom(const InstancesCurrentEntry& from);
+  void CopyFrom(const InstanceCurrent& from);
+  void MergeFrom(const InstanceCurrent& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -972,12 +971,12 @@ class InstancesCurrentEntry : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // optional .arangodb.InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+  // required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
   inline bool has_state() const;
   inline void clear_state();
   static const int kStateFieldNumber = 1;
-  inline ::arangodb::InstancesCurrentState state() const;
-  inline void set_state(::arangodb::InstancesCurrentState value);
+  inline ::arangodb::InstanceCurrentState state() const;
+  inline void set_state(::arangodb::InstanceCurrentState value);
 
   // optional .mesos.TaskInfo task_info = 2;
   inline bool has_task_info() const;
@@ -1021,7 +1020,7 @@ class InstancesCurrentEntry : public ::google::protobuf::Message {
   inline ::std::string* release_hostname();
   inline void set_allocated_hostname(::std::string* hostname);
 
-  // @@protoc_insertion_point(class_scope:arangodb.InstancesCurrentEntry)
+  // @@protoc_insertion_point(class_scope:arangodb.InstanceCurrent)
  private:
   inline void set_has_state();
   inline void clear_has_state();
@@ -1048,7 +1047,7 @@ class InstancesCurrentEntry : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static InstancesCurrentEntry* default_instance_;
+  static InstanceCurrent* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -1106,16 +1105,16 @@ class InstancesCurrent : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // repeated .arangodb.InstancesCurrentEntry entries = 1;
+  // repeated .arangodb.InstanceCurrent entries = 1;
   inline int entries_size() const;
   inline void clear_entries();
   static const int kEntriesFieldNumber = 1;
-  inline const ::arangodb::InstancesCurrentEntry& entries(int index) const;
-  inline ::arangodb::InstancesCurrentEntry* mutable_entries(int index);
-  inline ::arangodb::InstancesCurrentEntry* add_entries();
-  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::InstancesCurrentEntry >&
+  inline const ::arangodb::InstanceCurrent& entries(int index) const;
+  inline ::arangodb::InstanceCurrent* mutable_entries(int index);
+  inline ::arangodb::InstanceCurrent* add_entries();
+  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >&
       entries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::arangodb::InstancesCurrentEntry >*
+  inline ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >*
       mutable_entries();
 
   // @@protoc_insertion_point(class_scope:arangodb.InstancesCurrent)
@@ -1123,7 +1122,7 @@ class InstancesCurrent : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::RepeatedPtrField< ::arangodb::InstancesCurrentEntry > entries_;
+  ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent > entries_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
@@ -1418,14 +1417,14 @@ class State : public ::google::protobuf::Message {
   inline ::mesos::FrameworkID* release_framework_id();
   inline void set_allocated_framework_id(::mesos::FrameworkID* framework_id);
 
-  // required .arangodb.Target target = 2;
-  inline bool has_target() const;
-  inline void clear_target();
-  static const int kTargetFieldNumber = 2;
-  inline const ::arangodb::Target& target() const;
-  inline ::arangodb::Target* mutable_target();
-  inline ::arangodb::Target* release_target();
-  inline void set_allocated_target(::arangodb::Target* target);
+  // required .arangodb.Targets targets = 2;
+  inline bool has_targets() const;
+  inline void clear_targets();
+  static const int kTargetsFieldNumber = 2;
+  inline const ::arangodb::Targets& targets() const;
+  inline ::arangodb::Targets* mutable_targets();
+  inline ::arangodb::Targets* release_targets();
+  inline void set_allocated_targets(::arangodb::Targets* targets);
 
   // required .arangodb.Plan plan = 3;
   inline bool has_plan() const;
@@ -1449,8 +1448,8 @@ class State : public ::google::protobuf::Message {
  private:
   inline void set_has_framework_id();
   inline void clear_has_framework_id();
-  inline void set_has_target();
-  inline void clear_has_target();
+  inline void set_has_targets();
+  inline void clear_has_targets();
   inline void set_has_plan();
   inline void clear_has_plan();
   inline void set_has_current();
@@ -1459,7 +1458,7 @@ class State : public ::google::protobuf::Message {
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::mesos::FrameworkID* framework_id_;
-  ::arangodb::Target* target_;
+  ::arangodb::Targets* targets_;
   ::arangodb::Plan* plan_;
   ::arangodb::Current* current_;
 
@@ -1478,154 +1477,154 @@ class State : public ::google::protobuf::Message {
 
 // ===================================================================
 
-// TargetEntry
+// Target
 
 // required uint32 instances = 1;
-inline bool TargetEntry::has_instances() const {
+inline bool Target::has_instances() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void TargetEntry::set_has_instances() {
+inline void Target::set_has_instances() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void TargetEntry::clear_has_instances() {
+inline void Target::clear_has_instances() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void TargetEntry::clear_instances() {
+inline void Target::clear_instances() {
   instances_ = 0u;
   clear_has_instances();
 }
-inline ::google::protobuf::uint32 TargetEntry::instances() const {
+inline ::google::protobuf::uint32 Target::instances() const {
   return instances_;
 }
-inline void TargetEntry::set_instances(::google::protobuf::uint32 value) {
+inline void Target::set_instances(::google::protobuf::uint32 value) {
   set_has_instances();
   instances_ = value;
 }
 
 // repeated .mesos.Resource minimal_resources = 2;
-inline int TargetEntry::minimal_resources_size() const {
+inline int Target::minimal_resources_size() const {
   return minimal_resources_.size();
 }
-inline void TargetEntry::clear_minimal_resources() {
+inline void Target::clear_minimal_resources() {
   minimal_resources_.Clear();
 }
-inline const ::mesos::Resource& TargetEntry::minimal_resources(int index) const {
+inline const ::mesos::Resource& Target::minimal_resources(int index) const {
   return minimal_resources_.Get(index);
 }
-inline ::mesos::Resource* TargetEntry::mutable_minimal_resources(int index) {
+inline ::mesos::Resource* Target::mutable_minimal_resources(int index) {
   return minimal_resources_.Mutable(index);
 }
-inline ::mesos::Resource* TargetEntry::add_minimal_resources() {
+inline ::mesos::Resource* Target::add_minimal_resources() {
   return minimal_resources_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::mesos::Resource >&
-TargetEntry::minimal_resources() const {
+Target::minimal_resources() const {
   return minimal_resources_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
-TargetEntry::mutable_minimal_resources() {
+Target::mutable_minimal_resources() {
   return &minimal_resources_;
 }
 
 // repeated .mesos.Resource additional_resources = 3;
-inline int TargetEntry::additional_resources_size() const {
+inline int Target::additional_resources_size() const {
   return additional_resources_.size();
 }
-inline void TargetEntry::clear_additional_resources() {
+inline void Target::clear_additional_resources() {
   additional_resources_.Clear();
 }
-inline const ::mesos::Resource& TargetEntry::additional_resources(int index) const {
+inline const ::mesos::Resource& Target::additional_resources(int index) const {
   return additional_resources_.Get(index);
 }
-inline ::mesos::Resource* TargetEntry::mutable_additional_resources(int index) {
+inline ::mesos::Resource* Target::mutable_additional_resources(int index) {
   return additional_resources_.Mutable(index);
 }
-inline ::mesos::Resource* TargetEntry::add_additional_resources() {
+inline ::mesos::Resource* Target::add_additional_resources() {
   return additional_resources_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::mesos::Resource >&
-TargetEntry::additional_resources() const {
+Target::additional_resources() const {
   return additional_resources_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
-TargetEntry::mutable_additional_resources() {
+Target::mutable_additional_resources() {
   return &additional_resources_;
 }
 
 // required uint32 number_ports = 4;
-inline bool TargetEntry::has_number_ports() const {
+inline bool Target::has_number_ports() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void TargetEntry::set_has_number_ports() {
+inline void Target::set_has_number_ports() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void TargetEntry::clear_has_number_ports() {
+inline void Target::clear_has_number_ports() {
   _has_bits_[0] &= ~0x00000008u;
 }
-inline void TargetEntry::clear_number_ports() {
+inline void Target::clear_number_ports() {
   number_ports_ = 0u;
   clear_has_number_ports();
 }
-inline ::google::protobuf::uint32 TargetEntry::number_ports() const {
+inline ::google::protobuf::uint32 Target::number_ports() const {
   return number_ports_;
 }
-inline void TargetEntry::set_number_ports(::google::protobuf::uint32 value) {
+inline void Target::set_number_ports(::google::protobuf::uint32 value) {
   set_has_number_ports();
   number_ports_ = value;
 }
 
 // -------------------------------------------------------------------
 
-// Target
+// Targets
 
 // required string mode = 1;
-inline bool Target::has_mode() const {
+inline bool Targets::has_mode() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void Target::set_has_mode() {
+inline void Targets::set_has_mode() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void Target::clear_has_mode() {
+inline void Targets::clear_has_mode() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void Target::clear_mode() {
+inline void Targets::clear_mode() {
   if (mode_ != &::google::protobuf::internal::kEmptyString) {
     mode_->clear();
   }
   clear_has_mode();
 }
-inline const ::std::string& Target::mode() const {
+inline const ::std::string& Targets::mode() const {
   return *mode_;
 }
-inline void Target::set_mode(const ::std::string& value) {
+inline void Targets::set_mode(const ::std::string& value) {
   set_has_mode();
   if (mode_ == &::google::protobuf::internal::kEmptyString) {
     mode_ = new ::std::string;
   }
   mode_->assign(value);
 }
-inline void Target::set_mode(const char* value) {
+inline void Targets::set_mode(const char* value) {
   set_has_mode();
   if (mode_ == &::google::protobuf::internal::kEmptyString) {
     mode_ = new ::std::string;
   }
   mode_->assign(value);
 }
-inline void Target::set_mode(const char* value, size_t size) {
+inline void Targets::set_mode(const char* value, size_t size) {
   set_has_mode();
   if (mode_ == &::google::protobuf::internal::kEmptyString) {
     mode_ = new ::std::string;
   }
   mode_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* Target::mutable_mode() {
+inline ::std::string* Targets::mutable_mode() {
   set_has_mode();
   if (mode_ == &::google::protobuf::internal::kEmptyString) {
     mode_ = new ::std::string;
   }
   return mode_;
 }
-inline ::std::string* Target::release_mode() {
+inline ::std::string* Targets::release_mode() {
   clear_has_mode();
   if (mode_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -1635,7 +1634,7 @@ inline ::std::string* Target::release_mode() {
     return temp;
   }
 }
-inline void Target::set_allocated_mode(::std::string* mode) {
+inline void Targets::set_allocated_mode(::std::string* mode) {
   if (mode_ != &::google::protobuf::internal::kEmptyString) {
     delete mode_;
   }
@@ -1648,35 +1647,35 @@ inline void Target::set_allocated_mode(::std::string* mode) {
   }
 }
 
-// required .arangodb.TargetEntry agents = 2;
-inline bool Target::has_agents() const {
+// required .arangodb.Target agents = 2;
+inline bool Targets::has_agents() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void Target::set_has_agents() {
+inline void Targets::set_has_agents() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void Target::clear_has_agents() {
+inline void Targets::clear_has_agents() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void Target::clear_agents() {
-  if (agents_ != NULL) agents_->::arangodb::TargetEntry::Clear();
+inline void Targets::clear_agents() {
+  if (agents_ != NULL) agents_->::arangodb::Target::Clear();
   clear_has_agents();
 }
-inline const ::arangodb::TargetEntry& Target::agents() const {
+inline const ::arangodb::Target& Targets::agents() const {
   return agents_ != NULL ? *agents_ : *default_instance_->agents_;
 }
-inline ::arangodb::TargetEntry* Target::mutable_agents() {
+inline ::arangodb::Target* Targets::mutable_agents() {
   set_has_agents();
-  if (agents_ == NULL) agents_ = new ::arangodb::TargetEntry;
+  if (agents_ == NULL) agents_ = new ::arangodb::Target;
   return agents_;
 }
-inline ::arangodb::TargetEntry* Target::release_agents() {
+inline ::arangodb::Target* Targets::release_agents() {
   clear_has_agents();
-  ::arangodb::TargetEntry* temp = agents_;
+  ::arangodb::Target* temp = agents_;
   agents_ = NULL;
   return temp;
 }
-inline void Target::set_allocated_agents(::arangodb::TargetEntry* agents) {
+inline void Targets::set_allocated_agents(::arangodb::Target* agents) {
   delete agents_;
   agents_ = agents;
   if (agents) {
@@ -1686,35 +1685,35 @@ inline void Target::set_allocated_agents(::arangodb::TargetEntry* agents) {
   }
 }
 
-// required .arangodb.TargetEntry coordinators = 3;
-inline bool Target::has_coordinators() const {
+// required .arangodb.Target coordinators = 3;
+inline bool Targets::has_coordinators() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void Target::set_has_coordinators() {
+inline void Targets::set_has_coordinators() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void Target::clear_has_coordinators() {
+inline void Targets::clear_has_coordinators() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void Target::clear_coordinators() {
-  if (coordinators_ != NULL) coordinators_->::arangodb::TargetEntry::Clear();
+inline void Targets::clear_coordinators() {
+  if (coordinators_ != NULL) coordinators_->::arangodb::Target::Clear();
   clear_has_coordinators();
 }
-inline const ::arangodb::TargetEntry& Target::coordinators() const {
+inline const ::arangodb::Target& Targets::coordinators() const {
   return coordinators_ != NULL ? *coordinators_ : *default_instance_->coordinators_;
 }
-inline ::arangodb::TargetEntry* Target::mutable_coordinators() {
+inline ::arangodb::Target* Targets::mutable_coordinators() {
   set_has_coordinators();
-  if (coordinators_ == NULL) coordinators_ = new ::arangodb::TargetEntry;
+  if (coordinators_ == NULL) coordinators_ = new ::arangodb::Target;
   return coordinators_;
 }
-inline ::arangodb::TargetEntry* Target::release_coordinators() {
+inline ::arangodb::Target* Targets::release_coordinators() {
   clear_has_coordinators();
-  ::arangodb::TargetEntry* temp = coordinators_;
+  ::arangodb::Target* temp = coordinators_;
   coordinators_ = NULL;
   return temp;
 }
-inline void Target::set_allocated_coordinators(::arangodb::TargetEntry* coordinators) {
+inline void Targets::set_allocated_coordinators(::arangodb::Target* coordinators) {
   delete coordinators_;
   coordinators_ = coordinators;
   if (coordinators) {
@@ -1724,35 +1723,35 @@ inline void Target::set_allocated_coordinators(::arangodb::TargetEntry* coordina
   }
 }
 
-// required .arangodb.TargetEntry dbservers = 4;
-inline bool Target::has_dbservers() const {
+// required .arangodb.Target dbservers = 4;
+inline bool Targets::has_dbservers() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void Target::set_has_dbservers() {
+inline void Targets::set_has_dbservers() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void Target::clear_has_dbservers() {
+inline void Targets::clear_has_dbservers() {
   _has_bits_[0] &= ~0x00000008u;
 }
-inline void Target::clear_dbservers() {
-  if (dbservers_ != NULL) dbservers_->::arangodb::TargetEntry::Clear();
+inline void Targets::clear_dbservers() {
+  if (dbservers_ != NULL) dbservers_->::arangodb::Target::Clear();
   clear_has_dbservers();
 }
-inline const ::arangodb::TargetEntry& Target::dbservers() const {
+inline const ::arangodb::Target& Targets::dbservers() const {
   return dbservers_ != NULL ? *dbservers_ : *default_instance_->dbservers_;
 }
-inline ::arangodb::TargetEntry* Target::mutable_dbservers() {
+inline ::arangodb::Target* Targets::mutable_dbservers() {
   set_has_dbservers();
-  if (dbservers_ == NULL) dbservers_ = new ::arangodb::TargetEntry;
+  if (dbservers_ == NULL) dbservers_ = new ::arangodb::Target;
   return dbservers_;
 }
-inline ::arangodb::TargetEntry* Target::release_dbservers() {
+inline ::arangodb::Target* Targets::release_dbservers() {
   clear_has_dbservers();
-  ::arangodb::TargetEntry* temp = dbservers_;
+  ::arangodb::Target* temp = dbservers_;
   dbservers_ = NULL;
   return temp;
 }
-inline void Target::set_allocated_dbservers(::arangodb::TargetEntry* dbservers) {
+inline void Targets::set_allocated_dbservers(::arangodb::Target* dbservers) {
   delete dbservers_;
   dbservers_ = dbservers;
   if (dbservers) {
@@ -1762,35 +1761,35 @@ inline void Target::set_allocated_dbservers(::arangodb::TargetEntry* dbservers) 
   }
 }
 
-// required .arangodb.TargetEntry secondaries = 5;
-inline bool Target::has_secondaries() const {
+// required .arangodb.Target secondaries = 5;
+inline bool Targets::has_secondaries() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void Target::set_has_secondaries() {
+inline void Targets::set_has_secondaries() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void Target::clear_has_secondaries() {
+inline void Targets::clear_has_secondaries() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void Target::clear_secondaries() {
-  if (secondaries_ != NULL) secondaries_->::arangodb::TargetEntry::Clear();
+inline void Targets::clear_secondaries() {
+  if (secondaries_ != NULL) secondaries_->::arangodb::Target::Clear();
   clear_has_secondaries();
 }
-inline const ::arangodb::TargetEntry& Target::secondaries() const {
+inline const ::arangodb::Target& Targets::secondaries() const {
   return secondaries_ != NULL ? *secondaries_ : *default_instance_->secondaries_;
 }
-inline ::arangodb::TargetEntry* Target::mutable_secondaries() {
+inline ::arangodb::Target* Targets::mutable_secondaries() {
   set_has_secondaries();
-  if (secondaries_ == NULL) secondaries_ = new ::arangodb::TargetEntry;
+  if (secondaries_ == NULL) secondaries_ = new ::arangodb::Target;
   return secondaries_;
 }
-inline ::arangodb::TargetEntry* Target::release_secondaries() {
+inline ::arangodb::Target* Targets::release_secondaries() {
   clear_has_secondaries();
-  ::arangodb::TargetEntry* temp = secondaries_;
+  ::arangodb::Target* temp = secondaries_;
   secondaries_ = NULL;
   return temp;
 }
-inline void Target::set_allocated_secondaries(::arangodb::TargetEntry* secondaries) {
+inline void Targets::set_allocated_secondaries(::arangodb::Target* secondaries) {
   delete secondaries_;
   secondaries_ = secondaries;
   if (secondaries) {
@@ -1801,139 +1800,124 @@ inline void Target::set_allocated_secondaries(::arangodb::TargetEntry* secondari
 }
 
 // optional bool asynchronous_replication = 6;
-inline bool Target::has_asynchronous_replication() const {
+inline bool Targets::has_asynchronous_replication() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void Target::set_has_asynchronous_replication() {
+inline void Targets::set_has_asynchronous_replication() {
   _has_bits_[0] |= 0x00000020u;
 }
-inline void Target::clear_has_asynchronous_replication() {
+inline void Targets::clear_has_asynchronous_replication() {
   _has_bits_[0] &= ~0x00000020u;
 }
-inline void Target::clear_asynchronous_replication() {
+inline void Targets::clear_asynchronous_replication() {
   asynchronous_replication_ = false;
   clear_has_asynchronous_replication();
 }
-inline bool Target::asynchronous_replication() const {
+inline bool Targets::asynchronous_replication() const {
   return asynchronous_replication_;
 }
-inline void Target::set_asynchronous_replication(bool value) {
+inline void Targets::set_asynchronous_replication(bool value) {
   set_has_asynchronous_replication();
   asynchronous_replication_ = value;
 }
 
 // -------------------------------------------------------------------
 
-// TasksPlanEntry
+// TaskPlan
 
-// required bool is_primary = 1;
-inline bool TasksPlanEntry::has_is_primary() const {
+// required .arangodb.TaskPlanState state = 1 [default = TASK_STATE_NEW];
+inline bool TaskPlan::has_state() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void TasksPlanEntry::set_has_is_primary() {
+inline void TaskPlan::set_has_state() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void TasksPlanEntry::clear_has_is_primary() {
+inline void TaskPlan::clear_has_state() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void TasksPlanEntry::clear_is_primary() {
+inline void TaskPlan::clear_state() {
+  state_ = 1;
+  clear_has_state();
+}
+inline ::arangodb::TaskPlanState TaskPlan::state() const {
+  return static_cast< ::arangodb::TaskPlanState >(state_);
+}
+inline void TaskPlan::set_state(::arangodb::TaskPlanState value) {
+  assert(::arangodb::TaskPlanState_IsValid(value));
+  set_has_state();
+  state_ = value;
+}
+
+// required bool is_primary = 2;
+inline bool TaskPlan::has_is_primary() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void TaskPlan::set_has_is_primary() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void TaskPlan::clear_has_is_primary() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void TaskPlan::clear_is_primary() {
   is_primary_ = false;
   clear_has_is_primary();
 }
-inline bool TasksPlanEntry::is_primary() const {
+inline bool TaskPlan::is_primary() const {
   return is_primary_;
 }
-inline void TasksPlanEntry::set_is_primary(bool value) {
+inline void TaskPlan::set_is_primary(bool value) {
   set_has_is_primary();
   is_primary_ = value;
 }
 
-// optional .mesos.SlaveID slave_id = 2;
-inline bool TasksPlanEntry::has_slave_id() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void TasksPlanEntry::set_has_slave_id() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void TasksPlanEntry::clear_has_slave_id() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void TasksPlanEntry::clear_slave_id() {
-  if (slave_id_ != NULL) slave_id_->::mesos::SlaveID::Clear();
-  clear_has_slave_id();
-}
-inline const ::mesos::SlaveID& TasksPlanEntry::slave_id() const {
-  return slave_id_ != NULL ? *slave_id_ : *default_instance_->slave_id_;
-}
-inline ::mesos::SlaveID* TasksPlanEntry::mutable_slave_id() {
-  set_has_slave_id();
-  if (slave_id_ == NULL) slave_id_ = new ::mesos::SlaveID;
-  return slave_id_;
-}
-inline ::mesos::SlaveID* TasksPlanEntry::release_slave_id() {
-  clear_has_slave_id();
-  ::mesos::SlaveID* temp = slave_id_;
-  slave_id_ = NULL;
-  return temp;
-}
-inline void TasksPlanEntry::set_allocated_slave_id(::mesos::SlaveID* slave_id) {
-  delete slave_id_;
-  slave_id_ = slave_id;
-  if (slave_id) {
-    set_has_slave_id();
-  } else {
-    clear_has_slave_id();
-  }
-}
-
 // optional string persistence_id = 3;
-inline bool TasksPlanEntry::has_persistence_id() const {
+inline bool TaskPlan::has_persistence_id() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void TasksPlanEntry::set_has_persistence_id() {
+inline void TaskPlan::set_has_persistence_id() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void TasksPlanEntry::clear_has_persistence_id() {
+inline void TaskPlan::clear_has_persistence_id() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void TasksPlanEntry::clear_persistence_id() {
+inline void TaskPlan::clear_persistence_id() {
   if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
     persistence_id_->clear();
   }
   clear_has_persistence_id();
 }
-inline const ::std::string& TasksPlanEntry::persistence_id() const {
+inline const ::std::string& TaskPlan::persistence_id() const {
   return *persistence_id_;
 }
-inline void TasksPlanEntry::set_persistence_id(const ::std::string& value) {
+inline void TaskPlan::set_persistence_id(const ::std::string& value) {
   set_has_persistence_id();
   if (persistence_id_ == &::google::protobuf::internal::kEmptyString) {
     persistence_id_ = new ::std::string;
   }
   persistence_id_->assign(value);
 }
-inline void TasksPlanEntry::set_persistence_id(const char* value) {
+inline void TaskPlan::set_persistence_id(const char* value) {
   set_has_persistence_id();
   if (persistence_id_ == &::google::protobuf::internal::kEmptyString) {
     persistence_id_ = new ::std::string;
   }
   persistence_id_->assign(value);
 }
-inline void TasksPlanEntry::set_persistence_id(const char* value, size_t size) {
+inline void TaskPlan::set_persistence_id(const char* value, size_t size) {
   set_has_persistence_id();
   if (persistence_id_ == &::google::protobuf::internal::kEmptyString) {
     persistence_id_ = new ::std::string;
   }
   persistence_id_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* TasksPlanEntry::mutable_persistence_id() {
+inline ::std::string* TaskPlan::mutable_persistence_id() {
   set_has_persistence_id();
   if (persistence_id_ == &::google::protobuf::internal::kEmptyString) {
     persistence_id_ = new ::std::string;
   }
   return persistence_id_;
 }
-inline ::std::string* TasksPlanEntry::release_persistence_id() {
+inline ::std::string* TaskPlan::release_persistence_id() {
   clear_has_persistence_id();
   if (persistence_id_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -1943,7 +1927,7 @@ inline ::std::string* TasksPlanEntry::release_persistence_id() {
     return temp;
   }
 }
-inline void TasksPlanEntry::set_allocated_persistence_id(::std::string* persistence_id) {
+inline void TaskPlan::set_allocated_persistence_id(::std::string* persistence_id) {
   if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
     delete persistence_id_;
   }
@@ -1956,31 +1940,53 @@ inline void TasksPlanEntry::set_allocated_persistence_id(::std::string* persiste
   }
 }
 
+// required double started = 4;
+inline bool TaskPlan::has_started() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void TaskPlan::set_has_started() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void TaskPlan::clear_has_started() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void TaskPlan::clear_started() {
+  started_ = 0;
+  clear_has_started();
+}
+inline double TaskPlan::started() const {
+  return started_;
+}
+inline void TaskPlan::set_started(double value) {
+  set_has_started();
+  started_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // TasksPlan
 
-// repeated .arangodb.TasksPlanEntry entries = 1;
+// repeated .arangodb.TaskPlan entries = 1;
 inline int TasksPlan::entries_size() const {
   return entries_.size();
 }
 inline void TasksPlan::clear_entries() {
   entries_.Clear();
 }
-inline const ::arangodb::TasksPlanEntry& TasksPlan::entries(int index) const {
+inline const ::arangodb::TaskPlan& TasksPlan::entries(int index) const {
   return entries_.Get(index);
 }
-inline ::arangodb::TasksPlanEntry* TasksPlan::mutable_entries(int index) {
+inline ::arangodb::TaskPlan* TasksPlan::mutable_entries(int index) {
   return entries_.Mutable(index);
 }
-inline ::arangodb::TasksPlanEntry* TasksPlan::add_entries() {
+inline ::arangodb::TaskPlan* TasksPlan::add_entries() {
   return entries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::arangodb::TasksPlanEntry >&
+inline const ::google::protobuf::RepeatedPtrField< ::arangodb::TaskPlan >&
 TasksPlan::entries() const {
   return entries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::arangodb::TasksPlanEntry >*
+inline ::google::protobuf::RepeatedPtrField< ::arangodb::TaskPlan >*
 TasksPlan::mutable_entries() {
   return &entries_;
 }
@@ -2143,60 +2149,37 @@ inline void Plan::set_allocated_secondaries(::arangodb::TasksPlan* secondaries) 
 
 // -------------------------------------------------------------------
 
-// ResourcesCurrentEntry
+// ResourceCurrent
 
-// optional .arangodb.ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
-inline bool ResourcesCurrentEntry::has_state() const {
+// optional .mesos.SlaveID slave_id = 1;
+inline bool ResourceCurrent::has_slave_id() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void ResourcesCurrentEntry::set_has_state() {
+inline void ResourceCurrent::set_has_slave_id() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void ResourcesCurrentEntry::clear_has_state() {
+inline void ResourceCurrent::clear_has_slave_id() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void ResourcesCurrentEntry::clear_state() {
-  state_ = 1;
-  clear_has_state();
-}
-inline ::arangodb::ResourcesCurrentState ResourcesCurrentEntry::state() const {
-  return static_cast< ::arangodb::ResourcesCurrentState >(state_);
-}
-inline void ResourcesCurrentEntry::set_state(::arangodb::ResourcesCurrentState value) {
-  assert(::arangodb::ResourcesCurrentState_IsValid(value));
-  set_has_state();
-  state_ = value;
-}
-
-// optional .mesos.SlaveID slave_id = 2;
-inline bool ResourcesCurrentEntry::has_slave_id() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void ResourcesCurrentEntry::set_has_slave_id() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void ResourcesCurrentEntry::clear_has_slave_id() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void ResourcesCurrentEntry::clear_slave_id() {
+inline void ResourceCurrent::clear_slave_id() {
   if (slave_id_ != NULL) slave_id_->::mesos::SlaveID::Clear();
   clear_has_slave_id();
 }
-inline const ::mesos::SlaveID& ResourcesCurrentEntry::slave_id() const {
+inline const ::mesos::SlaveID& ResourceCurrent::slave_id() const {
   return slave_id_ != NULL ? *slave_id_ : *default_instance_->slave_id_;
 }
-inline ::mesos::SlaveID* ResourcesCurrentEntry::mutable_slave_id() {
+inline ::mesos::SlaveID* ResourceCurrent::mutable_slave_id() {
   set_has_slave_id();
   if (slave_id_ == NULL) slave_id_ = new ::mesos::SlaveID;
   return slave_id_;
 }
-inline ::mesos::SlaveID* ResourcesCurrentEntry::release_slave_id() {
+inline ::mesos::SlaveID* ResourceCurrent::release_slave_id() {
   clear_has_slave_id();
   ::mesos::SlaveID* temp = slave_id_;
   slave_id_ = NULL;
   return temp;
 }
-inline void ResourcesCurrentEntry::set_allocated_slave_id(::mesos::SlaveID* slave_id) {
+inline void ResourceCurrent::set_allocated_slave_id(::mesos::SlaveID* slave_id) {
   delete slave_id_;
   slave_id_ = slave_id;
   if (slave_id) {
@@ -2206,35 +2189,35 @@ inline void ResourcesCurrentEntry::set_allocated_slave_id(::mesos::SlaveID* slav
   }
 }
 
-// optional .mesos.OfferID offer_id = 3;
-inline bool ResourcesCurrentEntry::has_offer_id() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+// optional .mesos.OfferID offer_id = 2;
+inline bool ResourceCurrent::has_offer_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void ResourcesCurrentEntry::set_has_offer_id() {
-  _has_bits_[0] |= 0x00000004u;
+inline void ResourceCurrent::set_has_offer_id() {
+  _has_bits_[0] |= 0x00000002u;
 }
-inline void ResourcesCurrentEntry::clear_has_offer_id() {
-  _has_bits_[0] &= ~0x00000004u;
+inline void ResourceCurrent::clear_has_offer_id() {
+  _has_bits_[0] &= ~0x00000002u;
 }
-inline void ResourcesCurrentEntry::clear_offer_id() {
+inline void ResourceCurrent::clear_offer_id() {
   if (offer_id_ != NULL) offer_id_->::mesos::OfferID::Clear();
   clear_has_offer_id();
 }
-inline const ::mesos::OfferID& ResourcesCurrentEntry::offer_id() const {
+inline const ::mesos::OfferID& ResourceCurrent::offer_id() const {
   return offer_id_ != NULL ? *offer_id_ : *default_instance_->offer_id_;
 }
-inline ::mesos::OfferID* ResourcesCurrentEntry::mutable_offer_id() {
+inline ::mesos::OfferID* ResourceCurrent::mutable_offer_id() {
   set_has_offer_id();
   if (offer_id_ == NULL) offer_id_ = new ::mesos::OfferID;
   return offer_id_;
 }
-inline ::mesos::OfferID* ResourcesCurrentEntry::release_offer_id() {
+inline ::mesos::OfferID* ResourceCurrent::release_offer_id() {
   clear_has_offer_id();
   ::mesos::OfferID* temp = offer_id_;
   offer_id_ = NULL;
   return temp;
 }
-inline void ResourcesCurrentEntry::set_allocated_offer_id(::mesos::OfferID* offer_id) {
+inline void ResourceCurrent::set_allocated_offer_id(::mesos::OfferID* offer_id) {
   delete offer_id_;
   offer_id_ = offer_id;
   if (offer_id) {
@@ -2244,104 +2227,104 @@ inline void ResourcesCurrentEntry::set_allocated_offer_id(::mesos::OfferID* offe
   }
 }
 
-// repeated .mesos.Resource resources = 4;
-inline int ResourcesCurrentEntry::resources_size() const {
+// repeated .mesos.Resource resources = 3;
+inline int ResourceCurrent::resources_size() const {
   return resources_.size();
 }
-inline void ResourcesCurrentEntry::clear_resources() {
+inline void ResourceCurrent::clear_resources() {
   resources_.Clear();
 }
-inline const ::mesos::Resource& ResourcesCurrentEntry::resources(int index) const {
+inline const ::mesos::Resource& ResourceCurrent::resources(int index) const {
   return resources_.Get(index);
 }
-inline ::mesos::Resource* ResourcesCurrentEntry::mutable_resources(int index) {
+inline ::mesos::Resource* ResourceCurrent::mutable_resources(int index) {
   return resources_.Mutable(index);
 }
-inline ::mesos::Resource* ResourcesCurrentEntry::add_resources() {
+inline ::mesos::Resource* ResourceCurrent::add_resources() {
   return resources_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::mesos::Resource >&
-ResourcesCurrentEntry::resources() const {
+ResourceCurrent::resources() const {
   return resources_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
-ResourcesCurrentEntry::mutable_resources() {
+ResourceCurrent::mutable_resources() {
   return &resources_;
 }
 
-// repeated uint32 ports = 5;
-inline int ResourcesCurrentEntry::ports_size() const {
+// repeated uint32 ports = 4;
+inline int ResourceCurrent::ports_size() const {
   return ports_.size();
 }
-inline void ResourcesCurrentEntry::clear_ports() {
+inline void ResourceCurrent::clear_ports() {
   ports_.Clear();
 }
-inline ::google::protobuf::uint32 ResourcesCurrentEntry::ports(int index) const {
+inline ::google::protobuf::uint32 ResourceCurrent::ports(int index) const {
   return ports_.Get(index);
 }
-inline void ResourcesCurrentEntry::set_ports(int index, ::google::protobuf::uint32 value) {
+inline void ResourceCurrent::set_ports(int index, ::google::protobuf::uint32 value) {
   ports_.Set(index, value);
 }
-inline void ResourcesCurrentEntry::add_ports(::google::protobuf::uint32 value) {
+inline void ResourceCurrent::add_ports(::google::protobuf::uint32 value) {
   ports_.Add(value);
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-ResourcesCurrentEntry::ports() const {
+ResourceCurrent::ports() const {
   return ports_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-ResourcesCurrentEntry::mutable_ports() {
+ResourceCurrent::mutable_ports() {
   return &ports_;
 }
 
-// optional string hostname = 6;
-inline bool ResourcesCurrentEntry::has_hostname() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+// optional string hostname = 5;
+inline bool ResourceCurrent::has_hostname() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void ResourcesCurrentEntry::set_has_hostname() {
-  _has_bits_[0] |= 0x00000020u;
+inline void ResourceCurrent::set_has_hostname() {
+  _has_bits_[0] |= 0x00000010u;
 }
-inline void ResourcesCurrentEntry::clear_has_hostname() {
-  _has_bits_[0] &= ~0x00000020u;
+inline void ResourceCurrent::clear_has_hostname() {
+  _has_bits_[0] &= ~0x00000010u;
 }
-inline void ResourcesCurrentEntry::clear_hostname() {
+inline void ResourceCurrent::clear_hostname() {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     hostname_->clear();
   }
   clear_has_hostname();
 }
-inline const ::std::string& ResourcesCurrentEntry::hostname() const {
+inline const ::std::string& ResourceCurrent::hostname() const {
   return *hostname_;
 }
-inline void ResourcesCurrentEntry::set_hostname(const ::std::string& value) {
+inline void ResourceCurrent::set_hostname(const ::std::string& value) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(value);
 }
-inline void ResourcesCurrentEntry::set_hostname(const char* value) {
+inline void ResourceCurrent::set_hostname(const char* value) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(value);
 }
-inline void ResourcesCurrentEntry::set_hostname(const char* value, size_t size) {
+inline void ResourceCurrent::set_hostname(const char* value, size_t size) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ResourcesCurrentEntry::mutable_hostname() {
+inline ::std::string* ResourceCurrent::mutable_hostname() {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   return hostname_;
 }
-inline ::std::string* ResourcesCurrentEntry::release_hostname() {
+inline ::std::string* ResourceCurrent::release_hostname() {
   clear_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -2351,7 +2334,7 @@ inline ::std::string* ResourcesCurrentEntry::release_hostname() {
     return temp;
   }
 }
-inline void ResourcesCurrentEntry::set_allocated_hostname(::std::string* hostname) {
+inline void ResourceCurrent::set_allocated_hostname(::std::string* hostname) {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     delete hostname_;
   }
@@ -2364,54 +2347,54 @@ inline void ResourcesCurrentEntry::set_allocated_hostname(::std::string* hostnam
   }
 }
 
-// optional string container_path = 7;
-inline bool ResourcesCurrentEntry::has_container_path() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+// optional string container_path = 6;
+inline bool ResourceCurrent::has_container_path() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void ResourcesCurrentEntry::set_has_container_path() {
-  _has_bits_[0] |= 0x00000040u;
+inline void ResourceCurrent::set_has_container_path() {
+  _has_bits_[0] |= 0x00000020u;
 }
-inline void ResourcesCurrentEntry::clear_has_container_path() {
-  _has_bits_[0] &= ~0x00000040u;
+inline void ResourceCurrent::clear_has_container_path() {
+  _has_bits_[0] &= ~0x00000020u;
 }
-inline void ResourcesCurrentEntry::clear_container_path() {
+inline void ResourceCurrent::clear_container_path() {
   if (container_path_ != &::google::protobuf::internal::kEmptyString) {
     container_path_->clear();
   }
   clear_has_container_path();
 }
-inline const ::std::string& ResourcesCurrentEntry::container_path() const {
+inline const ::std::string& ResourceCurrent::container_path() const {
   return *container_path_;
 }
-inline void ResourcesCurrentEntry::set_container_path(const ::std::string& value) {
+inline void ResourceCurrent::set_container_path(const ::std::string& value) {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   container_path_->assign(value);
 }
-inline void ResourcesCurrentEntry::set_container_path(const char* value) {
+inline void ResourceCurrent::set_container_path(const char* value) {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   container_path_->assign(value);
 }
-inline void ResourcesCurrentEntry::set_container_path(const char* value, size_t size) {
+inline void ResourceCurrent::set_container_path(const char* value, size_t size) {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   container_path_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ResourcesCurrentEntry::mutable_container_path() {
+inline ::std::string* ResourceCurrent::mutable_container_path() {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   return container_path_;
 }
-inline ::std::string* ResourcesCurrentEntry::release_container_path() {
+inline ::std::string* ResourceCurrent::release_container_path() {
   clear_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -2421,7 +2404,7 @@ inline ::std::string* ResourcesCurrentEntry::release_container_path() {
     return temp;
   }
 }
-inline void ResourcesCurrentEntry::set_allocated_container_path(::std::string* container_path) {
+inline void ResourceCurrent::set_allocated_container_path(::std::string* container_path) {
   if (container_path_ != &::google::protobuf::internal::kEmptyString) {
     delete container_path_;
   }
@@ -2438,87 +2421,87 @@ inline void ResourcesCurrentEntry::set_allocated_container_path(::std::string* c
 
 // ResourcesCurrent
 
-// repeated .arangodb.ResourcesCurrentEntry entries = 1;
+// repeated .arangodb.ResourceCurrent entries = 1;
 inline int ResourcesCurrent::entries_size() const {
   return entries_.size();
 }
 inline void ResourcesCurrent::clear_entries() {
   entries_.Clear();
 }
-inline const ::arangodb::ResourcesCurrentEntry& ResourcesCurrent::entries(int index) const {
+inline const ::arangodb::ResourceCurrent& ResourcesCurrent::entries(int index) const {
   return entries_.Get(index);
 }
-inline ::arangodb::ResourcesCurrentEntry* ResourcesCurrent::mutable_entries(int index) {
+inline ::arangodb::ResourceCurrent* ResourcesCurrent::mutable_entries(int index) {
   return entries_.Mutable(index);
 }
-inline ::arangodb::ResourcesCurrentEntry* ResourcesCurrent::add_entries() {
+inline ::arangodb::ResourceCurrent* ResourcesCurrent::add_entries() {
   return entries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::arangodb::ResourcesCurrentEntry >&
+inline const ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >&
 ResourcesCurrent::entries() const {
   return entries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::arangodb::ResourcesCurrentEntry >*
+inline ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >*
 ResourcesCurrent::mutable_entries() {
   return &entries_;
 }
 
 // -------------------------------------------------------------------
 
-// InstancesCurrentEntry
+// InstanceCurrent
 
-// optional .arangodb.InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
-inline bool InstancesCurrentEntry::has_state() const {
+// required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+inline bool InstanceCurrent::has_state() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void InstancesCurrentEntry::set_has_state() {
+inline void InstanceCurrent::set_has_state() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void InstancesCurrentEntry::clear_has_state() {
+inline void InstanceCurrent::clear_has_state() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void InstancesCurrentEntry::clear_state() {
+inline void InstanceCurrent::clear_state() {
   state_ = 1;
   clear_has_state();
 }
-inline ::arangodb::InstancesCurrentState InstancesCurrentEntry::state() const {
-  return static_cast< ::arangodb::InstancesCurrentState >(state_);
+inline ::arangodb::InstanceCurrentState InstanceCurrent::state() const {
+  return static_cast< ::arangodb::InstanceCurrentState >(state_);
 }
-inline void InstancesCurrentEntry::set_state(::arangodb::InstancesCurrentState value) {
-  assert(::arangodb::InstancesCurrentState_IsValid(value));
+inline void InstanceCurrent::set_state(::arangodb::InstanceCurrentState value) {
+  assert(::arangodb::InstanceCurrentState_IsValid(value));
   set_has_state();
   state_ = value;
 }
 
 // optional .mesos.TaskInfo task_info = 2;
-inline bool InstancesCurrentEntry::has_task_info() const {
+inline bool InstanceCurrent::has_task_info() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void InstancesCurrentEntry::set_has_task_info() {
+inline void InstanceCurrent::set_has_task_info() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void InstancesCurrentEntry::clear_has_task_info() {
+inline void InstanceCurrent::clear_has_task_info() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void InstancesCurrentEntry::clear_task_info() {
+inline void InstanceCurrent::clear_task_info() {
   if (task_info_ != NULL) task_info_->::mesos::TaskInfo::Clear();
   clear_has_task_info();
 }
-inline const ::mesos::TaskInfo& InstancesCurrentEntry::task_info() const {
+inline const ::mesos::TaskInfo& InstanceCurrent::task_info() const {
   return task_info_ != NULL ? *task_info_ : *default_instance_->task_info_;
 }
-inline ::mesos::TaskInfo* InstancesCurrentEntry::mutable_task_info() {
+inline ::mesos::TaskInfo* InstanceCurrent::mutable_task_info() {
   set_has_task_info();
   if (task_info_ == NULL) task_info_ = new ::mesos::TaskInfo;
   return task_info_;
 }
-inline ::mesos::TaskInfo* InstancesCurrentEntry::release_task_info() {
+inline ::mesos::TaskInfo* InstanceCurrent::release_task_info() {
   clear_has_task_info();
   ::mesos::TaskInfo* temp = task_info_;
   task_info_ = NULL;
   return temp;
 }
-inline void InstancesCurrentEntry::set_allocated_task_info(::mesos::TaskInfo* task_info) {
+inline void InstanceCurrent::set_allocated_task_info(::mesos::TaskInfo* task_info) {
   delete task_info_;
   task_info_ = task_info;
   if (task_info) {
@@ -2529,34 +2512,34 @@ inline void InstancesCurrentEntry::set_allocated_task_info(::mesos::TaskInfo* ta
 }
 
 // optional .mesos.TaskStatus task_status = 3;
-inline bool InstancesCurrentEntry::has_task_status() const {
+inline bool InstanceCurrent::has_task_status() const {
   return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void InstancesCurrentEntry::set_has_task_status() {
+inline void InstanceCurrent::set_has_task_status() {
   _has_bits_[0] |= 0x00000004u;
 }
-inline void InstancesCurrentEntry::clear_has_task_status() {
+inline void InstanceCurrent::clear_has_task_status() {
   _has_bits_[0] &= ~0x00000004u;
 }
-inline void InstancesCurrentEntry::clear_task_status() {
+inline void InstanceCurrent::clear_task_status() {
   if (task_status_ != NULL) task_status_->::mesos::TaskStatus::Clear();
   clear_has_task_status();
 }
-inline const ::mesos::TaskStatus& InstancesCurrentEntry::task_status() const {
+inline const ::mesos::TaskStatus& InstanceCurrent::task_status() const {
   return task_status_ != NULL ? *task_status_ : *default_instance_->task_status_;
 }
-inline ::mesos::TaskStatus* InstancesCurrentEntry::mutable_task_status() {
+inline ::mesos::TaskStatus* InstanceCurrent::mutable_task_status() {
   set_has_task_status();
   if (task_status_ == NULL) task_status_ = new ::mesos::TaskStatus;
   return task_status_;
 }
-inline ::mesos::TaskStatus* InstancesCurrentEntry::release_task_status() {
+inline ::mesos::TaskStatus* InstanceCurrent::release_task_status() {
   clear_has_task_status();
   ::mesos::TaskStatus* temp = task_status_;
   task_status_ = NULL;
   return temp;
 }
-inline void InstancesCurrentEntry::set_allocated_task_status(::mesos::TaskStatus* task_status) {
+inline void InstanceCurrent::set_allocated_task_status(::mesos::TaskStatus* task_status) {
   delete task_status_;
   task_status_ = task_status;
   if (task_status) {
@@ -2567,78 +2550,78 @@ inline void InstancesCurrentEntry::set_allocated_task_status(::mesos::TaskStatus
 }
 
 // repeated uint32 ports = 4;
-inline int InstancesCurrentEntry::ports_size() const {
+inline int InstanceCurrent::ports_size() const {
   return ports_.size();
 }
-inline void InstancesCurrentEntry::clear_ports() {
+inline void InstanceCurrent::clear_ports() {
   ports_.Clear();
 }
-inline ::google::protobuf::uint32 InstancesCurrentEntry::ports(int index) const {
+inline ::google::protobuf::uint32 InstanceCurrent::ports(int index) const {
   return ports_.Get(index);
 }
-inline void InstancesCurrentEntry::set_ports(int index, ::google::protobuf::uint32 value) {
+inline void InstanceCurrent::set_ports(int index, ::google::protobuf::uint32 value) {
   ports_.Set(index, value);
 }
-inline void InstancesCurrentEntry::add_ports(::google::protobuf::uint32 value) {
+inline void InstanceCurrent::add_ports(::google::protobuf::uint32 value) {
   ports_.Add(value);
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-InstancesCurrentEntry::ports() const {
+InstanceCurrent::ports() const {
   return ports_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-InstancesCurrentEntry::mutable_ports() {
+InstanceCurrent::mutable_ports() {
   return &ports_;
 }
 
 // optional string hostname = 5;
-inline bool InstancesCurrentEntry::has_hostname() const {
+inline bool InstanceCurrent::has_hostname() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void InstancesCurrentEntry::set_has_hostname() {
+inline void InstanceCurrent::set_has_hostname() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void InstancesCurrentEntry::clear_has_hostname() {
+inline void InstanceCurrent::clear_has_hostname() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void InstancesCurrentEntry::clear_hostname() {
+inline void InstanceCurrent::clear_hostname() {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     hostname_->clear();
   }
   clear_has_hostname();
 }
-inline const ::std::string& InstancesCurrentEntry::hostname() const {
+inline const ::std::string& InstanceCurrent::hostname() const {
   return *hostname_;
 }
-inline void InstancesCurrentEntry::set_hostname(const ::std::string& value) {
+inline void InstanceCurrent::set_hostname(const ::std::string& value) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(value);
 }
-inline void InstancesCurrentEntry::set_hostname(const char* value) {
+inline void InstanceCurrent::set_hostname(const char* value) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(value);
 }
-inline void InstancesCurrentEntry::set_hostname(const char* value, size_t size) {
+inline void InstanceCurrent::set_hostname(const char* value, size_t size) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* InstancesCurrentEntry::mutable_hostname() {
+inline ::std::string* InstanceCurrent::mutable_hostname() {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   return hostname_;
 }
-inline ::std::string* InstancesCurrentEntry::release_hostname() {
+inline ::std::string* InstanceCurrent::release_hostname() {
   clear_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -2648,7 +2631,7 @@ inline ::std::string* InstancesCurrentEntry::release_hostname() {
     return temp;
   }
 }
-inline void InstancesCurrentEntry::set_allocated_hostname(::std::string* hostname) {
+inline void InstanceCurrent::set_allocated_hostname(::std::string* hostname) {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     delete hostname_;
   }
@@ -2665,27 +2648,27 @@ inline void InstancesCurrentEntry::set_allocated_hostname(::std::string* hostnam
 
 // InstancesCurrent
 
-// repeated .arangodb.InstancesCurrentEntry entries = 1;
+// repeated .arangodb.InstanceCurrent entries = 1;
 inline int InstancesCurrent::entries_size() const {
   return entries_.size();
 }
 inline void InstancesCurrent::clear_entries() {
   entries_.Clear();
 }
-inline const ::arangodb::InstancesCurrentEntry& InstancesCurrent::entries(int index) const {
+inline const ::arangodb::InstanceCurrent& InstancesCurrent::entries(int index) const {
   return entries_.Get(index);
 }
-inline ::arangodb::InstancesCurrentEntry* InstancesCurrent::mutable_entries(int index) {
+inline ::arangodb::InstanceCurrent* InstancesCurrent::mutable_entries(int index) {
   return entries_.Mutable(index);
 }
-inline ::arangodb::InstancesCurrentEntry* InstancesCurrent::add_entries() {
+inline ::arangodb::InstanceCurrent* InstancesCurrent::add_entries() {
   return entries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::arangodb::InstancesCurrentEntry >&
+inline const ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >&
 InstancesCurrent::entries() const {
   return entries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::arangodb::InstancesCurrentEntry >*
+inline ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >*
 InstancesCurrent::mutable_entries() {
   return &entries_;
 }
@@ -3150,41 +3133,41 @@ inline void State::set_allocated_framework_id(::mesos::FrameworkID* framework_id
   }
 }
 
-// required .arangodb.Target target = 2;
-inline bool State::has_target() const {
+// required .arangodb.Targets targets = 2;
+inline bool State::has_targets() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void State::set_has_target() {
+inline void State::set_has_targets() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void State::clear_has_target() {
+inline void State::clear_has_targets() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void State::clear_target() {
-  if (target_ != NULL) target_->::arangodb::Target::Clear();
-  clear_has_target();
+inline void State::clear_targets() {
+  if (targets_ != NULL) targets_->::arangodb::Targets::Clear();
+  clear_has_targets();
 }
-inline const ::arangodb::Target& State::target() const {
-  return target_ != NULL ? *target_ : *default_instance_->target_;
+inline const ::arangodb::Targets& State::targets() const {
+  return targets_ != NULL ? *targets_ : *default_instance_->targets_;
 }
-inline ::arangodb::Target* State::mutable_target() {
-  set_has_target();
-  if (target_ == NULL) target_ = new ::arangodb::Target;
-  return target_;
+inline ::arangodb::Targets* State::mutable_targets() {
+  set_has_targets();
+  if (targets_ == NULL) targets_ = new ::arangodb::Targets;
+  return targets_;
 }
-inline ::arangodb::Target* State::release_target() {
-  clear_has_target();
-  ::arangodb::Target* temp = target_;
-  target_ = NULL;
+inline ::arangodb::Targets* State::release_targets() {
+  clear_has_targets();
+  ::arangodb::Targets* temp = targets_;
+  targets_ = NULL;
   return temp;
 }
-inline void State::set_allocated_target(::arangodb::Target* target) {
-  delete target_;
-  target_ = target;
-  if (target) {
-    set_has_target();
+inline void State::set_allocated_targets(::arangodb::Targets* targets) {
+  delete targets_;
+  targets_ = targets;
+  if (targets) {
+    set_has_targets();
   } else {
-    clear_has_target();
+    clear_has_targets();
   }
 }
 
@@ -3274,12 +3257,12 @@ namespace google {
 namespace protobuf {
 
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::ResourcesCurrentState>() {
-  return ::arangodb::ResourcesCurrentState_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::TaskPlanState>() {
+  return ::arangodb::TaskPlanState_descriptor();
 }
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::InstancesCurrentState>() {
-  return ::arangodb::InstancesCurrentState_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::InstanceCurrentState>() {
+  return ::arangodb::InstanceCurrentState_descriptor();
 }
 
 }  // namespace google

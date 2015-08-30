@@ -63,33 +63,6 @@ dnl ============================================================================
 dnl --SECTION--                                                          options
 dnl ============================================================================
 
-dnl ----------------------------------------------------------------------------
-dnl mesos version
-dnl ----------------------------------------------------------------------------
-
-AC_ARG_ENABLE(mesos,
-  AS_HELP_STRING([--enable-mesos=version], [use specified mesos version]),
-  [MESOS_VERSION="${enableval:-0.22}"],
-  [MESOS_VERSION=mesos-reservation]
-)
-
-if test "x${MESOS_VERSION}" == x0.23;  then
-  CPPFLAGS="${CPPFLAGS} -DMESOS_DYNAMIC_RESERVATION=1"
-  CPPFLAGS="${CPPFLAGS} -DMESOS_FILTER=1"
-  CPPFLAGS="${CPPFLAGS} -DMESOS_PRINCIPAL=1"
-
-  if test "x${MESOS_VERSION}" == xmpark;  then
-    CPPFLAGS="${CPPFLAGS} -DMESOS_RESERVE_PORTS=1"
-  else
-    CPPFLAGS="${CPPFLAGS} -DMESOS_RESERVE_PORTS=0"
-  fi
-else
-  CPPFLAGS="${CPPFLAGS} -DMESOS_DYNAMIC_RESERVATION=0"
-  CPPFLAGS="${CPPFLAGS} -DMESOS_FILTER=0"
-  CPPFLAGS="${CPPFLAGS} -DMESOS_PRINCIPAL=0"
-  CPPFLAGS="${CPPFLAGS} -DMESOS_RESERVE_PORTS=0"
-fi
-
 dnl ============================================================================
 dnl --SECTION--                                               external libraries
 dnl ============================================================================

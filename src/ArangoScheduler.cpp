@@ -195,7 +195,7 @@ void ArangoScheduler::declineOffer (const mesos::OfferID& offerId) const {
 mesos::TaskInfo ArangoScheduler::startInstance (
     const string& taskId,
     const string& name,
-    const ResourcesCurrentEntry& info,
+    const ResourceCurrent& info,
     const mesos::ContainerInfo& container,
     const mesos::CommandInfo& command) const {
   const mesos::SlaveID& slaveId = info.slave_id();
@@ -350,10 +350,9 @@ void ArangoScheduler::disconnected (mesos::SchedulerDriver* driver) {
 void ArangoScheduler::resourceOffers (mesos::SchedulerDriver* driver,
                                       const vector<mesos::Offer>& offers) {
   for (auto& offer : offers) {
-    /*
     LOG(INFO)
-    << "DEBUG offer received " << offer.id().value();
-    */
+    << "DEBUG offer received " << offer.id().value()
+    << " with " << offer.resources();
 
     Global::manager().addOffer(offer);
   }

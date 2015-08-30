@@ -425,16 +425,12 @@ void Global::setFrameworkName (const std::string& frameworkName) {
 /// @brief principal
 ////////////////////////////////////////////////////////////////////////////////
 
-#if MESOS_PRINCIPAL
-
 mesos::Resource::ReservationInfo Global::principal () {
   mesos::Resource::ReservationInfo reservation;
   reservation.set_principal(PRINCIPAL);
 
   return reservation;
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the principal

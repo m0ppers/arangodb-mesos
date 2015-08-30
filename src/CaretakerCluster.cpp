@@ -50,10 +50,10 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 CaretakerCluster::CaretakerCluster () {
-  Target target = Global::state().target();
+  Targets targets = Global::state().targets();
 
   // AGENCY
-  TargetEntry* agency = target.mutable_agents();
+  Target* agency = targets.mutable_agents();
   // Will be: agency->set_instances(Global::nrAgents());
   agency->set_instances(1);
   agency->clear_minimal_resources();
@@ -77,7 +77,7 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   // COORDINATOR
-  TargetEntry* coordinator = target.mutable_coordinators();
+  Target* coordinator = targets.mutable_coordinators();
   coordinator->set_instances(Global::nrCoordinators());
   coordinator->clear_minimal_resources();
   coordinator->set_number_ports(1);
@@ -99,7 +99,7 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   // DBSERVER
-  TargetEntry* dbserver = target.mutable_dbservers();
+  Target* dbserver = targets.mutable_dbservers();
   dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
@@ -121,7 +121,7 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   // SECONDARIES
-  TargetEntry* secondary = target.mutable_secondaries();
+  Target* secondary = targets.mutable_secondaries();
   secondary->set_instances(Global::nrDBServers());
   secondary->clear_minimal_resources();
   secondary->set_number_ports(1);
@@ -142,7 +142,7 @@ CaretakerCluster::CaretakerCluster () {
     }
   }
 
-  Global::state().setTarget(target);
+  Global::state().setTargets(targets);
 }
 
 // -----------------------------------------------------------------------------
@@ -157,13 +157,13 @@ void CaretakerCluster::updatePlan () {
   // This updates the Plan according to what is in the Target, this is
   // used to scale up coordinators or DBServers
 
-  Target target = Global::state().target();
+  Targets targets = Global::state().targets();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
   int t, p;
 
   // First the agency, currently, we only support a single agency:
-  t = (int) target.agents().instances();
+  t = (int) targets.agents().instances();
   if (t < 1) {
     LOG(ERROR)
     << "ERROR running in cluster mode, need at least one agency";
@@ -174,7 +174,7 @@ void CaretakerCluster::updatePlan () {
     LOG(INFO)
     << "INFO currently we support only a single server agency";
     t = 1;
-    TargetEntry* te = target.mutable_agents();
+    Target* te = targets.mutable_agents();
     te->set_instances(1);
   }
   TasksPlan* tasks = plan.mutable_agents();
@@ -189,7 +189,7 @@ void CaretakerCluster::updatePlan () {
     tasks->clear_entries();
 
     for (int i = 0;  i < t;  ++i) {
-      TasksPlanEntry entry = original.entries(i);
+      TaskPlan entry = original.entries(i);
 
       tasks->add_entries()->CopyFrom(entry);
     }
@@ -199,12 +199,12 @@ void CaretakerCluster::updatePlan () {
     << "DEBUG creating " << (t - p) << " more agents in plan";
 
     for (int i = p;  i < t;  ++i) {
-      TasksPlanEntry* planEntry = tasks->add_entries();
-      planEntry->set_is_primary(true);
+      TaskPlan* task = tasks->add_entries();
+      task->set_state(TASK_STATE_NEW);
+      task->set_is_primary(true);
 
       ResourcesCurrent* resources = current.mutable_agency_resources();
-      ResourcesCurrentEntry* resEntry = resources->add_entries();
-      resEntry->set_state(RESOURCE_STATE_REQUIRED);
+      resources->add_entries();
 
       InstancesCurrent* instances = current.mutable_agents();
       instances->add_entries();
@@ -212,7 +212,7 @@ void CaretakerCluster::updatePlan () {
   }
   
   // need at least one DB server
-  t = (int) target.dbservers().instances();
+  t = (int) targets.dbservers().instances();
 
   if (t < 1) {
     LOG(ERROR)
@@ -229,7 +229,7 @@ void CaretakerCluster::updatePlan () {
     LOG(INFO)
     << "INFO refusing to reduce number of db-servers from " << p << " to " << t
     << " NOT YET IMPLEMENTED.";
-    target.mutable_dbservers()->set_instances(p);
+    targets.mutable_dbservers()->set_instances(p);
   }
 
   if (p < t) {
@@ -237,23 +237,23 @@ void CaretakerCluster::updatePlan () {
     << "DEBUG creating " << (t - p) << " more db-servers in plan";
 
     for (int i = p;  i < t;  ++i) {
-      TasksPlanEntry* planEntry = tasks->add_entries();
-      planEntry->set_is_primary(true);
+      TaskPlan* task = tasks->add_entries();
+      task->set_state(TASK_STATE_NEW);
+      task->set_is_primary(true);
 
       ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
-      ResourcesCurrentEntry* resEntry = resources->add_entries();
-      resEntry->set_state(RESOURCE_STATE_REQUIRED);
+      resources->add_entries();
 
       InstancesCurrent* instances = current.mutable_primary_dbservers();
       instances->add_entries();
 
       if (Global::asyncReplication()) {
-        planEntry = tasks2->add_entries();
-        planEntry->set_is_primary(false);
+        task = tasks2->add_entries();
+        task->set_state(TASK_STATE_NEW);
+        task->set_is_primary(false);
 
         resources = current.mutable_secondary_dbserver_resources();
-        resEntry = resources->add_entries();
-        resEntry->set_state(RESOURCE_STATE_REQUIRED);
+        resources->add_entries();
 
         instances = current.mutable_secondary_dbservers();
         instances->add_entries();
@@ -262,7 +262,7 @@ void CaretakerCluster::updatePlan () {
   }
 
   // need at least one coordinator
-  t = (int) target.coordinators().instances();
+  t = (int) targets.coordinators().instances();
 
   if (t < 1) {
     LOG(ERROR)
@@ -282,7 +282,7 @@ void CaretakerCluster::updatePlan () {
     
     tasks->clear_entries();
     for (int i = 0;  i < t;  ++i) {
-      TasksPlanEntry entry = original.entries(i);
+      TaskPlan entry = original.entries(i);
       tasks->add_entries()->CopyFrom(entry);
     }
   }
@@ -292,12 +292,12 @@ void CaretakerCluster::updatePlan () {
     << "DEBUG creating " << (t - p) << " more coordinators in plan";
 
     for (int i = p;  i < t;  ++i) {
-      TasksPlanEntry* planEntry = tasks->add_entries();
-      planEntry->set_is_primary(true);
+      TaskPlan* task = tasks->add_entries();
+      task->set_state(TASK_STATE_NEW);
+      task->set_is_primary(true);
 
       ResourcesCurrent* resources = current.mutable_coordinator_resources();
-      ResourcesCurrentEntry* resEntry = resources->add_entries();
-      resEntry->set_state(RESOURCE_STATE_REQUIRED);
+      resources->add_entries();
 
       InstancesCurrent* instances = current.mutable_coordinators();
       instances->add_entries();
@@ -314,12 +314,15 @@ void CaretakerCluster::updatePlan () {
 
 static int countRunningInstances (InstancesCurrent const& instances) {
   int runningInstances = 0;
+
   for (int i = 0; i < instances.entries_size(); i++) {
-    InstancesCurrentEntry const& entry = instances.entries(i);
+    InstanceCurrent const& entry = instances.entries(i);
+
     if (entry.state() == INSTANCE_STATE_RUNNING) {
       runningInstances += 1;
     }
   }
+
   return runningInstances;
 }
 
@@ -339,7 +342,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   //   we check whether all secondaries are up, lastly, we check with 
   //   the coordinators. If all is well, we decline politely.
 
-  Target target = Global::state().target();
+  Targets targets = Global::state().targets();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
@@ -349,7 +352,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // Further debugging output:
   LOG(INFO) 
   << "checkOffer, here is the state:\n"
-  << "TARGET:" << Global::state().jsonTarget() << "\n"
+  << "TARGETS:" << Global::state().jsonTargets() << "\n"
   << "PLAN:"   << Global::state().jsonPlan() << "\n"
   << "CURRENT:"<< Global::state().jsonCurrent() << "\n";
 
@@ -368,7 +371,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new agent:
     action = checkResourceOffer("agency", true,
-                                target.agents(),
+                                targets.agents(),
                                 plan.mutable_agents(),
                                 current.mutable_agency_resources(),
                                 offer);
@@ -429,7 +432,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
     action = checkResourceOffer("primary", true,
-                                target.dbservers(),
+                                targets.dbservers(),
                                 plan.mutable_dbservers(),
                                 current.mutable_primary_dbserver_resources(),
                                 offer);
@@ -450,7 +453,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     if (runningInstances < plannedInstances) {
       // Try to use the offer for a new DBserver:
       action = checkResourceOffer("secondary", true,
-                                  target.secondaries(),
+                                  targets.secondaries(),
                                   plan.mutable_secondaries(),
                                   current.mutable_secondary_dbserver_resources(),
                                   offer);
@@ -471,7 +474,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
     action = checkResourceOffer("coordinator", false,
-                                target.coordinators(),
+                                targets.coordinators(),
                                 plan.mutable_coordinators(),
                                 current.mutable_coordinator_resources(),
                                 offer);
@@ -498,7 +501,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 InstanceAction CaretakerCluster::checkInstance () {
-  Target target = Global::state().target();
+  Targets targets = Global::state().targets();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
@@ -506,7 +509,7 @@ InstanceAction CaretakerCluster::checkInstance () {
     "agency",
     AspectType::AGENT,
     InstanceActionState::START_AGENT,
-    plan.agents(),
+    plan.mutable_agents(),
     current.mutable_agency_resources(),
     current.mutable_agents());
 
@@ -523,7 +526,7 @@ InstanceAction CaretakerCluster::checkInstance () {
     "dbserver",
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
-    plan.dbservers(),
+    plan.mutable_dbservers(),
     current.mutable_primary_dbserver_resources(),
     current.mutable_primary_dbservers());
 
@@ -541,7 +544,7 @@ InstanceAction CaretakerCluster::checkInstance () {
       "secondary",
       AspectType::SECONDARY_DBSERVER,
       InstanceActionState::START_SECONDARY_DBSERVER,
-      plan.dbservers(),
+      plan.mutable_dbservers(),
       current.mutable_secondary_dbserver_resources(),
       current.mutable_secondary_dbservers());
 
@@ -559,7 +562,7 @@ InstanceAction CaretakerCluster::checkInstance () {
     "coordinator",
     AspectType::COORDINATOR,
     InstanceActionState::START_COORDINATOR,
-    plan.coordinators(),
+    plan.mutable_coordinators(),
     current.mutable_coordinator_resources(),
     current.mutable_coordinators());
 

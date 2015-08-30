@@ -67,7 +67,6 @@ namespace arangodb {
   enum class OfferActionState {
     IGNORE,
     USABLE,
-    STORE_FOR_LATER,
     MAKE_DYNAMIC_RESERVATION,
     MAKE_PERSISTENT_VOLUME
   };
@@ -102,7 +101,7 @@ namespace arangodb {
   class InstanceAction {
     public:
       InstanceActionState _state;
-      ResourcesCurrentEntry _info;
+      ResourceCurrent _info;
       AspectPosition _pos;
   };
 
@@ -201,13 +200,7 @@ namespace arangodb {
 /// @brief sets the instance state
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setInstanceState (const AspectPosition&, InstancesCurrentState);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief frees the resource for an instance
-////////////////////////////////////////////////////////////////////////////////
-
-      void freeResourceForInstance (const AspectPosition&);
+      void setInstanceState (const AspectPosition&, InstanceCurrentState);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
@@ -221,7 +214,7 @@ namespace arangodb {
 
 OfferAction checkResourceOffer (std::string const& name,
                                 bool persistent,
-                                TargetEntry const& target,
+                                Target const& target,
                                 TasksPlan* plan,
                                 ResourcesCurrent* current,
                                 mesos::Offer const& offer);
@@ -233,7 +226,7 @@ OfferAction checkResourceOffer (std::string const& name,
       static InstanceAction checkStartInstance (const std::string& name,
                                                 AspectType,
                                                 InstanceActionState,
-                                                const TasksPlan&,
+                                                TasksPlan*,
                                                 ResourcesCurrent*,
                                                 InstancesCurrent*);
 
@@ -241,7 +234,7 @@ OfferAction checkResourceOffer (std::string const& name,
 /// @brief set a default minimum resource set for a Targetentry
 ////////////////////////////////////////////////////////////////////////////////
 
-      static void setStandardMinimum (TargetEntry* te, int size = 1);
+      static void setStandardMinimum (Target* te, int size = 1);
 
   };
 }

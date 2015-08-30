@@ -6,38 +6,53 @@ package arangodb;
 // --SECTION--                                                            TARGET
 // -----------------------------------------------------------------------------
 
-message TargetEntry {
-  required uint32 instances = 1;
+message Target {
+  required uint32         instances = 1;
   repeated mesos.Resource minimal_resources = 2;
   repeated mesos.Resource additional_resources = 3;
-  required uint32 number_ports = 4;
+  required uint32         number_ports = 4;
 }
 
 
 
-message Target {
+message Targets {
   required string mode = 1;
-  required TargetEntry agents = 2;
-  required TargetEntry coordinators = 3;
-  required TargetEntry dbservers = 4;
-  required TargetEntry secondaries = 5;
-  optional bool asynchronous_replication = 6;
+  required Target agents = 2;
+  required Target coordinators = 3;
+  required Target dbservers = 4;
+  required Target secondaries = 5;
+  optional bool   asynchronous_replication = 6;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              PLAN
 // -----------------------------------------------------------------------------
 
-message TasksPlanEntry {
-  required bool is_primary = 1;
-  optional mesos.SlaveID slave_id = 2;
-  optional string persistence_id = 3;
+enum TaskPlanState {
+  TASK_STATE_NEW               = 1;
+  TASK_STATE_TRYING_TO_RESERVE = 2;
+  TASK_STATE_TRYING_TO_PERSIST = 3;
+  TASK_STATE_TRYING_TO_START   = 4;
+  TASK_STATE_TRYING_TO_RESTART = 5;
+  TASK_STATE_RUNNING           = 6;
+  TASK_STATE_KILLED            = 7;
+  TASK_STATE_FAILED_OVER       = 8;
+}
+
+
+
+message TaskPlan {
+  required TaskPlanState state = 1 [default = TASK_STATE_NEW];
+
+  required bool          is_primary = 2;
+  optional string        persistence_id = 3;
+  required double        started = 4;
 }
 
 
 
 message TasksPlan {
-  repeated TasksPlanEntry entries = 1;
+  repeated TaskPlan entries = 1;
 }
 
 
@@ -53,60 +68,45 @@ message Plan {
 // --SECTION--                                                           CURRENT
 // -----------------------------------------------------------------------------
 
-enum ResourcesCurrentState {
-  RESOURCE_STATE_UNKNOWN = 1;
-  RESOURCE_STATE_REQUIRED = 2;
-  RESOURCE_STATE_TRYING_TO_RESERVE = 3;
-  RESOURCE_STATE_TRYING_TO_PERSIST = 4;
-  RESOURCE_STATE_USEABLE = 5;
-  RESOURCE_STATE_USED = 6;
-  RESOURCE_STATE_LOST = 7;
-}
-
-
-
-message ResourcesCurrentEntry {
-  optional ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
-
-  optional mesos.SlaveID slave_id = 2;
-  optional mesos.OfferID offer_id = 3;
-  repeated mesos.Resource resources = 4;
-  repeated uint32 ports = 5;
-  optional string hostname = 6;
-  optional string container_path = 7;
+message ResourceCurrent {
+  optional mesos.SlaveID        slave_id = 1;
+  optional mesos.OfferID        offer_id = 2;
+  repeated mesos.Resource       resources = 3;
+  repeated uint32               ports = 4;
+  optional string               hostname = 5;
+  optional string               container_path = 6;
 }
 
 
 
 message ResourcesCurrent {
-  repeated ResourcesCurrentEntry entries = 1;
+  repeated ResourceCurrent entries = 1;
 }
 
 
 
-enum InstancesCurrentState {
-  INSTANCE_STATE_UNUSED = 1;
+enum InstanceCurrentState {
+  INSTANCE_STATE_UNUSED   = 1;
   INSTANCE_STATE_STARTING = 2;
-  INSTANCE_STATE_RUNNING = 3;
-  INSTANCE_STATE_STOPPED = 4;
+  INSTANCE_STATE_RUNNING  = 3;
+  INSTANCE_STATE_STOPPED  = 4;
 }
 
 
 
-message InstancesCurrentEntry {
-  optional InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+message InstanceCurrent {
+  required InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
 
-  optional mesos.TaskInfo task_info = 2;
-  optional mesos.TaskStatus task_status = 3;
-
-  repeated uint32 ports = 4;
-  optional string hostname = 5;
+  optional mesos.TaskInfo       task_info = 2;
+  optional mesos.TaskStatus     task_status = 3;
+  repeated uint32               ports = 4;
+  optional string               hostname = 5;
 }
 
 
 
 message InstancesCurrent {
-  repeated InstancesCurrentEntry entries = 1;
+  repeated InstanceCurrent entries = 1;
 }
 
 
@@ -135,9 +135,9 @@ message Current {
 
 message State {
   optional mesos.FrameworkID framework_id = 1;
-  required Target target = 2;
-  required Plan plan = 3;
-  required Current current = 4;
+  required Targets           targets = 2;
+  required Plan              plan = 3;
+  required Current           current = 4;
 }
 
 // -----------------------------------------------------------------------------

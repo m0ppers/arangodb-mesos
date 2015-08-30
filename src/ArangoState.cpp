@@ -53,7 +53,7 @@ void fillTaskStatus (vector<mesos::TaskStatus>& result,
 
   // we have to check the TaskInfo (not TaskStatus!)
   for (int i = 0;  i < instances.entries_size();  ++i) {
-    const InstancesCurrentEntry& entry = instances.entries(i);
+    const InstanceCurrent& entry = instances.entries(i);
 
     switch (entry.state()) {
       case INSTANCE_STATE_UNUSED:
@@ -138,20 +138,20 @@ void ArangoState::init () {
 
   _stateStore = new mesos::internal::state::State(_storage);
 
-  _state.mutable_target();
-  _state.mutable_target()->set_mode(Global::modeLC());
-  _state.mutable_target()->set_asynchronous_replication(Global::asyncReplication());
-  TargetEntry* te;
-  te = _state.mutable_target()->mutable_agents();
+  _state.mutable_targets();
+  _state.mutable_targets()->set_mode(Global::modeLC());
+  _state.mutable_targets()->set_asynchronous_replication(Global::asyncReplication());
+  Target* te;
+  te = _state.mutable_targets()->mutable_agents();
   te->set_instances(Global::nrAgents());
   te->set_number_ports(1);
-  te = _state.mutable_target()->mutable_coordinators();
+  te = _state.mutable_targets()->mutable_coordinators();
   te->set_instances(Global::nrCoordinators());
   te->set_number_ports(1);
-  te = _state.mutable_target()->mutable_dbservers();
+  te = _state.mutable_targets()->mutable_dbservers();
   te->set_instances(Global::nrDBServers());
   te->set_number_ports(1);
-  te = _state.mutable_target()->mutable_secondaries();
+  te = _state.mutable_targets()->mutable_secondaries();
   te->set_instances(Global::nrDBServers());
   te->set_number_ports(1);
 
@@ -191,18 +191,18 @@ void ArangoState::load () {
   if (! value.empty()) {
     _state.ParseFromString(value);
 
-    if (_state.target().mode() != Global::modeLC()) {
+    if (_state.targets().mode() != Global::modeLC()) {
       LOG(ERROR)
       << "FATAL stored state is for mode '"
-      << _state.target().mode() << "', "
+      << _state.targets().mode() << "', "
       << "requested mode is '" << Global::modeLC() << "'";
 
       exit(EXIT_FAILURE);
     }
 
     bool stateAsyncRepl 
-        = _state.target().has_asynchronous_replication() &&
-          _state.target().asynchronous_replication();
+        = _state.targets().has_asynchronous_replication() &&
+          _state.targets().asynchronous_replication();
     if (stateAsyncRepl != Global::asyncReplication()) {
       LOG(ERROR)
       << "FATAL stored state is for asyncReplication flag '"
@@ -279,20 +279,20 @@ void ArangoState::setFrameworkId (const mesos::FrameworkID& id) {
 /// @brief returns the target
 ////////////////////////////////////////////////////////////////////////////////
 
-Target ArangoState::target () {
+Targets ArangoState::targets () {
   lock_guard<mutex> lock(_lock);
 
-  return _state.target();
+  return _state.targets();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the target
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoState::setTarget (const Target& target) {
+void ArangoState::setTargets (const Targets& targets) {
   lock_guard<mutex> lock(_lock);
 
-  _state.mutable_target()->CopyFrom(target);
+  _state.mutable_targets()->CopyFrom(targets);
   save();
 }
 
@@ -300,11 +300,11 @@ void ArangoState::setTarget (const Target& target) {
 /// @brief target as json string
 ////////////////////////////////////////////////////////////////////////////////
 
-string ArangoState::jsonTarget () {
+string ArangoState::jsonTargets () {
   lock_guard<mutex> lock(_lock);
 
   string result;
-  pbjson::pb2json(&_state.target(), result);
+  pbjson::pb2json(&_state.targets(), result);
   
   return result;
 }

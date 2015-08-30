@@ -214,7 +214,7 @@ string HttpServerImpl::GET_V1_HEALTH (const string&) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
-  return Global::state().jsonTarget();
+  return Global::state().jsonTargets();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,7 +242,7 @@ string HttpServerImpl::GET_DEBUG_OVERVIEW (const string& name) {
 
   return "{ \"frameworkId\" : \"" + Global::state().frameworkId() + "\""
        + ", \"frameworkName\" : \"" + Global::frameworkName() + "\""
-       + ", \"target\" : " + state.jsonTarget()
+       + ", \"target\" : " + state.jsonTargets()
        + ", \"plan\" : " + state.jsonPlan()
        + ", \"current\" : " + state.jsonCurrent() + " }";
   

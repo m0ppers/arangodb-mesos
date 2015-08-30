@@ -1,4 +1,4 @@
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 /// @brief manager for the ArangoDB framework
 ///
 /// @file
@@ -242,12 +242,13 @@ class ArangoManagerImpl : public ArangoManager {
     void dispatch ();
     void prepareReconciliation ();
     void reconcileTasks ();
+    void checkTimeouts ();
     void applyStatusUpdates ();
     bool checkOutstandOffers ();
     void startNewInstances ();
     bool makePersistentVolume (const string& name, const mesos::Offer&, const mesos::Resources&);
     bool makeDynamicReservation (const mesos::Offer&, const mesos::Resources&);
-    void startInstance (InstanceActionState, const ResourcesCurrentEntry&, const AspectPosition&);
+    void startInstance (InstanceActionState, const ResourceCurrent&, const AspectPosition&);
     void fillKnownInstances (AspectType, const InstancesCurrent&);
     void killAllInstances ();
 
@@ -443,11 +444,15 @@ void ArangoManagerImpl::dispatch () {
     // check all outstanding offers
     bool sleep = checkOutstandOffers();
 
+    // apply any timeouts
+    checkTimeouts();
+
     // check if we can start new instances
     startNewInstances();
 
     // initialise cluster when it is up:
     auto cur = Global::state().current();
+
     if (  cur.cluster_complete() &&
         ! cur.cluster_initialized()) {
       LOG(INFO)
@@ -527,6 +532,14 @@ void ArangoManagerImpl::reconcileTasks () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for timeout
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoManagerImpl::checkTimeouts () {
+  // TODO
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief applies status updates
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -563,7 +576,6 @@ void ArangoManagerImpl::applyStatusUpdates () {
       case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
       case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
         caretaker.setInstanceState(pos, INSTANCE_STATE_STOPPED);
-        caretaker.freeResourceForInstance(pos);
         break;
     }
   }
@@ -599,14 +611,6 @@ bool ArangoManagerImpl::checkOutstandOffers () {
         case OfferActionState::USABLE:
           break;
 
-        case OfferActionState::STORE_FOR_LATER:
-          declined.push_back(id_offer.second);
-
-          // TODO(fc) do we need to keep the offer for a while?
-          // next[id_offer.first] = id_offer.second;
-
-          break;
-
         case OfferActionState::MAKE_DYNAMIC_RESERVATION:
           dynamic.push_back(make_pair(id_offer.second, action._resources));
           break;
@@ -629,7 +633,7 @@ bool ArangoManagerImpl::checkOutstandOffers () {
   }
 
   // .............................................................................
-  // try to make the dynamic reservations and persistent volumes
+  // try to make the dynamic reservations
   // .............................................................................
 
   bool sleep = true;
@@ -641,6 +645,10 @@ bool ArangoManagerImpl::checkOutstandOffers () {
       sleep = false;
     }
   }
+
+  // .............................................................................
+  // try to make a persistent volumes
+  // .............................................................................
 
   for (auto&& offer_res : persistent) {
     bool res = makePersistentVolume(offer_res.second._name,
@@ -749,18 +757,7 @@ bool ArangoManagerImpl::makePersistentVolume (const string& name,
 bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
                                                 const mesos::Resources& resources) {
   const string& offerId = offer.id().value();
-
-#if MESOS_RESERVE_PORTS
-  mesos::Resources res = resources;
-#else
-  mesos::Resources res = filterNotIsPorts(resources);
-#endif
-
-#if MESOS_PRINCIPAL
-  res = res.flatten(Global::role(), Global::principal());
-#else
-  res = res.flatten(Global::role());
-#endif
+  mesos::Resources res = resources.flatten(Global::role(), Global::principal());
 
   LOG(INFO)
   << "DEBUG makeDynamicReservation: "
@@ -820,7 +817,7 @@ static string getIPAddress (string hostname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManagerImpl::startInstance (InstanceActionState aspect,
-                                       const ResourcesCurrentEntry& info,
+                                       const ResourceCurrent& info,
                                        const AspectPosition& pos) {
   lock_guard<mutex> lock(_lock);
 
@@ -865,10 +862,10 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
       command.set_value("agency");
       auto p = environment.add_variables();
       p->set_name("numberOfDBServers");
-      p->set_value(to_string(Global::state().target().dbservers().instances()));
+      p->set_value(to_string(Global::state().targets().dbservers().instances()));
       p = environment.add_variables();
       p->set_name("numberOfCoordinators");
-      p->set_value(to_string(Global::state().target().coordinators().instances()));
+      p->set_value(to_string(Global::state().targets().coordinators().instances()));
       p = environment.add_variables();
       p->set_name("asyncReplication");
       p->set_value(Global::asyncReplication() ? string("true")
@@ -973,7 +970,7 @@ void ArangoManagerImpl::fillKnownInstances (AspectType type,
   << "recovering instance type " << (int) type;
 
   for (int i = 0;  i < instances.entries_size();  ++i) {
-    const InstancesCurrentEntry& entry = instances.entries(i);
+    const InstanceCurrent& entry = instances.entries(i);
 
     if (entry.has_task_info()) {
       string id = entry.task_info().task_id().value();

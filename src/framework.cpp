@@ -303,7 +303,12 @@ int main (int argc, char** argv) {
   if (load.isError()) {
     cerr << load.error() << endl;
     usage(argv[0], flags);
-    exit(1);
+    exit(EXIT_FAILURE);
+  }
+
+  if (flags.help) {
+    usage(argv[0], flags);
+    exit(EXIT_SUCCESS);
   }
 
   updateFromEnv("ARANGODB_MODE", mode);
@@ -348,7 +353,7 @@ int main (int argc, char** argv) {
   if (master.empty()) {
     cerr << "Missing master, either use flag '--master' or set 'MESOS_MASTER'" << endl;
     usage(argv[0], flags);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   logging::initialize(argv[0], flags, true); // Catch signals.
@@ -514,13 +519,13 @@ int main (int argc, char** argv) {
     cout << "Enabling authentication for the framework" << endl;
 
     if (principal.empty()) {
-      EXIT(1) << "Expecting authentication principal in the environment";
+      EXIT(EXIT_FAILURE) << "Expecting authentication principal in the environment";
     }
 
     Option<string> arangodbSecret = os::getenv("ARANGODB_SECRET");
 
     if (arangodbSecret.isNone()) {
-      EXIT(1) << "Expecting authentication secret in the environment";
+      EXIT(EXIT_FAILURE) << "Expecting authentication secret in the environment";
     }
 
     mesos::Credential credential;

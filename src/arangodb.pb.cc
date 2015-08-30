@@ -20,30 +20,30 @@ namespace arangodb {
 
 namespace {
 
-const ::google::protobuf::Descriptor* TargetEntry_descriptor_ = NULL;
-const ::google::protobuf::internal::GeneratedMessageReflection*
-  TargetEntry_reflection_ = NULL;
 const ::google::protobuf::Descriptor* Target_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   Target_reflection_ = NULL;
-const ::google::protobuf::Descriptor* TasksPlanEntry_descriptor_ = NULL;
+const ::google::protobuf::Descriptor* Targets_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
-  TasksPlanEntry_reflection_ = NULL;
+  Targets_reflection_ = NULL;
+const ::google::protobuf::Descriptor* TaskPlan_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  TaskPlan_reflection_ = NULL;
 const ::google::protobuf::Descriptor* TasksPlan_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   TasksPlan_reflection_ = NULL;
 const ::google::protobuf::Descriptor* Plan_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   Plan_reflection_ = NULL;
-const ::google::protobuf::Descriptor* ResourcesCurrentEntry_descriptor_ = NULL;
+const ::google::protobuf::Descriptor* ResourceCurrent_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
-  ResourcesCurrentEntry_reflection_ = NULL;
+  ResourceCurrent_reflection_ = NULL;
 const ::google::protobuf::Descriptor* ResourcesCurrent_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   ResourcesCurrent_reflection_ = NULL;
-const ::google::protobuf::Descriptor* InstancesCurrentEntry_descriptor_ = NULL;
+const ::google::protobuf::Descriptor* InstanceCurrent_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
-  InstancesCurrentEntry_reflection_ = NULL;
+  InstanceCurrent_reflection_ = NULL;
 const ::google::protobuf::Descriptor* InstancesCurrent_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   InstancesCurrent_reflection_ = NULL;
@@ -53,8 +53,8 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* State_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   State_reflection_ = NULL;
-const ::google::protobuf::EnumDescriptor* ResourcesCurrentState_descriptor_ = NULL;
-const ::google::protobuf::EnumDescriptor* InstancesCurrentState_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* TaskPlanState_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* InstanceCurrentState_descriptor_ = NULL;
 
 }  // namespace
 
@@ -65,32 +65,12 @@ void protobuf_AssignDesc_arangodb_2eproto() {
     ::google::protobuf::DescriptorPool::generated_pool()->FindFileByName(
       "arangodb.proto");
   GOOGLE_CHECK(file != NULL);
-  TargetEntry_descriptor_ = file->message_type(0);
-  static const int TargetEntry_offsets_[4] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, instances_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, minimal_resources_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, additional_resources_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, number_ports_),
-  };
-  TargetEntry_reflection_ =
-    new ::google::protobuf::internal::GeneratedMessageReflection(
-      TargetEntry_descriptor_,
-      TargetEntry::default_instance_,
-      TargetEntry_offsets_,
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TargetEntry, _unknown_fields_),
-      -1,
-      ::google::protobuf::DescriptorPool::generated_pool(),
-      ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(TargetEntry));
-  Target_descriptor_ = file->message_type(1);
-  static const int Target_offsets_[6] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, mode_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, agents_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, coordinators_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, dbservers_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, secondaries_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, asynchronous_replication_),
+  Target_descriptor_ = file->message_type(0);
+  static const int Target_offsets_[4] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, instances_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, minimal_resources_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, additional_resources_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Target, number_ports_),
   };
   Target_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -103,23 +83,44 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Target));
-  TasksPlanEntry_descriptor_ = file->message_type(2);
-  static const int TasksPlanEntry_offsets_[3] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TasksPlanEntry, is_primary_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TasksPlanEntry, slave_id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TasksPlanEntry, persistence_id_),
+  Targets_descriptor_ = file->message_type(1);
+  static const int Targets_offsets_[6] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, mode_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, agents_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, coordinators_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, dbservers_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, secondaries_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, asynchronous_replication_),
   };
-  TasksPlanEntry_reflection_ =
+  Targets_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
-      TasksPlanEntry_descriptor_,
-      TasksPlanEntry::default_instance_,
-      TasksPlanEntry_offsets_,
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TasksPlanEntry, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TasksPlanEntry, _unknown_fields_),
+      Targets_descriptor_,
+      Targets::default_instance_,
+      Targets_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(Targets, _unknown_fields_),
       -1,
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(TasksPlanEntry));
+      sizeof(Targets));
+  TaskPlan_descriptor_ = file->message_type(2);
+  static const int TaskPlan_offsets_[4] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, state_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, is_primary_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, persistence_id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, started_),
+  };
+  TaskPlan_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      TaskPlan_descriptor_,
+      TaskPlan::default_instance_,
+      TaskPlan_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(TaskPlan));
   TasksPlan_descriptor_ = file->message_type(3);
   static const int TasksPlan_offsets_[1] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TasksPlan, entries_),
@@ -153,27 +154,26 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Plan));
-  ResourcesCurrentEntry_descriptor_ = file->message_type(5);
-  static const int ResourcesCurrentEntry_offsets_[7] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, state_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, slave_id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, offer_id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, resources_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, ports_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, hostname_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, container_path_),
+  ResourceCurrent_descriptor_ = file->message_type(5);
+  static const int ResourceCurrent_offsets_[6] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, slave_id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, offer_id_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, resources_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, ports_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, hostname_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, container_path_),
   };
-  ResourcesCurrentEntry_reflection_ =
+  ResourceCurrent_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
-      ResourcesCurrentEntry_descriptor_,
-      ResourcesCurrentEntry::default_instance_,
-      ResourcesCurrentEntry_offsets_,
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrentEntry, _unknown_fields_),
+      ResourceCurrent_descriptor_,
+      ResourceCurrent::default_instance_,
+      ResourceCurrent_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, _unknown_fields_),
       -1,
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(ResourcesCurrentEntry));
+      sizeof(ResourceCurrent));
   ResourcesCurrent_descriptor_ = file->message_type(6);
   static const int ResourcesCurrent_offsets_[1] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourcesCurrent, entries_),
@@ -189,25 +189,25 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(ResourcesCurrent));
-  InstancesCurrentEntry_descriptor_ = file->message_type(7);
-  static const int InstancesCurrentEntry_offsets_[5] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, state_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, task_info_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, task_status_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, ports_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, hostname_),
+  InstanceCurrent_descriptor_ = file->message_type(7);
+  static const int InstanceCurrent_offsets_[5] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, state_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, task_info_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, task_status_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, ports_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, hostname_),
   };
-  InstancesCurrentEntry_reflection_ =
+  InstanceCurrent_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
-      InstancesCurrentEntry_descriptor_,
-      InstancesCurrentEntry::default_instance_,
-      InstancesCurrentEntry_offsets_,
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, _has_bits_[0]),
-      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrentEntry, _unknown_fields_),
+      InstanceCurrent_descriptor_,
+      InstanceCurrent::default_instance_,
+      InstanceCurrent_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstanceCurrent, _unknown_fields_),
       -1,
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
-      sizeof(InstancesCurrentEntry));
+      sizeof(InstanceCurrent));
   InstancesCurrent_descriptor_ = file->message_type(8);
   static const int InstancesCurrent_offsets_[1] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(InstancesCurrent, entries_),
@@ -253,7 +253,7 @@ void protobuf_AssignDesc_arangodb_2eproto() {
   State_descriptor_ = file->message_type(10);
   static const int State_offsets_[4] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(State, framework_id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(State, target_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(State, targets_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(State, plan_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(State, current_),
   };
@@ -268,8 +268,8 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(State));
-  ResourcesCurrentState_descriptor_ = file->enum_type(0);
-  InstancesCurrentState_descriptor_ = file->enum_type(1);
+  TaskPlanState_descriptor_ = file->enum_type(0);
+  InstanceCurrentState_descriptor_ = file->enum_type(1);
 }
 
 namespace {
@@ -283,21 +283,21 @@ inline void protobuf_AssignDescriptorsOnce() {
 void protobuf_RegisterTypes(const ::std::string&) {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    TargetEntry_descriptor_, &TargetEntry::default_instance());
-  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     Target_descriptor_, &Target::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    TasksPlanEntry_descriptor_, &TasksPlanEntry::default_instance());
+    Targets_descriptor_, &Targets::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    TaskPlan_descriptor_, &TaskPlan::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     TasksPlan_descriptor_, &TasksPlan::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     Plan_descriptor_, &Plan::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    ResourcesCurrentEntry_descriptor_, &ResourcesCurrentEntry::default_instance());
+    ResourceCurrent_descriptor_, &ResourceCurrent::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     ResourcesCurrent_descriptor_, &ResourcesCurrent::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
-    InstancesCurrentEntry_descriptor_, &InstancesCurrentEntry::default_instance());
+    InstanceCurrent_descriptor_, &InstanceCurrent::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     InstancesCurrent_descriptor_, &InstancesCurrent::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
@@ -309,22 +309,22 @@ void protobuf_RegisterTypes(const ::std::string&) {
 }  // namespace
 
 void protobuf_ShutdownFile_arangodb_2eproto() {
-  delete TargetEntry::default_instance_;
-  delete TargetEntry_reflection_;
   delete Target::default_instance_;
   delete Target_reflection_;
-  delete TasksPlanEntry::default_instance_;
-  delete TasksPlanEntry_reflection_;
+  delete Targets::default_instance_;
+  delete Targets_reflection_;
+  delete TaskPlan::default_instance_;
+  delete TaskPlan_reflection_;
   delete TasksPlan::default_instance_;
   delete TasksPlan_reflection_;
   delete Plan::default_instance_;
   delete Plan_reflection_;
-  delete ResourcesCurrentEntry::default_instance_;
-  delete ResourcesCurrentEntry_reflection_;
+  delete ResourceCurrent::default_instance_;
+  delete ResourceCurrent_reflection_;
   delete ResourcesCurrent::default_instance_;
   delete ResourcesCurrent_reflection_;
-  delete InstancesCurrentEntry::default_instance_;
-  delete InstancesCurrentEntry_reflection_;
+  delete InstanceCurrent::default_instance_;
+  delete InstanceCurrent_reflection_;
   delete InstancesCurrent::default_instance_;
   delete InstancesCurrent_reflection_;
   delete Current::default_instance_;
@@ -342,89 +342,87 @@ void protobuf_AddDesc_arangodb_2eproto() {
   ::mesos::protobuf_AddDesc_mesos_2fmesos_2eproto();
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
     "\n\016arangodb.proto\022\010arangodb\032\021mesos/mesos."
-    "proto\"\221\001\n\013TargetEntry\022\021\n\tinstances\030\001 \002(\r"
-    "\022*\n\021minimal_resources\030\002 \003(\0132\017.mesos.Reso"
-    "urce\022-\n\024additional_resources\030\003 \003(\0132\017.mes"
-    "os.Resource\022\024\n\014number_ports\030\004 \002(\r\"\342\001\n\006Ta"
-    "rget\022\014\n\004mode\030\001 \002(\t\022%\n\006agents\030\002 \002(\0132\025.ara"
-    "ngodb.TargetEntry\022+\n\014coordinators\030\003 \002(\0132"
-    "\025.arangodb.TargetEntry\022(\n\tdbservers\030\004 \002("
-    "\0132\025.arangodb.TargetEntry\022*\n\013secondaries\030"
-    "\005 \002(\0132\025.arangodb.TargetEntry\022 \n\030asynchro"
-    "nous_replication\030\006 \001(\010\"^\n\016TasksPlanEntry"
-    "\022\022\n\nis_primary\030\001 \002(\010\022 \n\010slave_id\030\002 \001(\0132\016"
-    ".mesos.SlaveID\022\026\n\016persistence_id\030\003 \001(\t\"6"
-    "\n\tTasksPlan\022)\n\007entries\030\001 \003(\0132\030.arangodb."
-    "TasksPlanEntry\"\250\001\n\004Plan\022#\n\006agents\030\001 \002(\0132"
-    "\023.arangodb.TasksPlan\022)\n\014coordinators\030\002 \002"
-    "(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030\003 \002"
-    "(\0132\023.arangodb.TasksPlan\022(\n\013secondaries\030\004"
-    " \002(\0132\023.arangodb.TasksPlan\"\200\002\n\025ResourcesC"
-    "urrentEntry\022F\n\005state\030\001 \001(\0162\037.arangodb.Re"
-    "sourcesCurrentState:\026RESOURCE_STATE_UNKN"
-    "OWN\022 \n\010slave_id\030\002 \001(\0132\016.mesos.SlaveID\022 \n"
-    "\010offer_id\030\003 \001(\0132\016.mesos.OfferID\022\"\n\tresou"
-    "rces\030\004 \003(\0132\017.mesos.Resource\022\r\n\005ports\030\005 \003"
-    "(\r\022\020\n\010hostname\030\006 \001(\t\022\026\n\016container_path\030\007"
-    " \001(\t\"D\n\020ResourcesCurrent\0220\n\007entries\030\001 \003("
-    "\0132\037.arangodb.ResourcesCurrentEntry\"\313\001\n\025I"
-    "nstancesCurrentEntry\022E\n\005state\030\001 \001(\0162\037.ar"
-    "angodb.InstancesCurrentState:\025INSTANCE_S"
-    "TATE_UNUSED\022\"\n\ttask_info\030\002 \001(\0132\017.mesos.T"
-    "askInfo\022&\n\013task_status\030\003 \001(\0132\021.mesos.Tas"
-    "kStatus\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t"
-    "\"D\n\020InstancesCurrent\0220\n\007entries\030\001 \003(\0132\037."
-    "arangodb.InstancesCurrentEntry\"\356\004\n\007Curre"
-    "nt\0224\n\020agency_resources\030\001 \002(\0132\032.arangodb."
-    "ResourcesCurrent\0229\n\025coordinator_resource"
-    "s\030\002 \002(\0132\032.arangodb.ResourcesCurrent\022>\n\032p"
-    "rimary_dbserver_resources\030\003 \002(\0132\032.arango"
-    "db.ResourcesCurrent\022@\n\034secondary_dbserve"
-    "r_resources\030\004 \002(\0132\032.arangodb.ResourcesCu"
-    "rrent\022*\n\006agents\030\005 \002(\0132\032.arangodb.Instanc"
-    "esCurrent\0220\n\014coordinators\030\006 \002(\0132\032.arango"
-    "db.InstancesCurrent\0225\n\021primary_dbservers"
-    "\030\007 \002(\0132\032.arangodb.InstancesCurrent\0227\n\023se"
-    "condary_dbservers\030\010 \002(\0132\032.arangodb.Insta"
-    "ncesCurrent\022\030\n\020cluster_complete\030\t \002(\010\022%\n"
-    "\035cluster_bootstrappedDBservers\030\n \002(\010\022\032\n\022"
-    "cluster_upgradedDB\030\013 \002(\010\022(\n cluster_boot"
-    "strappedCoordinators\030\014 \002(\010\022\033\n\023cluster_in"
-    "itialized\030\r \002(\010\"\225\001\n\005State\022(\n\014framework_i"
-    "d\030\001 \001(\0132\022.mesos.FrameworkID\022 \n\006target\030\002 "
-    "\002(\0132\020.arangodb.Target\022\034\n\004plan\030\003 \002(\0132\016.ar"
-    "angodb.Plan\022\"\n\007current\030\004 \002(\0132\021.arangodb."
-    "Current*\352\001\n\025ResourcesCurrentState\022\032\n\026RES"
-    "OURCE_STATE_UNKNOWN\020\001\022\033\n\027RESOURCE_STATE_"
-    "REQUIRED\020\002\022$\n RESOURCE_STATE_TRYING_TO_R"
-    "ESERVE\020\003\022$\n RESOURCE_STATE_TRYING_TO_PER"
-    "SIST\020\004\022\032\n\026RESOURCE_STATE_USEABLE\020\005\022\027\n\023RE"
-    "SOURCE_STATE_USED\020\006\022\027\n\023RESOURCE_STATE_LO"
-    "ST\020\007*\207\001\n\025InstancesCurrentState\022\031\n\025INSTAN"
-    "CE_STATE_UNUSED\020\001\022\033\n\027INSTANCE_STATE_STAR"
-    "TING\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003\022\032\n\026IN"
-    "STANCE_STATE_STOPPED\020\004", 2502);
+    "proto\"\214\001\n\006Target\022\021\n\tinstances\030\001 \002(\r\022*\n\021m"
+    "inimal_resources\030\002 \003(\0132\017.mesos.Resource\022"
+    "-\n\024additional_resources\030\003 \003(\0132\017.mesos.Re"
+    "source\022\024\n\014number_ports\030\004 \002(\r\"\317\001\n\007Targets"
+    "\022\014\n\004mode\030\001 \002(\t\022 \n\006agents\030\002 \002(\0132\020.arangod"
+    "b.Target\022&\n\014coordinators\030\003 \002(\0132\020.arangod"
+    "b.Target\022#\n\tdbservers\030\004 \002(\0132\020.arangodb.T"
+    "arget\022%\n\013secondaries\030\005 \002(\0132\020.arangodb.Ta"
+    "rget\022 \n\030asynchronous_replication\030\006 \001(\010\"\177"
+    "\n\010TaskPlan\0226\n\005state\030\001 \002(\0162\027.arangodb.Tas"
+    "kPlanState:\016TASK_STATE_NEW\022\022\n\nis_primary"
+    "\030\002 \002(\010\022\026\n\016persistence_id\030\003 \001(\t\022\017\n\007starte"
+    "d\030\004 \002(\001\"0\n\tTasksPlan\022#\n\007entries\030\001 \003(\0132\022."
+    "arangodb.TaskPlan\"\250\001\n\004Plan\022#\n\006agents\030\001 \002"
+    "(\0132\023.arangodb.TasksPlan\022)\n\014coordinators\030"
+    "\002 \002(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030"
+    "\003 \002(\0132\023.arangodb.TasksPlan\022(\n\013secondarie"
+    "s\030\004 \002(\0132\023.arangodb.TasksPlan\"\262\001\n\017Resourc"
+    "eCurrent\022 \n\010slave_id\030\001 \001(\0132\016.mesos.Slave"
+    "ID\022 \n\010offer_id\030\002 \001(\0132\016.mesos.OfferID\022\"\n\t"
+    "resources\030\003 \003(\0132\017.mesos.Resource\022\r\n\005port"
+    "s\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t\022\026\n\016container_p"
+    "ath\030\006 \001(\t\">\n\020ResourcesCurrent\022*\n\007entries"
+    "\030\001 \003(\0132\031.arangodb.ResourceCurrent\"\304\001\n\017In"
+    "stanceCurrent\022D\n\005state\030\001 \002(\0162\036.arangodb."
+    "InstanceCurrentState:\025INSTANCE_STATE_UNU"
+    "SED\022\"\n\ttask_info\030\002 \001(\0132\017.mesos.TaskInfo\022"
+    "&\n\013task_status\030\003 \001(\0132\021.mesos.TaskStatus\022"
+    "\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t\">\n\020Inst"
+    "ancesCurrent\022*\n\007entries\030\001 \003(\0132\031.arangodb"
+    ".InstanceCurrent\"\356\004\n\007Current\0224\n\020agency_r"
+    "esources\030\001 \002(\0132\032.arangodb.ResourcesCurre"
+    "nt\0229\n\025coordinator_resources\030\002 \002(\0132\032.aran"
+    "godb.ResourcesCurrent\022>\n\032primary_dbserve"
+    "r_resources\030\003 \002(\0132\032.arangodb.ResourcesCu"
+    "rrent\022@\n\034secondary_dbserver_resources\030\004 "
+    "\002(\0132\032.arangodb.ResourcesCurrent\022*\n\006agent"
+    "s\030\005 \002(\0132\032.arangodb.InstancesCurrent\0220\n\014c"
+    "oordinators\030\006 \002(\0132\032.arangodb.InstancesCu"
+    "rrent\0225\n\021primary_dbservers\030\007 \002(\0132\032.arang"
+    "odb.InstancesCurrent\0227\n\023secondary_dbserv"
+    "ers\030\010 \002(\0132\032.arangodb.InstancesCurrent\022\030\n"
+    "\020cluster_complete\030\t \002(\010\022%\n\035cluster_boots"
+    "trappedDBservers\030\n \002(\010\022\032\n\022cluster_upgrad"
+    "edDB\030\013 \002(\010\022(\n cluster_bootstrappedCoordi"
+    "nators\030\014 \002(\010\022\033\n\023cluster_initialized\030\r \002("
+    "\010\"\227\001\n\005State\022(\n\014framework_id\030\001 \001(\0132\022.meso"
+    "s.FrameworkID\022\"\n\007targets\030\002 \002(\0132\021.arangod"
+    "b.Targets\022\034\n\004plan\030\003 \002(\0132\016.arangodb.Plan\022"
+    "\"\n\007current\030\004 \002(\0132\021.arangodb.Current*\364\001\n\r"
+    "TaskPlanState\022\022\n\016TASK_STATE_NEW\020\001\022 \n\034TAS"
+    "K_STATE_TRYING_TO_RESERVE\020\002\022 \n\034TASK_STAT"
+    "E_TRYING_TO_PERSIST\020\003\022\036\n\032TASK_STATE_TRYI"
+    "NG_TO_START\020\004\022 \n\034TASK_STATE_TRYING_TO_RE"
+    "START\020\005\022\026\n\022TASK_STATE_RUNNING\020\006\022\025\n\021TASK_"
+    "STATE_KILLED\020\007\022\032\n\026TASK_STATE_FAILED_OVER"
+    "\020\010*\206\001\n\024InstanceCurrentState\022\031\n\025INSTANCE_"
+    "STATE_UNUSED\020\001\022\033\n\027INSTANCE_STATE_STARTIN"
+    "G\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003\022\032\n\026INSTA"
+    "NCE_STATE_STOPPED\020\004", 2419);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
-  TargetEntry::default_instance_ = new TargetEntry();
   Target::default_instance_ = new Target();
-  TasksPlanEntry::default_instance_ = new TasksPlanEntry();
+  Targets::default_instance_ = new Targets();
+  TaskPlan::default_instance_ = new TaskPlan();
   TasksPlan::default_instance_ = new TasksPlan();
   Plan::default_instance_ = new Plan();
-  ResourcesCurrentEntry::default_instance_ = new ResourcesCurrentEntry();
+  ResourceCurrent::default_instance_ = new ResourceCurrent();
   ResourcesCurrent::default_instance_ = new ResourcesCurrent();
-  InstancesCurrentEntry::default_instance_ = new InstancesCurrentEntry();
+  InstanceCurrent::default_instance_ = new InstanceCurrent();
   InstancesCurrent::default_instance_ = new InstancesCurrent();
   Current::default_instance_ = new Current();
   State::default_instance_ = new State();
-  TargetEntry::default_instance_->InitAsDefaultInstance();
   Target::default_instance_->InitAsDefaultInstance();
-  TasksPlanEntry::default_instance_->InitAsDefaultInstance();
+  Targets::default_instance_->InitAsDefaultInstance();
+  TaskPlan::default_instance_->InitAsDefaultInstance();
   TasksPlan::default_instance_->InitAsDefaultInstance();
   Plan::default_instance_->InitAsDefaultInstance();
-  ResourcesCurrentEntry::default_instance_->InitAsDefaultInstance();
+  ResourceCurrent::default_instance_->InitAsDefaultInstance();
   ResourcesCurrent::default_instance_->InitAsDefaultInstance();
-  InstancesCurrentEntry::default_instance_->InitAsDefaultInstance();
+  InstanceCurrent::default_instance_->InitAsDefaultInstance();
   InstancesCurrent::default_instance_->InitAsDefaultInstance();
   Current::default_instance_->InitAsDefaultInstance();
   State::default_instance_->InitAsDefaultInstance();
@@ -437,11 +435,11 @@ struct StaticDescriptorInitializer_arangodb_2eproto {
     protobuf_AddDesc_arangodb_2eproto();
   }
 } static_descriptor_initializer_arangodb_2eproto_;
-const ::google::protobuf::EnumDescriptor* ResourcesCurrentState_descriptor() {
+const ::google::protobuf::EnumDescriptor* TaskPlanState_descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return ResourcesCurrentState_descriptor_;
+  return TaskPlanState_descriptor_;
 }
-bool ResourcesCurrentState_IsValid(int value) {
+bool TaskPlanState_IsValid(int value) {
   switch(value) {
     case 1:
     case 2:
@@ -450,17 +448,18 @@ bool ResourcesCurrentState_IsValid(int value) {
     case 5:
     case 6:
     case 7:
+    case 8:
       return true;
     default:
       return false;
   }
 }
 
-const ::google::protobuf::EnumDescriptor* InstancesCurrentState_descriptor() {
+const ::google::protobuf::EnumDescriptor* InstanceCurrentState_descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return InstancesCurrentState_descriptor_;
+  return InstanceCurrentState_descriptor_;
 }
-bool InstancesCurrentState_IsValid(int value) {
+bool InstanceCurrentState_IsValid(int value) {
   switch(value) {
     case 1:
     case 2:
@@ -476,64 +475,64 @@ bool InstancesCurrentState_IsValid(int value) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int TargetEntry::kInstancesFieldNumber;
-const int TargetEntry::kMinimalResourcesFieldNumber;
-const int TargetEntry::kAdditionalResourcesFieldNumber;
-const int TargetEntry::kNumberPortsFieldNumber;
+const int Target::kInstancesFieldNumber;
+const int Target::kMinimalResourcesFieldNumber;
+const int Target::kAdditionalResourcesFieldNumber;
+const int Target::kNumberPortsFieldNumber;
 #endif  // !_MSC_VER
 
-TargetEntry::TargetEntry()
+Target::Target()
   : ::google::protobuf::Message() {
   SharedCtor();
 }
 
-void TargetEntry::InitAsDefaultInstance() {
+void Target::InitAsDefaultInstance() {
 }
 
-TargetEntry::TargetEntry(const TargetEntry& from)
+Target::Target(const Target& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void TargetEntry::SharedCtor() {
+void Target::SharedCtor() {
   _cached_size_ = 0;
   instances_ = 0u;
   number_ports_ = 0u;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-TargetEntry::~TargetEntry() {
+Target::~Target() {
   SharedDtor();
 }
 
-void TargetEntry::SharedDtor() {
+void Target::SharedDtor() {
   if (this != default_instance_) {
   }
 }
 
-void TargetEntry::SetCachedSize(int size) const {
+void Target::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const ::google::protobuf::Descriptor* TargetEntry::descriptor() {
+const ::google::protobuf::Descriptor* Target::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return TargetEntry_descriptor_;
+  return Target_descriptor_;
 }
 
-const TargetEntry& TargetEntry::default_instance() {
+const Target& Target::default_instance() {
   if (default_instance_ == NULL) protobuf_AddDesc_arangodb_2eproto();
   return *default_instance_;
 }
 
-TargetEntry* TargetEntry::default_instance_ = NULL;
+Target* Target::default_instance_ = NULL;
 
-TargetEntry* TargetEntry::New() const {
-  return new TargetEntry;
+Target* Target::New() const {
+  return new Target;
 }
 
-void TargetEntry::Clear() {
+void Target::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     instances_ = 0u;
     number_ports_ = 0u;
@@ -544,7 +543,7 @@ void TargetEntry::Clear() {
   mutable_unknown_fields()->Clear();
 }
 
-bool TargetEntry::MergePartialFromCodedStream(
+bool Target::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
@@ -627,7 +626,7 @@ bool TargetEntry::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void TargetEntry::SerializeWithCachedSizes(
+void Target::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
   // required uint32 instances = 1;
   if (has_instances()) {
@@ -657,7 +656,7 @@ void TargetEntry::SerializeWithCachedSizes(
   }
 }
 
-::google::protobuf::uint8* TargetEntry::SerializeWithCachedSizesToArray(
+::google::protobuf::uint8* Target::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
   // required uint32 instances = 1;
   if (has_instances()) {
@@ -690,7 +689,7 @@ void TargetEntry::SerializeWithCachedSizes(
   return target;
 }
 
-int TargetEntry::ByteSize() const {
+int Target::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
@@ -736,10 +735,10 @@ int TargetEntry::ByteSize() const {
   return total_size;
 }
 
-void TargetEntry::MergeFrom(const ::google::protobuf::Message& from) {
+void Target::MergeFrom(const ::google::protobuf::Message& from) {
   GOOGLE_CHECK_NE(&from, this);
-  const TargetEntry* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const TargetEntry*>(
+  const Target* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const Target*>(
       &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
@@ -748,7 +747,7 @@ void TargetEntry::MergeFrom(const ::google::protobuf::Message& from) {
   }
 }
 
-void TargetEntry::MergeFrom(const TargetEntry& from) {
+void Target::MergeFrom(const Target& from) {
   GOOGLE_CHECK_NE(&from, this);
   minimal_resources_.MergeFrom(from.minimal_resources_);
   additional_resources_.MergeFrom(from.additional_resources_);
@@ -763,19 +762,19 @@ void TargetEntry::MergeFrom(const TargetEntry& from) {
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
-void TargetEntry::CopyFrom(const ::google::protobuf::Message& from) {
+void Target::CopyFrom(const ::google::protobuf::Message& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-void TargetEntry::CopyFrom(const TargetEntry& from) {
+void Target::CopyFrom(const Target& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool TargetEntry::IsInitialized() const {
+bool Target::IsInitialized() const {
   if ((_has_bits_[0] & 0x00000009) != 0x00000009) return false;
 
   for (int i = 0; i < minimal_resources_size(); i++) {
@@ -787,7 +786,7 @@ bool TargetEntry::IsInitialized() const {
   return true;
 }
 
-void TargetEntry::Swap(TargetEntry* other) {
+void Target::Swap(Target* other) {
   if (other != this) {
     std::swap(instances_, other->instances_);
     minimal_resources_.Swap(&other->minimal_resources_);
@@ -799,11 +798,11 @@ void TargetEntry::Swap(TargetEntry* other) {
   }
 }
 
-::google::protobuf::Metadata TargetEntry::GetMetadata() const {
+::google::protobuf::Metadata Target::GetMetadata() const {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::Metadata metadata;
-  metadata.descriptor = TargetEntry_descriptor_;
-  metadata.reflection = TargetEntry_reflection_;
+  metadata.descriptor = Target_descriptor_;
+  metadata.reflection = Target_reflection_;
   return metadata;
 }
 
@@ -811,33 +810,33 @@ void TargetEntry::Swap(TargetEntry* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int Target::kModeFieldNumber;
-const int Target::kAgentsFieldNumber;
-const int Target::kCoordinatorsFieldNumber;
-const int Target::kDbserversFieldNumber;
-const int Target::kSecondariesFieldNumber;
-const int Target::kAsynchronousReplicationFieldNumber;
+const int Targets::kModeFieldNumber;
+const int Targets::kAgentsFieldNumber;
+const int Targets::kCoordinatorsFieldNumber;
+const int Targets::kDbserversFieldNumber;
+const int Targets::kSecondariesFieldNumber;
+const int Targets::kAsynchronousReplicationFieldNumber;
 #endif  // !_MSC_VER
 
-Target::Target()
+Targets::Targets()
   : ::google::protobuf::Message() {
   SharedCtor();
 }
 
-void Target::InitAsDefaultInstance() {
-  agents_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
-  coordinators_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
-  dbservers_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
-  secondaries_ = const_cast< ::arangodb::TargetEntry*>(&::arangodb::TargetEntry::default_instance());
+void Targets::InitAsDefaultInstance() {
+  agents_ = const_cast< ::arangodb::Target*>(&::arangodb::Target::default_instance());
+  coordinators_ = const_cast< ::arangodb::Target*>(&::arangodb::Target::default_instance());
+  dbservers_ = const_cast< ::arangodb::Target*>(&::arangodb::Target::default_instance());
+  secondaries_ = const_cast< ::arangodb::Target*>(&::arangodb::Target::default_instance());
 }
 
-Target::Target(const Target& from)
+Targets::Targets(const Targets& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void Target::SharedCtor() {
+void Targets::SharedCtor() {
   _cached_size_ = 0;
   mode_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   agents_ = NULL;
@@ -848,11 +847,11 @@ void Target::SharedCtor() {
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-Target::~Target() {
+Targets::~Targets() {
   SharedDtor();
 }
 
-void Target::SharedDtor() {
+void Targets::SharedDtor() {
   if (mode_ != &::google::protobuf::internal::kEmptyString) {
     delete mode_;
   }
@@ -864,28 +863,28 @@ void Target::SharedDtor() {
   }
 }
 
-void Target::SetCachedSize(int size) const {
+void Targets::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const ::google::protobuf::Descriptor* Target::descriptor() {
+const ::google::protobuf::Descriptor* Targets::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return Target_descriptor_;
+  return Targets_descriptor_;
 }
 
-const Target& Target::default_instance() {
+const Targets& Targets::default_instance() {
   if (default_instance_ == NULL) protobuf_AddDesc_arangodb_2eproto();
   return *default_instance_;
 }
 
-Target* Target::default_instance_ = NULL;
+Targets* Targets::default_instance_ = NULL;
 
-Target* Target::New() const {
-  return new Target;
+Targets* Targets::New() const {
+  return new Targets;
 }
 
-void Target::Clear() {
+void Targets::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (has_mode()) {
       if (mode_ != &::google::protobuf::internal::kEmptyString) {
@@ -893,16 +892,16 @@ void Target::Clear() {
       }
     }
     if (has_agents()) {
-      if (agents_ != NULL) agents_->::arangodb::TargetEntry::Clear();
+      if (agents_ != NULL) agents_->::arangodb::Target::Clear();
     }
     if (has_coordinators()) {
-      if (coordinators_ != NULL) coordinators_->::arangodb::TargetEntry::Clear();
+      if (coordinators_ != NULL) coordinators_->::arangodb::Target::Clear();
     }
     if (has_dbservers()) {
-      if (dbservers_ != NULL) dbservers_->::arangodb::TargetEntry::Clear();
+      if (dbservers_ != NULL) dbservers_->::arangodb::Target::Clear();
     }
     if (has_secondaries()) {
-      if (secondaries_ != NULL) secondaries_->::arangodb::TargetEntry::Clear();
+      if (secondaries_ != NULL) secondaries_->::arangodb::Target::Clear();
     }
     asynchronous_replication_ = false;
   }
@@ -910,7 +909,7 @@ void Target::Clear() {
   mutable_unknown_fields()->Clear();
 }
 
-bool Target::MergePartialFromCodedStream(
+bool Targets::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
@@ -932,7 +931,7 @@ bool Target::MergePartialFromCodedStream(
         break;
       }
 
-      // required .arangodb.TargetEntry agents = 2;
+      // required .arangodb.Target agents = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -946,7 +945,7 @@ bool Target::MergePartialFromCodedStream(
         break;
       }
 
-      // required .arangodb.TargetEntry coordinators = 3;
+      // required .arangodb.Target coordinators = 3;
       case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -960,7 +959,7 @@ bool Target::MergePartialFromCodedStream(
         break;
       }
 
-      // required .arangodb.TargetEntry dbservers = 4;
+      // required .arangodb.Target dbservers = 4;
       case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -974,7 +973,7 @@ bool Target::MergePartialFromCodedStream(
         break;
       }
 
-      // required .arangodb.TargetEntry secondaries = 5;
+      // required .arangodb.Target secondaries = 5;
       case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -1020,7 +1019,7 @@ bool Target::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void Target::SerializeWithCachedSizes(
+void Targets::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
   // required string mode = 1;
   if (has_mode()) {
@@ -1031,25 +1030,25 @@ void Target::SerializeWithCachedSizes(
       1, this->mode(), output);
   }
 
-  // required .arangodb.TargetEntry agents = 2;
+  // required .arangodb.Target agents = 2;
   if (has_agents()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       2, this->agents(), output);
   }
 
-  // required .arangodb.TargetEntry coordinators = 3;
+  // required .arangodb.Target coordinators = 3;
   if (has_coordinators()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       3, this->coordinators(), output);
   }
 
-  // required .arangodb.TargetEntry dbservers = 4;
+  // required .arangodb.Target dbservers = 4;
   if (has_dbservers()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       4, this->dbservers(), output);
   }
 
-  // required .arangodb.TargetEntry secondaries = 5;
+  // required .arangodb.Target secondaries = 5;
   if (has_secondaries()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       5, this->secondaries(), output);
@@ -1066,7 +1065,7 @@ void Target::SerializeWithCachedSizes(
   }
 }
 
-::google::protobuf::uint8* Target::SerializeWithCachedSizesToArray(
+::google::protobuf::uint8* Targets::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
   // required string mode = 1;
   if (has_mode()) {
@@ -1078,28 +1077,28 @@ void Target::SerializeWithCachedSizes(
         1, this->mode(), target);
   }
 
-  // required .arangodb.TargetEntry agents = 2;
+  // required .arangodb.Target agents = 2;
   if (has_agents()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         2, this->agents(), target);
   }
 
-  // required .arangodb.TargetEntry coordinators = 3;
+  // required .arangodb.Target coordinators = 3;
   if (has_coordinators()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         3, this->coordinators(), target);
   }
 
-  // required .arangodb.TargetEntry dbservers = 4;
+  // required .arangodb.Target dbservers = 4;
   if (has_dbservers()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         4, this->dbservers(), target);
   }
 
-  // required .arangodb.TargetEntry secondaries = 5;
+  // required .arangodb.Target secondaries = 5;
   if (has_secondaries()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -1118,7 +1117,7 @@ void Target::SerializeWithCachedSizes(
   return target;
 }
 
-int Target::ByteSize() const {
+int Targets::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
@@ -1129,28 +1128,28 @@ int Target::ByteSize() const {
           this->mode());
     }
 
-    // required .arangodb.TargetEntry agents = 2;
+    // required .arangodb.Target agents = 2;
     if (has_agents()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->agents());
     }
 
-    // required .arangodb.TargetEntry coordinators = 3;
+    // required .arangodb.Target coordinators = 3;
     if (has_coordinators()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->coordinators());
     }
 
-    // required .arangodb.TargetEntry dbservers = 4;
+    // required .arangodb.Target dbservers = 4;
     if (has_dbservers()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->dbservers());
     }
 
-    // required .arangodb.TargetEntry secondaries = 5;
+    // required .arangodb.Target secondaries = 5;
     if (has_secondaries()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -1174,10 +1173,10 @@ int Target::ByteSize() const {
   return total_size;
 }
 
-void Target::MergeFrom(const ::google::protobuf::Message& from) {
+void Targets::MergeFrom(const ::google::protobuf::Message& from) {
   GOOGLE_CHECK_NE(&from, this);
-  const Target* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const Target*>(
+  const Targets* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const Targets*>(
       &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
@@ -1186,23 +1185,23 @@ void Target::MergeFrom(const ::google::protobuf::Message& from) {
   }
 }
 
-void Target::MergeFrom(const Target& from) {
+void Targets::MergeFrom(const Targets& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     if (from.has_mode()) {
       set_mode(from.mode());
     }
     if (from.has_agents()) {
-      mutable_agents()->::arangodb::TargetEntry::MergeFrom(from.agents());
+      mutable_agents()->::arangodb::Target::MergeFrom(from.agents());
     }
     if (from.has_coordinators()) {
-      mutable_coordinators()->::arangodb::TargetEntry::MergeFrom(from.coordinators());
+      mutable_coordinators()->::arangodb::Target::MergeFrom(from.coordinators());
     }
     if (from.has_dbservers()) {
-      mutable_dbservers()->::arangodb::TargetEntry::MergeFrom(from.dbservers());
+      mutable_dbservers()->::arangodb::Target::MergeFrom(from.dbservers());
     }
     if (from.has_secondaries()) {
-      mutable_secondaries()->::arangodb::TargetEntry::MergeFrom(from.secondaries());
+      mutable_secondaries()->::arangodb::Target::MergeFrom(from.secondaries());
     }
     if (from.has_asynchronous_replication()) {
       set_asynchronous_replication(from.asynchronous_replication());
@@ -1211,19 +1210,19 @@ void Target::MergeFrom(const Target& from) {
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
-void Target::CopyFrom(const ::google::protobuf::Message& from) {
+void Targets::CopyFrom(const ::google::protobuf::Message& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-void Target::CopyFrom(const Target& from) {
+void Targets::CopyFrom(const Targets& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool Target::IsInitialized() const {
+bool Targets::IsInitialized() const {
   if ((_has_bits_[0] & 0x0000001f) != 0x0000001f) return false;
 
   if (has_agents()) {
@@ -1241,7 +1240,7 @@ bool Target::IsInitialized() const {
   return true;
 }
 
-void Target::Swap(Target* other) {
+void Targets::Swap(Targets* other) {
   if (other != this) {
     std::swap(mode_, other->mode_);
     std::swap(agents_, other->agents_);
@@ -1255,11 +1254,11 @@ void Target::Swap(Target* other) {
   }
 }
 
-::google::protobuf::Metadata Target::GetMetadata() const {
+::google::protobuf::Metadata Targets::GetMetadata() const {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::Metadata metadata;
-  metadata.descriptor = Target_descriptor_;
-  metadata.reflection = Target_reflection_;
+  metadata.descriptor = Targets_descriptor_;
+  metadata.reflection = Targets_reflection_;
   return metadata;
 }
 
@@ -1267,112 +1266,118 @@ void Target::Swap(Target* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int TasksPlanEntry::kIsPrimaryFieldNumber;
-const int TasksPlanEntry::kSlaveIdFieldNumber;
-const int TasksPlanEntry::kPersistenceIdFieldNumber;
+const int TaskPlan::kStateFieldNumber;
+const int TaskPlan::kIsPrimaryFieldNumber;
+const int TaskPlan::kPersistenceIdFieldNumber;
+const int TaskPlan::kStartedFieldNumber;
 #endif  // !_MSC_VER
 
-TasksPlanEntry::TasksPlanEntry()
+TaskPlan::TaskPlan()
   : ::google::protobuf::Message() {
   SharedCtor();
 }
 
-void TasksPlanEntry::InitAsDefaultInstance() {
-  slave_id_ = const_cast< ::mesos::SlaveID*>(&::mesos::SlaveID::default_instance());
+void TaskPlan::InitAsDefaultInstance() {
 }
 
-TasksPlanEntry::TasksPlanEntry(const TasksPlanEntry& from)
+TaskPlan::TaskPlan(const TaskPlan& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void TasksPlanEntry::SharedCtor() {
+void TaskPlan::SharedCtor() {
   _cached_size_ = 0;
+  state_ = 1;
   is_primary_ = false;
-  slave_id_ = NULL;
   persistence_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  started_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-TasksPlanEntry::~TasksPlanEntry() {
+TaskPlan::~TaskPlan() {
   SharedDtor();
 }
 
-void TasksPlanEntry::SharedDtor() {
+void TaskPlan::SharedDtor() {
   if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
     delete persistence_id_;
   }
   if (this != default_instance_) {
-    delete slave_id_;
   }
 }
 
-void TasksPlanEntry::SetCachedSize(int size) const {
+void TaskPlan::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const ::google::protobuf::Descriptor* TasksPlanEntry::descriptor() {
+const ::google::protobuf::Descriptor* TaskPlan::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return TasksPlanEntry_descriptor_;
+  return TaskPlan_descriptor_;
 }
 
-const TasksPlanEntry& TasksPlanEntry::default_instance() {
+const TaskPlan& TaskPlan::default_instance() {
   if (default_instance_ == NULL) protobuf_AddDesc_arangodb_2eproto();
   return *default_instance_;
 }
 
-TasksPlanEntry* TasksPlanEntry::default_instance_ = NULL;
+TaskPlan* TaskPlan::default_instance_ = NULL;
 
-TasksPlanEntry* TasksPlanEntry::New() const {
-  return new TasksPlanEntry;
+TaskPlan* TaskPlan::New() const {
+  return new TaskPlan;
 }
 
-void TasksPlanEntry::Clear() {
+void TaskPlan::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    state_ = 1;
     is_primary_ = false;
-    if (has_slave_id()) {
-      if (slave_id_ != NULL) slave_id_->::mesos::SlaveID::Clear();
-    }
     if (has_persistence_id()) {
       if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
         persistence_id_->clear();
       }
     }
+    started_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
 }
 
-bool TasksPlanEntry::MergePartialFromCodedStream(
+bool TaskPlan::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // required bool is_primary = 1;
+      // required .arangodb.TaskPlanState state = 1 [default = TASK_STATE_NEW];
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::arangodb::TaskPlanState_IsValid(value)) {
+            set_state(static_cast< ::arangodb::TaskPlanState >(value));
+          } else {
+            mutable_unknown_fields()->AddVarint(1, value);
+          }
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(16)) goto parse_is_primary;
+        break;
+      }
+
+      // required bool is_primary = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_is_primary:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
                  input, &is_primary_)));
           set_has_is_primary();
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(18)) goto parse_slave_id;
-        break;
-      }
-
-      // optional .mesos.SlaveID slave_id = 2;
-      case 2: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_slave_id:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_slave_id()));
         } else {
           goto handle_uninterpreted;
         }
@@ -1390,6 +1395,22 @@ bool TasksPlanEntry::MergePartialFromCodedStream(
           ::google::protobuf::internal::WireFormat::VerifyUTF8String(
             this->persistence_id().data(), this->persistence_id().length(),
             ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(33)) goto parse_started;
+        break;
+      }
+
+      // required double started = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
+         parse_started:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
+                 input, &started_)));
+          set_has_started();
         } else {
           goto handle_uninterpreted;
         }
@@ -1413,17 +1434,17 @@ bool TasksPlanEntry::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void TasksPlanEntry::SerializeWithCachedSizes(
+void TaskPlan::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // required bool is_primary = 1;
-  if (has_is_primary()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->is_primary(), output);
+  // required .arangodb.TaskPlanState state = 1 [default = TASK_STATE_NEW];
+  if (has_state()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      1, this->state(), output);
   }
 
-  // optional .mesos.SlaveID slave_id = 2;
-  if (has_slave_id()) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      2, this->slave_id(), output);
+  // required bool is_primary = 2;
+  if (has_is_primary()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(2, this->is_primary(), output);
   }
 
   // optional string persistence_id = 3;
@@ -1435,24 +1456,28 @@ void TasksPlanEntry::SerializeWithCachedSizes(
       3, this->persistence_id(), output);
   }
 
+  // required double started = 4;
+  if (has_started()) {
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(4, this->started(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
   }
 }
 
-::google::protobuf::uint8* TasksPlanEntry::SerializeWithCachedSizesToArray(
+::google::protobuf::uint8* TaskPlan::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // required bool is_primary = 1;
-  if (has_is_primary()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->is_primary(), target);
+  // required .arangodb.TaskPlanState state = 1 [default = TASK_STATE_NEW];
+  if (has_state()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
+      1, this->state(), target);
   }
 
-  // optional .mesos.SlaveID slave_id = 2;
-  if (has_slave_id()) {
-    target = ::google::protobuf::internal::WireFormatLite::
-      WriteMessageNoVirtualToArray(
-        2, this->slave_id(), target);
+  // required bool is_primary = 2;
+  if (has_is_primary()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(2, this->is_primary(), target);
   }
 
   // optional string persistence_id = 3;
@@ -1465,6 +1490,11 @@ void TasksPlanEntry::SerializeWithCachedSizes(
         3, this->persistence_id(), target);
   }
 
+  // required double started = 4;
+  if (has_started()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(4, this->started(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -1472,20 +1502,19 @@ void TasksPlanEntry::SerializeWithCachedSizes(
   return target;
 }
 
-int TasksPlanEntry::ByteSize() const {
+int TaskPlan::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // required bool is_primary = 1;
-    if (has_is_primary()) {
-      total_size += 1 + 1;
+    // required .arangodb.TaskPlanState state = 1 [default = TASK_STATE_NEW];
+    if (has_state()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->state());
     }
 
-    // optional .mesos.SlaveID slave_id = 2;
-    if (has_slave_id()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->slave_id());
+    // required bool is_primary = 2;
+    if (has_is_primary()) {
+      total_size += 1 + 1;
     }
 
     // optional string persistence_id = 3;
@@ -1493,6 +1522,11 @@ int TasksPlanEntry::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->persistence_id());
+    }
+
+    // required double started = 4;
+    if (has_started()) {
+      total_size += 1 + 8;
     }
 
   }
@@ -1507,10 +1541,10 @@ int TasksPlanEntry::ByteSize() const {
   return total_size;
 }
 
-void TasksPlanEntry::MergeFrom(const ::google::protobuf::Message& from) {
+void TaskPlan::MergeFrom(const ::google::protobuf::Message& from) {
   GOOGLE_CHECK_NE(&from, this);
-  const TasksPlanEntry* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const TasksPlanEntry*>(
+  const TaskPlan* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const TaskPlan*>(
       &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
@@ -1519,59 +1553,60 @@ void TasksPlanEntry::MergeFrom(const ::google::protobuf::Message& from) {
   }
 }
 
-void TasksPlanEntry::MergeFrom(const TasksPlanEntry& from) {
+void TaskPlan::MergeFrom(const TaskPlan& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_state()) {
+      set_state(from.state());
+    }
     if (from.has_is_primary()) {
       set_is_primary(from.is_primary());
     }
-    if (from.has_slave_id()) {
-      mutable_slave_id()->::mesos::SlaveID::MergeFrom(from.slave_id());
-    }
     if (from.has_persistence_id()) {
       set_persistence_id(from.persistence_id());
+    }
+    if (from.has_started()) {
+      set_started(from.started());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
-void TasksPlanEntry::CopyFrom(const ::google::protobuf::Message& from) {
+void TaskPlan::CopyFrom(const ::google::protobuf::Message& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-void TasksPlanEntry::CopyFrom(const TasksPlanEntry& from) {
+void TaskPlan::CopyFrom(const TaskPlan& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool TasksPlanEntry::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+bool TaskPlan::IsInitialized() const {
+  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
 
-  if (has_slave_id()) {
-    if (!this->slave_id().IsInitialized()) return false;
-  }
   return true;
 }
 
-void TasksPlanEntry::Swap(TasksPlanEntry* other) {
+void TaskPlan::Swap(TaskPlan* other) {
   if (other != this) {
+    std::swap(state_, other->state_);
     std::swap(is_primary_, other->is_primary_);
-    std::swap(slave_id_, other->slave_id_);
     std::swap(persistence_id_, other->persistence_id_);
+    std::swap(started_, other->started_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
   }
 }
 
-::google::protobuf::Metadata TasksPlanEntry::GetMetadata() const {
+::google::protobuf::Metadata TaskPlan::GetMetadata() const {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::Metadata metadata;
-  metadata.descriptor = TasksPlanEntry_descriptor_;
-  metadata.reflection = TasksPlanEntry_reflection_;
+  metadata.descriptor = TaskPlan_descriptor_;
+  metadata.reflection = TaskPlan_reflection_;
   return metadata;
 }
 
@@ -1643,7 +1678,7 @@ bool TasksPlan::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // repeated .arangodb.TasksPlanEntry entries = 1;
+      // repeated .arangodb.TaskPlan entries = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -1676,7 +1711,7 @@ bool TasksPlan::MergePartialFromCodedStream(
 
 void TasksPlan::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // repeated .arangodb.TasksPlanEntry entries = 1;
+  // repeated .arangodb.TaskPlan entries = 1;
   for (int i = 0; i < this->entries_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       1, this->entries(i), output);
@@ -1690,7 +1725,7 @@ void TasksPlan::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* TasksPlan::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // repeated .arangodb.TasksPlanEntry entries = 1;
+  // repeated .arangodb.TaskPlan entries = 1;
   for (int i = 0; i < this->entries_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -1707,7 +1742,7 @@ void TasksPlan::SerializeWithCachedSizes(
 int TasksPlan::ByteSize() const {
   int total_size = 0;
 
-  // repeated .arangodb.TasksPlanEntry entries = 1;
+  // repeated .arangodb.TaskPlan entries = 1;
   total_size += 1 * this->entries_size();
   for (int i = 0; i < this->entries_size(); i++) {
     total_size +=
@@ -2146,34 +2181,32 @@ void Plan::Swap(Plan* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int ResourcesCurrentEntry::kStateFieldNumber;
-const int ResourcesCurrentEntry::kSlaveIdFieldNumber;
-const int ResourcesCurrentEntry::kOfferIdFieldNumber;
-const int ResourcesCurrentEntry::kResourcesFieldNumber;
-const int ResourcesCurrentEntry::kPortsFieldNumber;
-const int ResourcesCurrentEntry::kHostnameFieldNumber;
-const int ResourcesCurrentEntry::kContainerPathFieldNumber;
+const int ResourceCurrent::kSlaveIdFieldNumber;
+const int ResourceCurrent::kOfferIdFieldNumber;
+const int ResourceCurrent::kResourcesFieldNumber;
+const int ResourceCurrent::kPortsFieldNumber;
+const int ResourceCurrent::kHostnameFieldNumber;
+const int ResourceCurrent::kContainerPathFieldNumber;
 #endif  // !_MSC_VER
 
-ResourcesCurrentEntry::ResourcesCurrentEntry()
+ResourceCurrent::ResourceCurrent()
   : ::google::protobuf::Message() {
   SharedCtor();
 }
 
-void ResourcesCurrentEntry::InitAsDefaultInstance() {
+void ResourceCurrent::InitAsDefaultInstance() {
   slave_id_ = const_cast< ::mesos::SlaveID*>(&::mesos::SlaveID::default_instance());
   offer_id_ = const_cast< ::mesos::OfferID*>(&::mesos::OfferID::default_instance());
 }
 
-ResourcesCurrentEntry::ResourcesCurrentEntry(const ResourcesCurrentEntry& from)
+ResourceCurrent::ResourceCurrent(const ResourceCurrent& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void ResourcesCurrentEntry::SharedCtor() {
+void ResourceCurrent::SharedCtor() {
   _cached_size_ = 0;
-  state_ = 1;
   slave_id_ = NULL;
   offer_id_ = NULL;
   hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
@@ -2181,11 +2214,11 @@ void ResourcesCurrentEntry::SharedCtor() {
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-ResourcesCurrentEntry::~ResourcesCurrentEntry() {
+ResourceCurrent::~ResourceCurrent() {
   SharedDtor();
 }
 
-void ResourcesCurrentEntry::SharedDtor() {
+void ResourceCurrent::SharedDtor() {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     delete hostname_;
   }
@@ -2198,30 +2231,29 @@ void ResourcesCurrentEntry::SharedDtor() {
   }
 }
 
-void ResourcesCurrentEntry::SetCachedSize(int size) const {
+void ResourceCurrent::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const ::google::protobuf::Descriptor* ResourcesCurrentEntry::descriptor() {
+const ::google::protobuf::Descriptor* ResourceCurrent::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return ResourcesCurrentEntry_descriptor_;
+  return ResourceCurrent_descriptor_;
 }
 
-const ResourcesCurrentEntry& ResourcesCurrentEntry::default_instance() {
+const ResourceCurrent& ResourceCurrent::default_instance() {
   if (default_instance_ == NULL) protobuf_AddDesc_arangodb_2eproto();
   return *default_instance_;
 }
 
-ResourcesCurrentEntry* ResourcesCurrentEntry::default_instance_ = NULL;
+ResourceCurrent* ResourceCurrent::default_instance_ = NULL;
 
-ResourcesCurrentEntry* ResourcesCurrentEntry::New() const {
-  return new ResourcesCurrentEntry;
+ResourceCurrent* ResourceCurrent::New() const {
+  return new ResourceCurrent;
 }
 
-void ResourcesCurrentEntry::Clear() {
+void ResourceCurrent::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    state_ = 1;
     if (has_slave_id()) {
       if (slave_id_ != NULL) slave_id_->::mesos::SlaveID::Clear();
     }
@@ -2245,48 +2277,27 @@ void ResourcesCurrentEntry::Clear() {
   mutable_unknown_fields()->Clear();
 }
 
-bool ResourcesCurrentEntry::MergePartialFromCodedStream(
+bool ResourceCurrent::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // optional .arangodb.ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
+      // optional .mesos.SlaveID slave_id = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-          int value;
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
-                 input, &value)));
-          if (::arangodb::ResourcesCurrentState_IsValid(value)) {
-            set_state(static_cast< ::arangodb::ResourcesCurrentState >(value));
-          } else {
-            mutable_unknown_fields()->AddVarint(1, value);
-          }
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(18)) goto parse_slave_id;
-        break;
-      }
-
-      // optional .mesos.SlaveID slave_id = 2;
-      case 2: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_slave_id:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
                input, mutable_slave_id()));
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(26)) goto parse_offer_id;
+        if (input->ExpectTag(18)) goto parse_offer_id;
         break;
       }
 
-      // optional .mesos.OfferID offer_id = 3;
-      case 3: {
+      // optional .mesos.OfferID offer_id = 2;
+      case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_offer_id:
@@ -2295,12 +2306,12 @@ bool ResourcesCurrentEntry::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(34)) goto parse_resources;
+        if (input->ExpectTag(26)) goto parse_resources;
         break;
       }
 
-      // repeated .mesos.Resource resources = 4;
-      case 4: {
+      // repeated .mesos.Resource resources = 3;
+      case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_resources:
@@ -2309,19 +2320,19 @@ bool ResourcesCurrentEntry::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(34)) goto parse_resources;
-        if (input->ExpectTag(40)) goto parse_ports;
+        if (input->ExpectTag(26)) goto parse_resources;
+        if (input->ExpectTag(32)) goto parse_ports;
         break;
       }
 
-      // repeated uint32 ports = 5;
-      case 5: {
+      // repeated uint32 ports = 4;
+      case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_ports:
           DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 1, 40, input, this->mutable_ports())));
+                 1, 32, input, this->mutable_ports())));
         } else if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag)
                    == ::google::protobuf::internal::WireFormatLite::
                       WIRETYPE_LENGTH_DELIMITED) {
@@ -2331,13 +2342,13 @@ bool ResourcesCurrentEntry::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(40)) goto parse_ports;
-        if (input->ExpectTag(50)) goto parse_hostname;
+        if (input->ExpectTag(32)) goto parse_ports;
+        if (input->ExpectTag(42)) goto parse_hostname;
         break;
       }
 
-      // optional string hostname = 6;
-      case 6: {
+      // optional string hostname = 5;
+      case 5: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_hostname:
@@ -2349,12 +2360,12 @@ bool ResourcesCurrentEntry::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(58)) goto parse_container_path;
+        if (input->ExpectTag(50)) goto parse_container_path;
         break;
       }
 
-      // optional string container_path = 7;
-      case 7: {
+      // optional string container_path = 6;
+      case 6: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_container_path:
@@ -2386,54 +2397,48 @@ bool ResourcesCurrentEntry::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void ResourcesCurrentEntry::SerializeWithCachedSizes(
+void ResourceCurrent::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // optional .arangodb.ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
-  if (has_state()) {
-    ::google::protobuf::internal::WireFormatLite::WriteEnum(
-      1, this->state(), output);
-  }
-
-  // optional .mesos.SlaveID slave_id = 2;
+  // optional .mesos.SlaveID slave_id = 1;
   if (has_slave_id()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      2, this->slave_id(), output);
+      1, this->slave_id(), output);
   }
 
-  // optional .mesos.OfferID offer_id = 3;
+  // optional .mesos.OfferID offer_id = 2;
   if (has_offer_id()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      3, this->offer_id(), output);
+      2, this->offer_id(), output);
   }
 
-  // repeated .mesos.Resource resources = 4;
+  // repeated .mesos.Resource resources = 3;
   for (int i = 0; i < this->resources_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      4, this->resources(i), output);
+      3, this->resources(i), output);
   }
 
-  // repeated uint32 ports = 5;
+  // repeated uint32 ports = 4;
   for (int i = 0; i < this->ports_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(
-      5, this->ports(i), output);
+      4, this->ports(i), output);
   }
 
-  // optional string hostname = 6;
+  // optional string hostname = 5;
   if (has_hostname()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->hostname().data(), this->hostname().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      6, this->hostname(), output);
+      5, this->hostname(), output);
   }
 
-  // optional string container_path = 7;
+  // optional string container_path = 6;
   if (has_container_path()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->container_path().data(), this->container_path().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      7, this->container_path(), output);
+      6, this->container_path(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -2442,59 +2447,53 @@ void ResourcesCurrentEntry::SerializeWithCachedSizes(
   }
 }
 
-::google::protobuf::uint8* ResourcesCurrentEntry::SerializeWithCachedSizesToArray(
+::google::protobuf::uint8* ResourceCurrent::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // optional .arangodb.ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
-  if (has_state()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
-      1, this->state(), target);
-  }
-
-  // optional .mesos.SlaveID slave_id = 2;
+  // optional .mesos.SlaveID slave_id = 1;
   if (has_slave_id()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        2, this->slave_id(), target);
+        1, this->slave_id(), target);
   }
 
-  // optional .mesos.OfferID offer_id = 3;
+  // optional .mesos.OfferID offer_id = 2;
   if (has_offer_id()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        3, this->offer_id(), target);
+        2, this->offer_id(), target);
   }
 
-  // repeated .mesos.Resource resources = 4;
+  // repeated .mesos.Resource resources = 3;
   for (int i = 0; i < this->resources_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        4, this->resources(i), target);
+        3, this->resources(i), target);
   }
 
-  // repeated uint32 ports = 5;
+  // repeated uint32 ports = 4;
   for (int i = 0; i < this->ports_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
-      WriteUInt32ToArray(5, this->ports(i), target);
+      WriteUInt32ToArray(4, this->ports(i), target);
   }
 
-  // optional string hostname = 6;
+  // optional string hostname = 5;
   if (has_hostname()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->hostname().data(), this->hostname().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        6, this->hostname(), target);
+        5, this->hostname(), target);
   }
 
-  // optional string container_path = 7;
+  // optional string container_path = 6;
   if (has_container_path()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->container_path().data(), this->container_path().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        7, this->container_path(), target);
+        6, this->container_path(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -2504,38 +2503,32 @@ void ResourcesCurrentEntry::SerializeWithCachedSizes(
   return target;
 }
 
-int ResourcesCurrentEntry::ByteSize() const {
+int ResourceCurrent::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional .arangodb.ResourcesCurrentState state = 1 [default = RESOURCE_STATE_UNKNOWN];
-    if (has_state()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::EnumSize(this->state());
-    }
-
-    // optional .mesos.SlaveID slave_id = 2;
+    // optional .mesos.SlaveID slave_id = 1;
     if (has_slave_id()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->slave_id());
     }
 
-    // optional .mesos.OfferID offer_id = 3;
+    // optional .mesos.OfferID offer_id = 2;
     if (has_offer_id()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->offer_id());
     }
 
-    // optional string hostname = 6;
+    // optional string hostname = 5;
     if (has_hostname()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->hostname());
     }
 
-    // optional string container_path = 7;
+    // optional string container_path = 6;
     if (has_container_path()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
@@ -2543,7 +2536,7 @@ int ResourcesCurrentEntry::ByteSize() const {
     }
 
   }
-  // repeated .mesos.Resource resources = 4;
+  // repeated .mesos.Resource resources = 3;
   total_size += 1 * this->resources_size();
   for (int i = 0; i < this->resources_size(); i++) {
     total_size +=
@@ -2551,7 +2544,7 @@ int ResourcesCurrentEntry::ByteSize() const {
         this->resources(i));
   }
 
-  // repeated uint32 ports = 5;
+  // repeated uint32 ports = 4;
   {
     int data_size = 0;
     for (int i = 0; i < this->ports_size(); i++) {
@@ -2572,10 +2565,10 @@ int ResourcesCurrentEntry::ByteSize() const {
   return total_size;
 }
 
-void ResourcesCurrentEntry::MergeFrom(const ::google::protobuf::Message& from) {
+void ResourceCurrent::MergeFrom(const ::google::protobuf::Message& from) {
   GOOGLE_CHECK_NE(&from, this);
-  const ResourcesCurrentEntry* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const ResourcesCurrentEntry*>(
+  const ResourceCurrent* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const ResourceCurrent*>(
       &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
@@ -2584,14 +2577,11 @@ void ResourcesCurrentEntry::MergeFrom(const ::google::protobuf::Message& from) {
   }
 }
 
-void ResourcesCurrentEntry::MergeFrom(const ResourcesCurrentEntry& from) {
+void ResourceCurrent::MergeFrom(const ResourceCurrent& from) {
   GOOGLE_CHECK_NE(&from, this);
   resources_.MergeFrom(from.resources_);
   ports_.MergeFrom(from.ports_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_state()) {
-      set_state(from.state());
-    }
     if (from.has_slave_id()) {
       mutable_slave_id()->::mesos::SlaveID::MergeFrom(from.slave_id());
     }
@@ -2608,19 +2598,19 @@ void ResourcesCurrentEntry::MergeFrom(const ResourcesCurrentEntry& from) {
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
-void ResourcesCurrentEntry::CopyFrom(const ::google::protobuf::Message& from) {
+void ResourceCurrent::CopyFrom(const ::google::protobuf::Message& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-void ResourcesCurrentEntry::CopyFrom(const ResourcesCurrentEntry& from) {
+void ResourceCurrent::CopyFrom(const ResourceCurrent& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool ResourcesCurrentEntry::IsInitialized() const {
+bool ResourceCurrent::IsInitialized() const {
 
   if (has_slave_id()) {
     if (!this->slave_id().IsInitialized()) return false;
@@ -2634,9 +2624,8 @@ bool ResourcesCurrentEntry::IsInitialized() const {
   return true;
 }
 
-void ResourcesCurrentEntry::Swap(ResourcesCurrentEntry* other) {
+void ResourceCurrent::Swap(ResourceCurrent* other) {
   if (other != this) {
-    std::swap(state_, other->state_);
     std::swap(slave_id_, other->slave_id_);
     std::swap(offer_id_, other->offer_id_);
     resources_.Swap(&other->resources_);
@@ -2649,11 +2638,11 @@ void ResourcesCurrentEntry::Swap(ResourcesCurrentEntry* other) {
   }
 }
 
-::google::protobuf::Metadata ResourcesCurrentEntry::GetMetadata() const {
+::google::protobuf::Metadata ResourceCurrent::GetMetadata() const {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::Metadata metadata;
-  metadata.descriptor = ResourcesCurrentEntry_descriptor_;
-  metadata.reflection = ResourcesCurrentEntry_reflection_;
+  metadata.descriptor = ResourceCurrent_descriptor_;
+  metadata.reflection = ResourceCurrent_reflection_;
   return metadata;
 }
 
@@ -2725,7 +2714,7 @@ bool ResourcesCurrent::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // repeated .arangodb.ResourcesCurrentEntry entries = 1;
+      // repeated .arangodb.ResourceCurrent entries = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -2758,7 +2747,7 @@ bool ResourcesCurrent::MergePartialFromCodedStream(
 
 void ResourcesCurrent::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // repeated .arangodb.ResourcesCurrentEntry entries = 1;
+  // repeated .arangodb.ResourceCurrent entries = 1;
   for (int i = 0; i < this->entries_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       1, this->entries(i), output);
@@ -2772,7 +2761,7 @@ void ResourcesCurrent::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* ResourcesCurrent::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // repeated .arangodb.ResourcesCurrentEntry entries = 1;
+  // repeated .arangodb.ResourceCurrent entries = 1;
   for (int i = 0; i < this->entries_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -2789,7 +2778,7 @@ void ResourcesCurrent::SerializeWithCachedSizes(
 int ResourcesCurrent::ByteSize() const {
   int total_size = 0;
 
-  // repeated .arangodb.ResourcesCurrentEntry entries = 1;
+  // repeated .arangodb.ResourceCurrent entries = 1;
   total_size += 1 * this->entries_size();
   for (int i = 0; i < this->entries_size(); i++) {
     total_size +=
@@ -2867,30 +2856,30 @@ void ResourcesCurrent::Swap(ResourcesCurrent* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int InstancesCurrentEntry::kStateFieldNumber;
-const int InstancesCurrentEntry::kTaskInfoFieldNumber;
-const int InstancesCurrentEntry::kTaskStatusFieldNumber;
-const int InstancesCurrentEntry::kPortsFieldNumber;
-const int InstancesCurrentEntry::kHostnameFieldNumber;
+const int InstanceCurrent::kStateFieldNumber;
+const int InstanceCurrent::kTaskInfoFieldNumber;
+const int InstanceCurrent::kTaskStatusFieldNumber;
+const int InstanceCurrent::kPortsFieldNumber;
+const int InstanceCurrent::kHostnameFieldNumber;
 #endif  // !_MSC_VER
 
-InstancesCurrentEntry::InstancesCurrentEntry()
+InstanceCurrent::InstanceCurrent()
   : ::google::protobuf::Message() {
   SharedCtor();
 }
 
-void InstancesCurrentEntry::InitAsDefaultInstance() {
+void InstanceCurrent::InitAsDefaultInstance() {
   task_info_ = const_cast< ::mesos::TaskInfo*>(&::mesos::TaskInfo::default_instance());
   task_status_ = const_cast< ::mesos::TaskStatus*>(&::mesos::TaskStatus::default_instance());
 }
 
-InstancesCurrentEntry::InstancesCurrentEntry(const InstancesCurrentEntry& from)
+InstanceCurrent::InstanceCurrent(const InstanceCurrent& from)
   : ::google::protobuf::Message() {
   SharedCtor();
   MergeFrom(from);
 }
 
-void InstancesCurrentEntry::SharedCtor() {
+void InstanceCurrent::SharedCtor() {
   _cached_size_ = 0;
   state_ = 1;
   task_info_ = NULL;
@@ -2899,11 +2888,11 @@ void InstancesCurrentEntry::SharedCtor() {
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
-InstancesCurrentEntry::~InstancesCurrentEntry() {
+InstanceCurrent::~InstanceCurrent() {
   SharedDtor();
 }
 
-void InstancesCurrentEntry::SharedDtor() {
+void InstanceCurrent::SharedDtor() {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     delete hostname_;
   }
@@ -2913,28 +2902,28 @@ void InstancesCurrentEntry::SharedDtor() {
   }
 }
 
-void InstancesCurrentEntry::SetCachedSize(int size) const {
+void InstanceCurrent::SetCachedSize(int size) const {
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = size;
   GOOGLE_SAFE_CONCURRENT_WRITES_END();
 }
-const ::google::protobuf::Descriptor* InstancesCurrentEntry::descriptor() {
+const ::google::protobuf::Descriptor* InstanceCurrent::descriptor() {
   protobuf_AssignDescriptorsOnce();
-  return InstancesCurrentEntry_descriptor_;
+  return InstanceCurrent_descriptor_;
 }
 
-const InstancesCurrentEntry& InstancesCurrentEntry::default_instance() {
+const InstanceCurrent& InstanceCurrent::default_instance() {
   if (default_instance_ == NULL) protobuf_AddDesc_arangodb_2eproto();
   return *default_instance_;
 }
 
-InstancesCurrentEntry* InstancesCurrentEntry::default_instance_ = NULL;
+InstanceCurrent* InstanceCurrent::default_instance_ = NULL;
 
-InstancesCurrentEntry* InstancesCurrentEntry::New() const {
-  return new InstancesCurrentEntry;
+InstanceCurrent* InstanceCurrent::New() const {
+  return new InstanceCurrent;
 }
 
-void InstancesCurrentEntry::Clear() {
+void InstanceCurrent::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     state_ = 1;
     if (has_task_info()) {
@@ -2954,13 +2943,13 @@ void InstancesCurrentEntry::Clear() {
   mutable_unknown_fields()->Clear();
 }
 
-bool InstancesCurrentEntry::MergePartialFromCodedStream(
+bool InstanceCurrent::MergePartialFromCodedStream(
     ::google::protobuf::io::CodedInputStream* input) {
 #define DO_(EXPRESSION) if (!(EXPRESSION)) return false
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // optional .arangodb.InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+      // required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
@@ -2968,8 +2957,8 @@ bool InstancesCurrentEntry::MergePartialFromCodedStream(
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
                  input, &value)));
-          if (::arangodb::InstancesCurrentState_IsValid(value)) {
-            set_state(static_cast< ::arangodb::InstancesCurrentState >(value));
+          if (::arangodb::InstanceCurrentState_IsValid(value)) {
+            set_state(static_cast< ::arangodb::InstanceCurrentState >(value));
           } else {
             mutable_unknown_fields()->AddVarint(1, value);
           }
@@ -3063,9 +3052,9 @@ bool InstancesCurrentEntry::MergePartialFromCodedStream(
 #undef DO_
 }
 
-void InstancesCurrentEntry::SerializeWithCachedSizes(
+void InstanceCurrent::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // optional .arangodb.InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+  // required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
   if (has_state()) {
     ::google::protobuf::internal::WireFormatLite::WriteEnum(
       1, this->state(), output);
@@ -3104,9 +3093,9 @@ void InstancesCurrentEntry::SerializeWithCachedSizes(
   }
 }
 
-::google::protobuf::uint8* InstancesCurrentEntry::SerializeWithCachedSizesToArray(
+::google::protobuf::uint8* InstanceCurrent::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // optional .arangodb.InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+  // required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
   if (has_state()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
       1, this->state(), target);
@@ -3149,11 +3138,11 @@ void InstancesCurrentEntry::SerializeWithCachedSizes(
   return target;
 }
 
-int InstancesCurrentEntry::ByteSize() const {
+int InstanceCurrent::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional .arangodb.InstancesCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
+    // required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
     if (has_state()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::EnumSize(this->state());
@@ -3202,10 +3191,10 @@ int InstancesCurrentEntry::ByteSize() const {
   return total_size;
 }
 
-void InstancesCurrentEntry::MergeFrom(const ::google::protobuf::Message& from) {
+void InstanceCurrent::MergeFrom(const ::google::protobuf::Message& from) {
   GOOGLE_CHECK_NE(&from, this);
-  const InstancesCurrentEntry* source =
-    ::google::protobuf::internal::dynamic_cast_if_available<const InstancesCurrentEntry*>(
+  const InstanceCurrent* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const InstanceCurrent*>(
       &from);
   if (source == NULL) {
     ::google::protobuf::internal::ReflectionOps::Merge(from, this);
@@ -3214,7 +3203,7 @@ void InstancesCurrentEntry::MergeFrom(const ::google::protobuf::Message& from) {
   }
 }
 
-void InstancesCurrentEntry::MergeFrom(const InstancesCurrentEntry& from) {
+void InstanceCurrent::MergeFrom(const InstanceCurrent& from) {
   GOOGLE_CHECK_NE(&from, this);
   ports_.MergeFrom(from.ports_);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
@@ -3234,19 +3223,20 @@ void InstancesCurrentEntry::MergeFrom(const InstancesCurrentEntry& from) {
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
 
-void InstancesCurrentEntry::CopyFrom(const ::google::protobuf::Message& from) {
+void InstanceCurrent::CopyFrom(const ::google::protobuf::Message& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-void InstancesCurrentEntry::CopyFrom(const InstancesCurrentEntry& from) {
+void InstanceCurrent::CopyFrom(const InstanceCurrent& from) {
   if (&from == this) return;
   Clear();
   MergeFrom(from);
 }
 
-bool InstancesCurrentEntry::IsInitialized() const {
+bool InstanceCurrent::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
   if (has_task_info()) {
     if (!this->task_info().IsInitialized()) return false;
@@ -3257,7 +3247,7 @@ bool InstancesCurrentEntry::IsInitialized() const {
   return true;
 }
 
-void InstancesCurrentEntry::Swap(InstancesCurrentEntry* other) {
+void InstanceCurrent::Swap(InstanceCurrent* other) {
   if (other != this) {
     std::swap(state_, other->state_);
     std::swap(task_info_, other->task_info_);
@@ -3270,11 +3260,11 @@ void InstancesCurrentEntry::Swap(InstancesCurrentEntry* other) {
   }
 }
 
-::google::protobuf::Metadata InstancesCurrentEntry::GetMetadata() const {
+::google::protobuf::Metadata InstanceCurrent::GetMetadata() const {
   protobuf_AssignDescriptorsOnce();
   ::google::protobuf::Metadata metadata;
-  metadata.descriptor = InstancesCurrentEntry_descriptor_;
-  metadata.reflection = InstancesCurrentEntry_reflection_;
+  metadata.descriptor = InstanceCurrent_descriptor_;
+  metadata.reflection = InstanceCurrent_reflection_;
   return metadata;
 }
 
@@ -3346,7 +3336,7 @@ bool InstancesCurrent::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // repeated .arangodb.InstancesCurrentEntry entries = 1;
+      // repeated .arangodb.InstanceCurrent entries = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
@@ -3379,7 +3369,7 @@ bool InstancesCurrent::MergePartialFromCodedStream(
 
 void InstancesCurrent::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // repeated .arangodb.InstancesCurrentEntry entries = 1;
+  // repeated .arangodb.InstanceCurrent entries = 1;
   for (int i = 0; i < this->entries_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       1, this->entries(i), output);
@@ -3393,7 +3383,7 @@ void InstancesCurrent::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* InstancesCurrent::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // repeated .arangodb.InstancesCurrentEntry entries = 1;
+  // repeated .arangodb.InstanceCurrent entries = 1;
   for (int i = 0; i < this->entries_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
@@ -3410,7 +3400,7 @@ void InstancesCurrent::SerializeWithCachedSizes(
 int InstancesCurrent::ByteSize() const {
   int total_size = 0;
 
-  // repeated .arangodb.InstancesCurrentEntry entries = 1;
+  // repeated .arangodb.InstanceCurrent entries = 1;
   total_size += 1 * this->entries_size();
   for (int i = 0; i < this->entries_size(); i++) {
     total_size +=
@@ -4238,7 +4228,7 @@ void Current::Swap(Current* other) {
 
 #ifndef _MSC_VER
 const int State::kFrameworkIdFieldNumber;
-const int State::kTargetFieldNumber;
+const int State::kTargetsFieldNumber;
 const int State::kPlanFieldNumber;
 const int State::kCurrentFieldNumber;
 #endif  // !_MSC_VER
@@ -4250,7 +4240,7 @@ State::State()
 
 void State::InitAsDefaultInstance() {
   framework_id_ = const_cast< ::mesos::FrameworkID*>(&::mesos::FrameworkID::default_instance());
-  target_ = const_cast< ::arangodb::Target*>(&::arangodb::Target::default_instance());
+  targets_ = const_cast< ::arangodb::Targets*>(&::arangodb::Targets::default_instance());
   plan_ = const_cast< ::arangodb::Plan*>(&::arangodb::Plan::default_instance());
   current_ = const_cast< ::arangodb::Current*>(&::arangodb::Current::default_instance());
 }
@@ -4264,7 +4254,7 @@ State::State(const State& from)
 void State::SharedCtor() {
   _cached_size_ = 0;
   framework_id_ = NULL;
-  target_ = NULL;
+  targets_ = NULL;
   plan_ = NULL;
   current_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -4277,7 +4267,7 @@ State::~State() {
 void State::SharedDtor() {
   if (this != default_instance_) {
     delete framework_id_;
-    delete target_;
+    delete targets_;
     delete plan_;
     delete current_;
   }
@@ -4309,8 +4299,8 @@ void State::Clear() {
     if (has_framework_id()) {
       if (framework_id_ != NULL) framework_id_->::mesos::FrameworkID::Clear();
     }
-    if (has_target()) {
-      if (target_ != NULL) target_->::arangodb::Target::Clear();
+    if (has_targets()) {
+      if (targets_ != NULL) targets_->::arangodb::Targets::Clear();
     }
     if (has_plan()) {
       if (plan_ != NULL) plan_->::arangodb::Plan::Clear();
@@ -4338,17 +4328,17 @@ bool State::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(18)) goto parse_target;
+        if (input->ExpectTag(18)) goto parse_targets;
         break;
       }
 
-      // required .arangodb.Target target = 2;
+      // required .arangodb.Targets targets = 2;
       case 2: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_target:
+         parse_targets:
           DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-               input, mutable_target()));
+               input, mutable_targets()));
         } else {
           goto handle_uninterpreted;
         }
@@ -4408,10 +4398,10 @@ void State::SerializeWithCachedSizes(
       1, this->framework_id(), output);
   }
 
-  // required .arangodb.Target target = 2;
-  if (has_target()) {
+  // required .arangodb.Targets targets = 2;
+  if (has_targets()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      2, this->target(), output);
+      2, this->targets(), output);
   }
 
   // required .arangodb.Plan plan = 3;
@@ -4441,11 +4431,11 @@ void State::SerializeWithCachedSizes(
         1, this->framework_id(), target);
   }
 
-  // required .arangodb.Target target = 2;
-  if (has_target()) {
+  // required .arangodb.Targets targets = 2;
+  if (has_targets()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        2, this->target(), target);
+        2, this->targets(), target);
   }
 
   // required .arangodb.Plan plan = 3;
@@ -4480,11 +4470,11 @@ int State::ByteSize() const {
           this->framework_id());
     }
 
-    // required .arangodb.Target target = 2;
-    if (has_target()) {
+    // required .arangodb.Targets targets = 2;
+    if (has_targets()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
-          this->target());
+          this->targets());
     }
 
     // required .arangodb.Plan plan = 3;
@@ -4531,8 +4521,8 @@ void State::MergeFrom(const State& from) {
     if (from.has_framework_id()) {
       mutable_framework_id()->::mesos::FrameworkID::MergeFrom(from.framework_id());
     }
-    if (from.has_target()) {
-      mutable_target()->::arangodb::Target::MergeFrom(from.target());
+    if (from.has_targets()) {
+      mutable_targets()->::arangodb::Targets::MergeFrom(from.targets());
     }
     if (from.has_plan()) {
       mutable_plan()->::arangodb::Plan::MergeFrom(from.plan());
@@ -4562,8 +4552,8 @@ bool State::IsInitialized() const {
   if (has_framework_id()) {
     if (!this->framework_id().IsInitialized()) return false;
   }
-  if (has_target()) {
-    if (!this->target().IsInitialized()) return false;
+  if (has_targets()) {
+    if (!this->targets().IsInitialized()) return false;
   }
   if (has_plan()) {
     if (!this->plan().IsInitialized()) return false;
@@ -4577,7 +4567,7 @@ bool State::IsInitialized() const {
 void State::Swap(State* other) {
   if (other != this) {
     std::swap(framework_id_, other->framework_id_);
-    std::swap(target_, other->target_);
+    std::swap(targets_, other->targets_);
     std::swap(plan_, other->plan_);
     std::swap(current_, other->current_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);

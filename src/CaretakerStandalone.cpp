@@ -47,20 +47,20 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 CaretakerStandalone::CaretakerStandalone () {
-  Target target = Global::state().target();
+  Targets targets = Global::state().targets();
 
   // AGENCY
-  TargetEntry* agency = target.mutable_agents();
+  Target* agency = targets.mutable_agents();
   agency->set_instances(0);
   agency->clear_minimal_resources();
 
   // COORDINATOR
-  TargetEntry* coordinator = target.mutable_coordinators();
+  Target* coordinator = targets.mutable_coordinators();
   coordinator->set_instances(0);
   coordinator->clear_minimal_resources();
 
   // DBSERVER
-  TargetEntry* dbserver = target.mutable_dbservers();
+  Target* dbserver = targets.mutable_dbservers();
   dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
@@ -82,11 +82,11 @@ CaretakerStandalone::CaretakerStandalone () {
   }
 
   // SECONDARIES
-  TargetEntry* secondaries = target.mutable_secondaries();
+  Target* secondaries = targets.mutable_secondaries();
   secondaries->set_instances(0);
   secondaries->clear_minimal_resources();
 
-  Global::state().setTarget(target);
+  Global::state().setTargets(targets);
 }
 
 // -----------------------------------------------------------------------------
@@ -98,12 +98,12 @@ CaretakerStandalone::CaretakerStandalone () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CaretakerStandalone::updatePlan () {
-  Target target = Global::state().target();
+  Targets targets = Global::state().targets();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
   // need exactly one DB server
-  int t = (int) target.dbservers().instances();
+  int t = (int) targets.dbservers().instances();
 
   if (t != 1) {
     LOG(ERROR)
@@ -119,7 +119,7 @@ void CaretakerStandalone::updatePlan () {
     LOG(ERROR)
     << "ERROR running in standalone mode, but got " << p << " db-servers";
 
-    TasksPlanEntry entry = dbservers->entries(0);
+    TaskPlan entry = dbservers->entries(0);
 
     dbservers->clear_entries();
     dbservers->add_entries()->CopyFrom(entry);
@@ -129,12 +129,12 @@ void CaretakerStandalone::updatePlan () {
     LOG(INFO)
     << "DEBUG creating one db-server in plan";
 
-    TasksPlanEntry* planEntry = dbservers->add_entries();
-    planEntry->set_is_primary(true);
+    TaskPlan* task = dbservers->add_entries();
+    task->set_state(TASK_STATE_NEW);
+    task->set_is_primary(true);
 
     ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
-    ResourcesCurrentEntry* resEntry = resources->add_entries();
-    resEntry->set_state(RESOURCE_STATE_REQUIRED);
+    resources->add_entries();
 
     InstancesCurrent* instances = current.mutable_primary_dbservers();
     instances->add_entries();
@@ -156,7 +156,7 @@ InstanceAction CaretakerStandalone::checkInstance () {
     "dbserver",
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
-    plan.dbservers(),
+    plan.mutable_dbservers(),
     current.mutable_primary_dbserver_resources(),
     current.mutable_primary_dbservers());
 

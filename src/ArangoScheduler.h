@@ -101,7 +101,7 @@ namespace arangodb {
 
       mesos::TaskInfo startInstance (const std::string& taskId,
                                      const std::string& name,
-                                     const ResourcesCurrentEntry&,
+                                     const ResourceCurrent&,
                                      const mesos::ContainerInfo&,
                                      const mesos::CommandInfo&) const;
 
