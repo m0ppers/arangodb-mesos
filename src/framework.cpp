@@ -501,7 +501,7 @@ int main (int argc, char** argv) {
   // manager
   // ...........................................................................
 
-  ArangoManager* manager = ArangoManager::New();
+  ArangoManager* manager = new ArangoManager();
   Global::setManager(manager);
 
   // ...........................................................................

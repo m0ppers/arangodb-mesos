@@ -29,7 +29,6 @@
 
 #include "ArangoScheduler.h"
 #include "ArangoState.h"
-#include "Caretaker.h"
 #include "Global.h"
 #include "utils.h"
 
@@ -39,8 +38,6 @@
 
 #include <iostream>
 #include <set>
-#include <unordered_set>
-#include <unordered_map>
 #include <random>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -210,62 +207,50 @@ static void initializeCluster() {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do IP address lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static string getIPAddress (string hostname) {
+  struct addrinfo hints;
+  struct addrinfo* ai;
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = 0;
+  hints.ai_flags = AI_ADDRCONFIG;
+  int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
+
+  if (res != 0) {
+    LOG(WARNING) << "Alarm: res=" << res;
+    return hostname;
+  }
+
+  struct addrinfo* b = ai;
+  std::string result = hostname;
+
+  while (b != nullptr) {
+    auto q = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
+    char buffer[INET_ADDRSTRLEN+5];
+    char const* p = inet_ntop(AF_INET, &q->sin_addr, buffer, sizeof(buffer));
+
+    if (p != nullptr) {
+      if (p[0] != '1' || p[1] != '2' || p[2] != '7') {
+        result = p;
+      }
+    }
+    else {
+      LOG(WARNING) << "error in inet_ntop";
+    }
+
+    b = b->ai_next;
+  }
+
+  return result;
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class ReconcileTasks
+// --SECTION--                                               class ArangoManager
 // -----------------------------------------------------------------------------
-
-class ReconcileTasks {
-  public:
-    mesos::TaskStatus _status;
-    chrono::steady_clock::time_point _nextReconcile;
-    chrono::steady_clock::duration _backoff;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class ArangoManagerImpl
-// -----------------------------------------------------------------------------
-
-class ArangoManagerImpl : public ArangoManager {
-  public:
-    ArangoManagerImpl ();
-    ~ArangoManagerImpl ();
-
-  public:
-    void addOffer (const mesos::Offer& offer) override;
-    void removeOffer (const mesos::OfferID& offerId) override;
-    void taskStatusUpdate (const mesos::TaskStatus& status) override;
-    void destroy () override;
-    vector<string> coordinatorEndpoints () override;
-    vector<string> dbserverEndpoints () override;
-
-  private:
-    void dispatch ();
-    void prepareReconciliation ();
-    void reconcileTasks ();
-    void checkTimeouts ();
-    void applyStatusUpdates ();
-    bool checkOutstandOffers ();
-    void startNewInstances ();
-    bool makePersistentVolume (const string& name, const mesos::Offer&, const mesos::Resources&);
-    bool makeDynamicReservation (const mesos::Offer&, const mesos::Resources&);
-    void startInstance (InstanceActionState, const ResourceCurrent&, const AspectPosition&);
-    void fillKnownInstances (AspectType, const InstancesCurrent&);
-    void killAllInstances ();
-
-  private:
-    mutex _lock;
-    thread* _dispatcher;
-
-    chrono::steady_clock::time_point _nextImplicitReconciliation;
-    chrono::steady_clock::duration _implicitReconciliationIntervall;
-    chrono::steady_clock::duration _maxReconcileIntervall;
-
-    unordered_map<string, ReconcileTasks> _reconcilationTasks;
-
-    unordered_map<string, AspectPosition> _task2position;
-    unordered_map<string, mesos::Offer> _storedOffers;
-    vector<mesos::TaskStatus> _taskStatusUpdates;
-};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -275,14 +260,18 @@ class ArangoManagerImpl : public ArangoManager {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManagerImpl::ArangoManagerImpl ()
-  : _lock(),
+ArangoManager::ArangoManager ()
+  : _stopDispatcher(false),
     _dispatcher(nullptr),
+    _nextImplicitReconciliation(chrono::steady_clock::now()),
+    _implicitReconciliationIntervall(chrono::minutes(5)),
+    _maxReconcileIntervall(chrono::minutes(5)),
     _task2position(),
+    _lock(),
     _storedOffers(),
     _taskStatusUpdates() {
 
-  _dispatcher = new thread(&ArangoManagerImpl::dispatch, this);
+  _dispatcher = new thread(&ArangoManager::dispatch, this);
 
   Current current = Global::state().current();
 
@@ -290,17 +279,13 @@ ArangoManagerImpl::ArangoManagerImpl ()
   fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
   fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.primary_dbservers());
   fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());
-
-  _nextImplicitReconciliation = chrono::steady_clock::now();
-  _implicitReconciliationIntervall = chrono::minutes(5);
-  _maxReconcileIntervall = chrono::minutes(5);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoManagerImpl::~ArangoManagerImpl () {
+ArangoManager::~ArangoManager () {
   _stopDispatcher = true;
   _dispatcher->join();
 
@@ -315,17 +300,15 @@ ArangoManagerImpl::~ArangoManagerImpl () {
 /// @brief adds an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::addOffer (const mesos::Offer& offer) {
+void ArangoManager::addOffer (const mesos::Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
-  /*
   {
     string json;
     pbjson::pb2json(&offer, json);
     LOG(INFO)
     << "OFFER received: " << json;
   }
-  */
 
   _storedOffers[offer.id().value()] = offer;
 }
@@ -334,7 +317,7 @@ void ArangoManagerImpl::addOffer (const mesos::Offer& offer) {
 /// @brief removes an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::removeOffer (const mesos::OfferID& offerId) {
+void ArangoManager::removeOffer (const mesos::OfferID& offerId) {
   lock_guard<mutex> lock(_lock);
 
   string id = offerId.value();
@@ -349,7 +332,7 @@ void ArangoManagerImpl::removeOffer (const mesos::OfferID& offerId) {
 /// @brief status update
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
+void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
   lock_guard<mutex> lock(_lock);
 
   _taskStatusUpdates.push_back(status);
@@ -359,7 +342,7 @@ void ArangoManagerImpl::taskStatusUpdate (const mesos::TaskStatus& status) {
 /// @brief destroys the cluster and shuts down the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::destroy () {
+void ArangoManager::destroy () {
   LOG(INFO) << "destroy() called, killing off everything...";
   killAllInstances();
 
@@ -375,7 +358,7 @@ void ArangoManagerImpl::destroy () {
 /// @brief endpoints of the coordinators
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> ArangoManagerImpl::coordinatorEndpoints () {
+vector<string> ArangoManager::coordinatorEndpoints () {
   Current current = Global::state().current();
   auto const& coordinators = current.coordinators();
 
@@ -396,7 +379,7 @@ vector<string> ArangoManagerImpl::coordinatorEndpoints () {
 /// @brief endpoints of the DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> ArangoManagerImpl::dbserverEndpoints () {
+vector<string> ArangoManager::dbserverEndpoints () {
   Current current = Global::state().current();
   auto const& dbservers = current.primary_dbservers();
 
@@ -421,7 +404,7 @@ vector<string> ArangoManagerImpl::dbserverEndpoints () {
 /// @brief main dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::dispatch () {
+void ArangoManager::dispatch () {
   static const int SLEEP_SEC = 10;
 
   prepareReconciliation();
@@ -442,13 +425,13 @@ void ArangoManagerImpl::dispatch () {
     applyStatusUpdates();
 
     // check all outstanding offers
-    bool sleep = checkOutstandOffers();
+    bool sleep1 = checkOutstandOffers();
 
     // apply any timeouts
-    checkTimeouts();
+    bool sleep2 = checkTimeouts();
 
     // check if we can start new instances
-    startNewInstances();
+    bool sleep3 = startNewInstances();
 
     // initialise cluster when it is up:
     auto cur = Global::state().current();
@@ -460,8 +443,8 @@ void ArangoManagerImpl::dispatch () {
       initializeCluster();
     }
 
-    // wait for a little while
-    if (sleep) {
+    // wait for a little while, if we are idle
+    if (sleep1 && sleep2 && sleep3) {
       this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
     }
   }
@@ -471,7 +454,7 @@ void ArangoManagerImpl::dispatch () {
 /// @brief prepares the reconciliation of tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::prepareReconciliation () {
+void ArangoManager::prepareReconciliation () {
   vector<mesos::TaskStatus> status = Global::state().knownTaskStatus();
   auto now = chrono::steady_clock::now();
 
@@ -495,7 +478,7 @@ void ArangoManagerImpl::prepareReconciliation () {
 /// @brief tries to recover tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::reconcileTasks () {
+void ArangoManager::reconcileTasks () {
 
   // see http://mesos.apache.org/documentation/latest/reconciliation/
   // for details about reconciliation
@@ -535,15 +518,16 @@ void ArangoManagerImpl::reconcileTasks () {
 /// @brief checks for timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::checkTimeouts () {
-  // TODO
+bool ArangoManager::checkTimeouts () {
+  // TODO(fc) check all timeouts and change state
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief applies status updates
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::applyStatusUpdates () {
+void ArangoManager::applyStatusUpdates () {
   Caretaker& caretaker = Global::caretaker();
 
   lock_guard<mutex> lock(_lock);
@@ -587,8 +571,18 @@ void ArangoManagerImpl::applyStatusUpdates () {
 /// @brief checks available offers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoManagerImpl::checkOutstandOffers () {
+bool ArangoManager::checkOutstandOffers () {
   Caretaker& caretaker = Global::caretaker();
+
+  // .............................................................................
+  // first of all, update our plan
+  // .............................................................................
+
+  caretaker.updatePlan();
+
+  // .............................................................................
+  // check all stored offers
+  // .............................................................................
 
   unordered_map<string, mesos::Offer> next;
   vector<pair<mesos::Offer, mesos::Resources>> dynamic;
@@ -597,8 +591,6 @@ bool ArangoManagerImpl::checkOutstandOffers () {
 
   {
     lock_guard<mutex> lock(_lock);
-
-    caretaker.updatePlan();
 
     for (auto&& id_offer : _storedOffers) {
       OfferAction action = caretaker.checkOffer(id_offer.second);
@@ -636,14 +628,8 @@ bool ArangoManagerImpl::checkOutstandOffers () {
   // try to make the dynamic reservations
   // .............................................................................
 
-  bool sleep = true;
-
   for (auto&& offer_res : dynamic) {
-    bool res = makeDynamicReservation(offer_res.first, offer_res.second);
-
-    if (res) {
-      sleep = false;
-    }
+    makeDynamicReservation(offer_res.first, offer_res.second);
   }
 
   // .............................................................................
@@ -651,28 +637,22 @@ bool ArangoManagerImpl::checkOutstandOffers () {
   // .............................................................................
 
   for (auto&& offer_res : persistent) {
-    bool res = makePersistentVolume(offer_res.second._name,
+    makePersistentVolume(offer_res.second._name,
                                     offer_res.first,
                                     offer_res.second._resources);
-
-    if (res) {
-      sleep = false;
-    }
   }
 
-  return sleep;
+  return persistent.empty() && dynamic.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts new instances
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::startNewInstances () {
+bool ArangoManager::startNewInstances () {
   vector<InstanceAction> start;
 
   {
-    lock_guard<mutex> lock(_lock);
-
     Caretaker& caretaker = Global::caretaker();
     InstanceAction action;
 
@@ -697,13 +677,15 @@ void ArangoManagerImpl::startNewInstances () {
   for (auto&& action : start) {
     startInstance(action._state, action._info, action._pos);
   }
+
+  return start.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makes a persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoManagerImpl::makePersistentVolume (const string& name,
+bool ArangoManager::makePersistentVolume (const string& name,
                                               const mesos::Offer& offer,
                                               const mesos::Resources& resources) {
   const string& offerId = offer.id().value();
@@ -754,7 +736,7 @@ bool ArangoManagerImpl::makePersistentVolume (const string& name,
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
+bool ArangoManager::makeDynamicReservation (const mesos::Offer& offer,
                                                 const mesos::Resources& resources) {
   const string& offerId = offer.id().value();
   mesos::Resources res = resources.flatten(Global::role(), Global::principal());
@@ -778,49 +760,12 @@ bool ArangoManagerImpl::makeDynamicReservation (const mesos::Offer& offer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief do IP address lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static string getIPAddress (string hostname) {
-  struct addrinfo hints;
-  struct addrinfo* ai;
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = 0;
-  hints.ai_flags = AI_ADDRCONFIG;
-  int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
-  if (res != 0) {
-    LOG(WARNING) << "Alarm: res=" << res;
-    return hostname;
-  }
-  struct addrinfo* b = ai;
-  std::string result = hostname;
-  while (b != nullptr) {
-    auto q = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
-    char buffer[INET_ADDRSTRLEN+5];
-    char const* p = inet_ntop(AF_INET, &q->sin_addr, buffer, sizeof(buffer));
-    if (p != nullptr) {
-      if (p[0] != '1' || p[1] != '2' || p[2] != '7') {
-        result = p;
-      }
-    }
-    else {
-      LOG(WARNING) << "error in inet_ntop";
-    }
-    b = b->ai_next;
-  }
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a new standalone arangodb
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::startInstance (InstanceActionState aspect,
-                                       const ResourceCurrent& info,
-                                       const AspectPosition& pos) {
-  lock_guard<mutex> lock(_lock);
-
+void ArangoManager::startInstance (InstanceActionState aspect,
+                                   const ResourceCurrent& info,
+                                   const AspectPosition& pos) {
   string taskId = UUID::random().toString();
 
   if (info.ports_size() != 1) {
@@ -835,43 +780,52 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
 
   // our own name:
   string type;
+
   switch (aspect) {
     case InstanceActionState::START_AGENT:
       type = "Agent";
       break;
+
     case InstanceActionState::START_PRIMARY_DBSERVER:
       type = "DBServer";
       break;
+
     case InstanceActionState::START_COORDINATOR:
       type = "Coordinator";
       break;
+
     case InstanceActionState::START_SECONDARY_DBSERVER:
       type = "Secondary";
       break;
+
     case InstanceActionState::DONE:
       assert(false);
       break;
   }
+
   string myName = type + to_string(pos._pos + 1);
 
   // command to execute
   mesos::CommandInfo command;
   mesos::Environment environment;
+  auto& state = Global::state();
+
   switch (aspect) {
     case InstanceActionState::START_AGENT: {
+      auto targets = state.targets();
       command.set_value("agency");
       auto p = environment.add_variables();
       p->set_name("numberOfDBServers");
-      p->set_value(to_string(Global::state().targets().dbservers().instances()));
+      p->set_value(to_string(targets.dbservers().instances()));
       p = environment.add_variables();
       p->set_name("numberOfCoordinators");
-      p->set_value(to_string(Global::state().targets().coordinators().instances()));
+      p->set_value(to_string(targets.coordinators().instances()));
       p = environment.add_variables();
       p->set_name("asyncReplication");
-      p->set_value(Global::asyncReplication() ? string("true")
-                                              : string("false"));
+      p->set_value(Global::asyncReplication() ? string("true") : string("false"));
       break;
     }
+
     case InstanceActionState::START_PRIMARY_DBSERVER:
     case InstanceActionState::START_COORDINATOR:
     case InstanceActionState::START_SECONDARY_DBSERVER: {
@@ -879,21 +833,25 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
         command.set_value("standalone");
       }
       else {
+        auto agents = state.current().agents();
         command.set_value("cluster");
-        string hostname = Global::state().current().agents().entries(0).hostname();
-        uint32_t port = Global::state().current().agents().entries(0).ports(0);
+        string hostname = agents.entries(0).hostname();
+        uint32_t port = agents.entries(0).ports(0);
         command.add_arguments(
             "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
         command.add_arguments(myName);
       }
       break;
     }
+
     case InstanceActionState::DONE: {
       assert(false);
       break;
     }
   }
+
   command.set_shell(false);
+
   // Find out the IP address:
 
   auto p = environment.add_variables();
@@ -912,28 +870,34 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
   // port mapping
   mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker->add_port_mappings();
   mapping->set_host_port(info.ports(0));
+
   switch (aspect) {
     case InstanceActionState::START_AGENT:
       mapping->set_container_port(4001);
       break;
+
     case InstanceActionState::START_PRIMARY_DBSERVER:
       mapping->set_container_port(8529);
       break;
+
     case InstanceActionState::START_COORDINATOR:
       mapping->set_container_port(8529);
       break;
+
     case InstanceActionState::START_SECONDARY_DBSERVER:
       mapping->set_container_port(8529);
       break;
+
     case InstanceActionState::DONE:
       assert(false);
       break;
   }
+
   mapping->set_protocol("tcp");
 
   // volume
   string path = "arangodb_" + Global::frameworkName() + "_" 
-                + Global::state().frameworkId() + "_" + myName;
+                + state.frameworkId() + "_" + myName;
   mesos::Volume* volume = container.add_volumes();
   volume->set_container_path("/data");
   volume->set_host_path(Global::volumePath() + "/" + path);
@@ -964,7 +928,7 @@ void ArangoManagerImpl::startInstance (InstanceActionState aspect,
 /// @brief recover task mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::fillKnownInstances (AspectType type,
+void ArangoManager::fillKnownInstances (AspectType type,
                                             const InstancesCurrent& instances) {
   LOG(INFO)
   << "recovering instance type " << (int) type;
@@ -987,44 +951,12 @@ void ArangoManagerImpl::fillKnownInstances (AspectType type,
 /// @brief kills all running tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManagerImpl::killAllInstances () {
+void ArangoManager::killAllInstances () {
   for (const auto& task : _task2position) {
     const auto& id = task.first;
 
     Global::scheduler().killInstance(id);
   }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ArangoManager
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoManager::ArangoManager ()
-  : _stopDispatcher(false) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoManager* ArangoManager::New () {
-  return new ArangoManagerImpl();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-ArangoManager::~ArangoManager () {
-  _stopDispatcher = true;
 }
 
 // -----------------------------------------------------------------------------
