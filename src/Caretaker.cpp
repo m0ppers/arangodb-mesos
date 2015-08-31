@@ -82,7 +82,7 @@ static void adjustPlan (const string& name,
     task->set_started(now);
 
     resources->add_entries();
-    instances->add_entries();
+    instances->add_entries()->set_state(INSTANCE_STATE_UNUSED);
   }
   
   return;
@@ -427,6 +427,9 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
                                            TasksPlan* plan,
                                            ResourcesCurrent* current,
                                            mesos::Offer const& offer) {
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
   string upper = name;
   for (auto& c : upper) { c = toupper(c); }
           
@@ -455,21 +458,22 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   const string& offerSlaveId = offer.slave_id().value();
 
   for (int i = 0;  i < p;  ++i) {
-    TaskPlan* entry = plan->mutable_entries(i);
+    TaskPlan* task = plan->mutable_entries(i);
     ResourceCurrent* resEntry = current->mutable_entries(i);
 
-    if (entry->state() == TASK_STATE_NEW) {
+    if (task->state() == TASK_STATE_NEW) {
       required = i;
       continue;
     }
 
     if (resEntry->slave_id().value() == offerSlaveId) {
-      switch (entry->state()) {
+      switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE: {
           mesos::Resources resources = resEntry->resources();
 
           if (isSuitableReservedOffer(resources, offer)) {
-            entry->set_state(TASK_STATE_TRYING_TO_PERSIST);
+            task->set_state(TASK_STATE_TRYING_TO_PERSIST);
+            task->set_started(now);
 
             resEntry->mutable_offer_id()->CopyFrom(offer.id());
 
@@ -492,8 +496,9 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
             upper, resEntry->resources(), offer, persistenceId, containerPath);
 
           if (! resources.empty()) {
-            entry->set_state(TASK_STATE_TRYING_TO_START);
-            entry->set_persistence_id(persistenceId);
+            task->set_state(TASK_STATE_TRYING_TO_START);
+            task->set_persistence_id(persistenceId);
+            task->set_started(now);
 
             resEntry->mutable_offer_id()->CopyFrom(offer.id());
             resEntry->mutable_resources()->CopyFrom(resources);
@@ -504,6 +509,30 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
 
           return { OfferActionState::IGNORE };
         }
+
+        case TASK_STATE_KILLED:
+        case TASK_STATE_FAILED_OVER: {
+          string persistenceId;
+          string containerPath;
+
+          mesos::Resources resources = suitablePersistent(
+            upper, resEntry->resources(), offer, persistenceId, containerPath);
+
+          if (! resources.empty()) {
+            task->set_state(TASK_STATE_TRYING_TO_RESTART);
+            task->set_persistence_id(persistenceId);
+            task->set_started(now);
+
+            resEntry->mutable_offer_id()->CopyFrom(offer.id());
+            resEntry->mutable_resources()->CopyFrom(resources);
+            resEntry->set_container_path(containerPath);
+
+            return { OfferActionState::USABLE };
+          }
+
+          return { OfferActionState::IGNORE };
+        }
+
 
         default: {
           return { OfferActionState::IGNORE };
@@ -568,7 +597,7 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   // try to start directly, if we do not need a reservation
   // ...........................................................................
 
-  TaskPlan* entry = plan->mutable_entries(required);
+  TaskPlan* task = plan->mutable_entries(required);
 
   ResourceCurrent* resEntry = current->mutable_entries(required);
   resEntry->mutable_slave_id()->CopyFrom(offer.slave_id());
@@ -584,7 +613,8 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   }
 
   if (! persistent) {
-    entry->set_state(TASK_STATE_TRYING_TO_START);
+    task->set_state(TASK_STATE_TRYING_TO_START);
+    task->set_started(now);
 
     resEntry->mutable_resources()->CopyFrom(resources.flatten());
     resEntry->set_hostname(offer.hostname());
@@ -867,40 +897,66 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
 
 void Caretaker::setInstanceState (const AspectPosition& pos,
                                   InstanceCurrentState state) {
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
   Current current = Global::state().current();
+  Plan plan = Global::state().plan();
+
+  InstancesCurrent* instances = nullptr;
+  TasksPlan* tasks = nullptr;
   int p = pos._pos;
 
   switch (pos._type) {
     case AspectType::AGENT:
-      current.mutable_agents()
-        ->mutable_entries(p)
-        ->set_state(state);
+      instances = current.mutable_agents();
+      tasks = plan.mutable_agents();
       break;
 
     case AspectType::PRIMARY_DBSERVER:
-      current.mutable_primary_dbservers()
-        ->mutable_entries(p)
-        ->set_state(state);
+      instances = current.mutable_primary_dbservers();
+      tasks = plan.mutable_dbservers();
       break;
 
     case AspectType::SECONDARY_DBSERVER:
-      current.mutable_secondary_dbservers()
-        ->mutable_entries(p)
-        ->set_state(state);
+      instances = current.mutable_secondary_dbservers();
+      tasks = plan.mutable_secondaries();
       break;
 
     case AspectType::COORDINATOR:
-      current.mutable_coordinators()
-        ->mutable_entries(p)
-        ->set_state(state);
+      instances = current.mutable_coordinators();
+      tasks = plan.mutable_coordinators();
       break;
 
-    case AspectType::UNKNOWN:
+    default:
       LOG(INFO)
       << "unknown task type " << (int) pos._type;
+      return;
+  }
+
+  instances->mutable_entries(p)->set_state(state);
+
+  switch (state) {
+    case INSTANCE_STATE_UNUSED:
+    case INSTANCE_STATE_STARTING:
+      LOG(INFO)
+      << "unexpected state " << (int) state;
+      break;
+
+    case INSTANCE_STATE_RUNNING:
+      // TODO: check old state?
+      tasks->mutable_entries(p)->set_state(TASK_STATE_RUNNING);
+      tasks->mutable_entries(p)->set_started(now);
+      break;
+
+    case INSTANCE_STATE_STOPPED:
+      // TODO: check old state?
+      tasks->mutable_entries(p)->set_state(TASK_STATE_KILLED);
+      tasks->mutable_entries(p)->set_started(now);
       break;
   }
 
+  Global::state().setPlan(plan);
   Global::state().setCurrent(current);
 }
 
@@ -919,42 +975,45 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
                                               TasksPlan* tasks,
                                               ResourcesCurrent* resources,
                                               InstancesCurrent* instances) {
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
   for (int i = 0;  i < tasks->entries_size();  ++i) {
-    TaskPlan* plan = tasks->mutable_entries(i);
-    InstanceCurrent* instance = instances->mutable_entries(i);
-    bool start = false;
+    TaskPlan* task = tasks->mutable_entries(i);
+    auto state = task->state();
 
-    switch (instance->state()) {
-      case INSTANCE_STATE_UNUSED:
-      case INSTANCE_STATE_STOPPED:
-        start = true;
-        break;
+    if (state == TASK_STATE_TRYING_TO_START || state == TASK_STATE_TRYING_TO_RESTART) {
+      InstanceCurrent* instance = instances->mutable_entries(i);
 
-      case INSTANCE_STATE_STARTING:
-      case INSTANCE_STATE_RUNNING:
-        break;
-    }
+      switch (instance->state()) {
+        case INSTANCE_STATE_UNUSED:
+        case INSTANCE_STATE_STOPPED:
+          break;
 
-    if (start) {
+        case INSTANCE_STATE_STARTING:
+        case INSTANCE_STATE_RUNNING:
+          // TODO: this should not happen! What now?
+          break;
+      }
+
       ResourceCurrent* resEntry = resources->mutable_entries(i);
 
-      if (plan->state() == TASK_STATE_TRYING_TO_START) {
-        plan->set_state(TASK_STATE_RUNNING);
+      task->set_state(TASK_STATE_RUNNING);
+      task->set_started(now);
 
-        instance->set_state(INSTANCE_STATE_STARTING);
-        instance->set_hostname(resEntry->hostname());
-        instance->clear_ports();
+      instance->set_state(INSTANCE_STATE_STARTING);
+      instance->set_hostname(resEntry->hostname());
+      instance->clear_ports();
 
-        for (int j = 0;  j < resEntry->ports_size();  ++j) {
-          instance->add_ports(resEntry->ports(j));
-        }
-
-        mesos::OfferID offerId = resEntry->offer_id();
-        mesos::SlaveID slaveId = resEntry->slave_id();
-        mesos::Resources resources = resEntry->resources();
-
-        return { startState, *resEntry, { aspect, (size_t) i } };
+      for (int j = 0;  j < resEntry->ports_size();  ++j) {
+        instance->add_ports(resEntry->ports(j));
       }
+
+      mesos::OfferID offerId = resEntry->offer_id();
+      mesos::SlaveID slaveId = resEntry->slave_id();
+      mesos::Resources resources = resEntry->resources();
+
+      return { startState, *resEntry, { aspect, (size_t) i } };
     }
   }
 
