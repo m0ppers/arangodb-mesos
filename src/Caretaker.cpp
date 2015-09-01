@@ -35,58 +35,14 @@
 
 #include "pbjson.hpp"
 
+#include <stout/uuid.hpp>
+
 using namespace arangodb;
 using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjusts the planned offers
-////////////////////////////////////////////////////////////////////////////////
-
-static void adjustPlan (const string& name,
-                        const Target& target,
-                        TasksPlan* tasks,
-                        ResourcesCurrent* resources,
-                        InstancesCurrent* instances) {
-  int t = (int) target.instances();
-  int p = tasks->entries_size();
-
-  if (t == p) {
-    /*
-    LOG(INFO)
-    << "DEBUG adjustPlan("  << name << "): "
-    << "already reached maximal number of entries " << t;
-    */
-
-    return;
-  }
-
-  if (t < p) {
-    LOG(INFO)
-    << "DEBUG adjustPlan("  << name << "): "
-    << "got too many number of entries " << p
-    << ", need only " << t;
-
-    return; // TODO(fc) need to shrink number of instances
-  }
-
-  for (; p < t;  ++p) {
-    double now = chrono::duration_cast<chrono::seconds>(
-      chrono::steady_clock::now().time_since_epoch()).count();
-
-    TaskPlan* task = tasks->add_entries();
-    task->set_state(TASK_STATE_NEW);
-    task->set_started(now);
-
-    resources->add_entries();
-    instances->add_entries()->set_state(INSTANCE_STATE_UNUSED);
-  }
-  
-  return;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the number of ports
@@ -259,44 +215,6 @@ static mesos::Resources resourcesPorts (const vector<uint32_t>& ports) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resources required for task
-////////////////////////////////////////////////////////////////////////////////
-
-static mesos::Resources resourcesForTask (const Target& target,
-                                          const mesos::Offer& offer,
-                                          vector<uint32_t>& ports) {
-  mesos::Resources offered = offer.resources();
-  mesos::Resources minimum = target.minimal_resources();
-
-  // add the ports
-  ports = findFreePorts(offer, target.number_ports());
-  minimum += resourcesPorts(ports);
-
-  // and set the principal
-  minimum = minimum.flatten(Global::role(), Global::principal());
-
-  LOG(INFO)
-  << "OFFER " << offered;
-
-  LOG(INFO)
-  << "minimum " << minimum;
-
-  if (offered.contains(minimum)) {
-    LOG(INFO) << "#### contains";
-  }
-
-  minimum -= offer.resources();
-
-  LOG(INFO)
-  << "rest " << minimum;
-
-
-  // TODO(fc) check if we could use additional resources
-  
-  return minimum;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief resources required for reservation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -312,25 +230,10 @@ static mesos::Resources resourcesForReservation (const Target& target,
 
   // and set the principal
   minimum = minimum.flatten(Global::role(), Global::principal());
-
-  LOG(INFO)
-  << "OFFER " << offered;
-
-  LOG(INFO)
-  << "minimum " << minimum;
-
-  if (offered.contains(minimum)) {
-    LOG(INFO) << "#### contains";
-  }
-
   minimum -= offer.resources();
 
-  LOG(INFO)
-  << "rest " << minimum;
-
-
   // TODO(fc) check if we could use additional resources
-  
+
   return minimum;
 }
 
@@ -357,7 +260,7 @@ static mesos::Resources resourcesForPersistence (const Target& target,
 static mesos::Resources suitablePersistent (const string& name,
                                             const mesos::Resources& resources,
                                             const mesos::Offer& offer,
-                                            string& persistenceId,
+                                            const string& persistenceId,
                                             string& containerPath) {
   mesos::Resources offered = offer.resources();
   mesos::Resources offerDisk = filterIsDisk(offered);
@@ -402,13 +305,10 @@ static mesos::Resources suitablePersistent (const string& name,
       continue;
     }
 
-    string diskId = res.disk().persistence().id();
-
-    if (diskId.find(name + "_") != 0) {
+    if (persistenceId != res.disk().persistence().id()) {
       continue;
     }
 
-    persistenceId = diskId;
     containerPath = res.disk().volume().container_path();
 
     return resourcesNoneDisk + res;
@@ -418,18 +318,197 @@ static mesos::Resources suitablePersistent (const string& name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an offer fits
+/// @brief request to make a reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-OfferAction Caretaker::checkResourceOffer (string const& name,
-                                           bool persistent,
-                                           Target const& target,
-                                           TasksPlan* plan,
-                                           ResourcesCurrent* current,
-                                           mesos::Offer const& offer) {
+static OfferAction requestReservation (const mesos::Offer& offer,
+                                       TaskPlan* task,
+                                       ResourceCurrent* resource,
+                                       const mesos::Resources& resources,
+                                       const vector<uint32_t>& ports) {
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
 
+  task->set_state(TASK_STATE_TRYING_TO_RESERVE);
+  task->set_started(now);
+
+  resource->mutable_slave_id()->CopyFrom(offer.slave_id());
+  resource->mutable_offer_id()->CopyFrom(offer.id());
+  resource->mutable_resources()->CopyFrom(resources);
+  resource->set_hostname(offer.hostname());
+
+  resource->clear_ports();
+
+  for (auto port : ports) {
+    resource->add_ports(port);
+  }
+
+  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request to make offer persistent
+////////////////////////////////////////////////////////////////////////////////
+
+static OfferAction requestPersistent (const string& upper,
+                                      const mesos::Offer& offer,
+                                      const Target& target,
+                                      TaskPlan* task,
+                                      ResourceCurrent* resource) {
+  mesos::Resources resources = resource->resources();
+
+  if (isSuitableReservedOffer(resources, offer)) {
+    double now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+
+    string persistentId = upper + "_" + UUID::random().toString();
+
+    task->set_state(TASK_STATE_TRYING_TO_PERSIST);
+    task->set_started(now);
+    task->set_persistence_id(persistentId);
+
+    resource->mutable_offer_id()->CopyFrom(offer.id());
+
+    resources = resources.flatten(Global::role(), Global::principal());
+    resource->mutable_resources()->CopyFrom(resources);
+
+    mesos::Resources volume = resourcesForPersistence(target, offer);
+
+    return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, upper, persistentId };
+  }
+
+  return { OfferActionState::IGNORE };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request to start with persistent volume
+////////////////////////////////////////////////////////////////////////////////
+
+static OfferAction requestStart (const string& upper,
+                                 const mesos::Offer& offer,
+                                 TaskPlan* task,
+                                 ResourceCurrent* resource) {
+  string persistenceId = task->persistence_id();
+  string containerPath;
+
+  mesos::Resources resources = suitablePersistent(
+    upper, resource->resources(), offer, persistenceId, containerPath);
+
+  if (! resources.empty()) {
+    double now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+
+    task->set_state(TASK_STATE_TRYING_TO_START);
+    task->set_persistence_id(persistenceId);
+    task->set_started(now);
+
+    resource->mutable_offer_id()->CopyFrom(offer.id());
+    resource->mutable_resources()->CopyFrom(resources);
+    resource->set_container_path(containerPath);
+
+    return { OfferActionState::USABLE };
+  }
+
+  return { OfferActionState::IGNORE };
+}                                  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request to start without persistent volume
+////////////////////////////////////////////////////////////////////////////////
+
+static OfferAction requestStart (const mesos::Offer& offer,
+                                 TaskPlan* task,
+                                 ResourceCurrent* resource,
+                                 const mesos::Resources& resources,
+                                 const vector<uint32_t>& ports) {
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
+  task->set_state(TASK_STATE_TRYING_TO_START);
+  task->set_started(now);
+
+  resource->mutable_slave_id()->CopyFrom(offer.slave_id());
+  resource->mutable_offer_id()->CopyFrom(offer.id());
+  resource->mutable_resources()->CopyFrom(resources.flatten());
+  resource->set_hostname(offer.hostname());
+
+  resource->clear_ports();
+
+  for (auto port : ports) {
+    resource->add_ports(port);
+  }
+
+  return { OfferActionState::USABLE };
+}                                  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request to restart
+////////////////////////////////////////////////////////////////////////////////
+
+static OfferAction requestRestart (const string& upper,
+                                   const mesos::Offer& offer,
+                                   TaskPlan* task,
+                                   ResourceCurrent* resource) {
+  string persistenceId = task->persistence_id();
+  string containerPath;
+
+  mesos::Resources resources = suitablePersistent(
+    upper, resource->resources(), offer, persistenceId, containerPath);
+
+  if (! resources.empty()) {
+    double now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+
+    task->set_state(TASK_STATE_TRYING_TO_RESTART);
+    task->set_persistence_id(persistenceId);
+    task->set_started(now);
+
+    resource->mutable_offer_id()->CopyFrom(offer.id());
+    resource->mutable_resources()->CopyFrom(resources);
+    resource->set_container_path(containerPath);
+
+    return { OfferActionState::USABLE };
+  }
+
+  return { OfferActionState::IGNORE };
+}
+
+// -----------------------------------------------------------------------------
+// --Section--                                                   class Caretaker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+Caretaker::Caretaker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+Caretaker::~Caretaker () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if an offer fits
+////////////////////////////////////////////////////////////////////////////////
+
+OfferAction Caretaker::checkResourceOffer (const string& name,
+                                           bool persistent,
+                                           const Target& target,
+                                           TasksPlan* plan,
+                                           ResourcesCurrent* current,
+                                           const mesos::Offer& offer) {
   string upper = name;
   for (auto& c : upper) { c = toupper(c); }
           
@@ -468,75 +547,18 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
 
     if (resEntry->slave_id().value() == offerSlaveId) {
       switch (task->state()) {
-        case TASK_STATE_TRYING_TO_RESERVE: {
-          mesos::Resources resources = resEntry->resources();
+        case TASK_STATE_TRYING_TO_RESERVE:
+          return requestPersistent(upper, offer, target, task, resEntry);
 
-          if (isSuitableReservedOffer(resources, offer)) {
-            task->set_state(TASK_STATE_TRYING_TO_PERSIST);
-            task->set_started(now);
-
-            resEntry->mutable_offer_id()->CopyFrom(offer.id());
-
-            resources = resources.flatten(Global::role(), Global::principal());
-            resEntry->mutable_resources()->CopyFrom(resources);
-
-            mesos::Resources volume = resourcesForPersistence(target, offer);
-
-            return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, upper };
-          }
-
-          return { OfferActionState::IGNORE };
-        }
-
-        case TASK_STATE_TRYING_TO_PERSIST: {
-          string persistenceId;
-          string containerPath;
-
-          mesos::Resources resources = suitablePersistent(
-            upper, resEntry->resources(), offer, persistenceId, containerPath);
-
-          if (! resources.empty()) {
-            task->set_state(TASK_STATE_TRYING_TO_START);
-            task->set_persistence_id(persistenceId);
-            task->set_started(now);
-
-            resEntry->mutable_offer_id()->CopyFrom(offer.id());
-            resEntry->mutable_resources()->CopyFrom(resources);
-            resEntry->set_container_path(containerPath);
-
-            return { OfferActionState::USABLE };
-          }
-
-          return { OfferActionState::IGNORE };
-        }
+        case TASK_STATE_TRYING_TO_PERSIST:
+          return requestStart(upper, offer, task, resEntry);
 
         case TASK_STATE_KILLED:
-        case TASK_STATE_FAILED_OVER: {
-          string persistenceId;
-          string containerPath;
+        case TASK_STATE_FAILED_OVER:
+          return requestRestart(upper, offer, task, resEntry);
 
-          mesos::Resources resources = suitablePersistent(
-            upper, resEntry->resources(), offer, persistenceId, containerPath);
-
-          if (! resources.empty()) {
-            task->set_state(TASK_STATE_TRYING_TO_RESTART);
-            task->set_persistence_id(persistenceId);
-            task->set_started(now);
-
-            resEntry->mutable_offer_id()->CopyFrom(offer.id());
-            resEntry->mutable_resources()->CopyFrom(resources);
-            resEntry->set_container_path(containerPath);
-
-            return { OfferActionState::USABLE };
-          }
-
+        default:
           return { OfferActionState::IGNORE };
-        }
-
-
-        default: {
-          return { OfferActionState::IGNORE };
-        }
       }
     }
   }
@@ -598,108 +620,25 @@ OfferAction Caretaker::checkResourceOffer (string const& name,
   // ...........................................................................
 
   TaskPlan* task = plan->mutable_entries(required);
-
   ResourceCurrent* resEntry = current->mutable_entries(required);
-  resEntry->mutable_slave_id()->CopyFrom(offer.slave_id());
-  resEntry->mutable_offer_id()->CopyFrom(offer.id());
 
   vector<uint32_t> ports;
   mesos::Resources resources = resourcesForReservation(target, offer, ports);
 
-  resEntry->clear_ports();
-  
-  for (auto port : ports) {
-    resEntry->add_ports(port);
-  }
-
   if (! persistent) {
-    task->set_state(TASK_STATE_TRYING_TO_START);
-    task->set_started(now);
-
-    resEntry->mutable_resources()->CopyFrom(resources.flatten());
-    resEntry->set_hostname(offer.hostname());
-
-    return { OfferActionState::USABLE };
+    return requestStart(offer, task, resEntry, resources, ports);
   }
 
   // ...........................................................................
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
-  resEntry->mutable_resources()->CopyFrom(resources);
-  resEntry->set_hostname(offer.hostname());
-
-  LOG(INFO)
-  << "DEBUG checkResourceOffer(" << name << "): "
-  << "need to make dynamic reservation " << resources;
-
-  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
-}
-
-// -----------------------------------------------------------------------------
-// --Section--                                                   class Caretaker
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-Caretaker::Caretaker () {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-Caretaker::~Caretaker () {
+  return requestReservation(offer, task, resEntry, resources, ports);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to update the plan
-////////////////////////////////////////////////////////////////////////////////
-
-void Caretaker::updatePlan () {
-  Targets targets = Global::state().targets();
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
-
-  adjustPlan("agency",
-             targets.agents(),
-             plan.mutable_agents(),
-             current.mutable_agency_resources(),
-             current.mutable_agents());
-
-  adjustPlan("dbserver",
-             targets.dbservers(),
-             plan.mutable_dbservers(),
-             current.mutable_primary_dbserver_resources(),
-             current.mutable_primary_dbservers());
-
-  if (Global::asyncReplication()) {
-    adjustPlan("secondaries",
-               targets.dbservers(),  // This is also the number of secondaries
-               plan.mutable_secondaries(),
-               current.mutable_secondary_dbserver_resources(),
-               current.mutable_secondary_dbservers());
-  }
-
-  adjustPlan("coordinator",
-             targets.coordinators(),
-             plan.mutable_coordinators(),
-             current.mutable_coordinator_resources(),
-             current.mutable_coordinators());
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if we can use a resource offer

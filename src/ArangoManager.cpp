@@ -638,8 +638,9 @@ bool ArangoManager::checkOutstandOffers () {
 
   for (auto&& offer_res : persistent) {
     makePersistentVolume(offer_res.second._name,
-                                    offer_res.first,
-                                    offer_res.second._resources);
+                         offer_res.first,
+                         offer_res.second._resources,
+                         offer_res.second._persistentId);
   }
 
   return persistent.empty() && dynamic.empty();
@@ -686,10 +687,10 @@ bool ArangoManager::startNewInstances () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ArangoManager::makePersistentVolume (const string& name,
-                                              const mesos::Offer& offer,
-                                              const mesos::Resources& resources) {
+                                          const mesos::Offer& offer,
+                                          const mesos::Resources& resources,
+                                          const string& persistentId) {
   const string& offerId = offer.id().value();
-  const string& slaveId = offer.slave_id().value();
 
   if (resources.empty()) {
     LOG(WARNING)
@@ -702,7 +703,7 @@ bool ArangoManager::makePersistentVolume (const string& name,
   mesos::Resource disk = *resources.begin();
   mesos::Resource::DiskInfo diskInfo;
 
-  diskInfo.mutable_persistence()->set_id(name + "_" + slaveId);
+  diskInfo.mutable_persistence()->set_id(persistentId);
 
   mesos::Volume volume;
 
@@ -750,6 +751,9 @@ bool ArangoManager::makeDynamicReservation (const mesos::Offer& offer,
   mesos::Resources diff = res - offered;
 
   if (diff.empty()) {
+    LOG(INFO)
+    << "DEBUG offer is already reserved";
+
     addOffer(offer);
     return true;
   }

@@ -27,12 +27,15 @@
 
 #include "CaretakerStandalone.h"
 
+#include <chrono>
+
 #include "ArangoState.h"
 #include "Global.h"
 
 #include "arangodb.pb.h"
 
 using namespace arangodb;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class Caretaker
@@ -64,6 +67,7 @@ CaretakerStandalone::CaretakerStandalone () {
   dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
+
   if (Global::minResourcesDBServer().empty()) {
     setStandardMinimum(dbserver, 1);
   }
@@ -129,15 +133,18 @@ void CaretakerStandalone::updatePlan () {
     LOG(INFO)
     << "DEBUG creating one db-server in plan";
 
+    double now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+
     TaskPlan* task = dbservers->add_entries();
     task->set_state(TASK_STATE_NEW);
+    task->set_started(now);
     task->set_is_primary(true);
 
-    ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
-    resources->add_entries();
+    current.mutable_primary_dbserver_resources()->add_entries();
 
-    InstancesCurrent* instances = current.mutable_primary_dbservers();
-    instances->add_entries();
+    auto instance = current.mutable_primary_dbservers()->add_entries();
+    instance->set_state(INSTANCE_STATE_UNUSED);
   }
 
   Global::state().setPlan(plan);

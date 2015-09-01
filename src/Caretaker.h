@@ -80,6 +80,7 @@ namespace arangodb {
       OfferActionState _state;
       mesos::Resources _resources;
       std::string _name;
+      std::string _persistentId;
   };
 
 // -----------------------------------------------------------------------------
@@ -161,7 +162,7 @@ namespace arangodb {
 /// @brief tries to update the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void updatePlan ();
+      virtual void updatePlan () = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
