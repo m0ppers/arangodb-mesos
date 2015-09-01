@@ -218,9 +218,9 @@ static mesos::Resources resourcesPorts (const vector<uint32_t>& ports) {
 /// @brief resources required for reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources resourcesForReservation (const Target& target,
-                                                 const mesos::Offer& offer,
-                                                 vector<uint32_t>& ports) {
+static mesos::Resources resourcesForTask (const mesos::Offer& offer,
+                                          const Target& target,
+                                          vector<uint32_t>& ports) {
   mesos::Resources offered = offer.resources();
   mesos::Resources minimum = target.minimal_resources();
 
@@ -228,13 +228,10 @@ static mesos::Resources resourcesForReservation (const Target& target,
   ports = findFreePorts(offer, target.number_ports());
   minimum += resourcesPorts(ports);
 
-  // and set the principal
-  minimum = minimum.flatten(Global::role(), Global::principal());
-  minimum -= offer.resources();
-
   // TODO(fc) check if we could use additional resources
 
-  return minimum;
+  // and set the principal
+  return minimum = minimum.flatten(Global::role(), Global::principal());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,7 +340,7 @@ static OfferAction requestReservation (const mesos::Offer& offer,
     resource->add_ports(port);
   }
 
-  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
+  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources - offer.resources() };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -506,7 +503,7 @@ Caretaker::~Caretaker () {
 OfferAction Caretaker::checkResourceOffer (const string& name,
                                            bool persistent,
                                            const Target& target,
-                                           TasksPlan* plan,
+                                           TasksPlan* tasks,
                                            ResourcesCurrent* current,
                                            const mesos::Offer& offer) {
   string upper = name;
@@ -520,7 +517,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
     return { OfferActionState::IGNORE };
   }
 
-  int p = plan->entries_size();
+  int p = tasks->entries_size();
 
   if (p == 0) {
     LOG(INFO) << "nothing planed for " << name;
@@ -537,25 +534,25 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   const string& offerSlaveId = offer.slave_id().value();
 
   for (int i = 0;  i < p;  ++i) {
-    TaskPlan* task = plan->mutable_entries(i);
-    ResourceCurrent* resEntry = current->mutable_entries(i);
+    TaskPlan* task = tasks->mutable_entries(i);
+    ResourceCurrent* resource = current->mutable_entries(i);
 
     if (task->state() == TASK_STATE_NEW) {
       required = i;
       continue;
     }
 
-    if (resEntry->slave_id().value() == offerSlaveId) {
+    if (resource->slave_id().value() == offerSlaveId) {
       switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE:
-          return requestPersistent(upper, offer, target, task, resEntry);
+          return requestPersistent(upper, offer, target, task, resource);
 
         case TASK_STATE_TRYING_TO_PERSIST:
-          return requestStart(upper, offer, task, resEntry);
+          return requestStart(upper, offer, task, resource);
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
-          return requestRestart(upper, offer, task, resEntry);
+          return requestRestart(upper, offer, task, resource);
 
         default:
           return { OfferActionState::IGNORE };
@@ -619,21 +616,21 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   // try to start directly, if we do not need a reservation
   // ...........................................................................
 
-  TaskPlan* task = plan->mutable_entries(required);
-  ResourceCurrent* resEntry = current->mutable_entries(required);
+  TaskPlan* task = tasks->mutable_entries(required);
+  ResourceCurrent* resource = current->mutable_entries(required);
 
   vector<uint32_t> ports;
-  mesos::Resources resources = resourcesForReservation(target, offer, ports);
+  mesos::Resources resources = resourcesForTask(offer, target, ports);
 
   if (! persistent) {
-    return requestStart(offer, task, resEntry, resources, ports);
+    return requestStart(offer, task, resource, resources, ports);
   }
 
   // ...........................................................................
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
-  return requestReservation(offer, task, resEntry, resources, ports);
+  return requestReservation(offer, task, resource, resources, ports);
 }
 
 // -----------------------------------------------------------------------------
@@ -935,24 +932,24 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
           break;
       }
 
-      ResourceCurrent* resEntry = resources->mutable_entries(i);
+      ResourceCurrent* resource = resources->mutable_entries(i);
 
       task->set_state(TASK_STATE_RUNNING);
       task->set_started(now);
 
       instance->set_state(INSTANCE_STATE_STARTING);
-      instance->set_hostname(resEntry->hostname());
+      instance->set_hostname(resource->hostname());
       instance->clear_ports();
 
-      for (int j = 0;  j < resEntry->ports_size();  ++j) {
-        instance->add_ports(resEntry->ports(j));
+      for (int j = 0;  j < resource->ports_size();  ++j) {
+        instance->add_ports(resource->ports(j));
       }
 
-      mesos::OfferID offerId = resEntry->offer_id();
-      mesos::SlaveID slaveId = resEntry->slave_id();
-      mesos::Resources resources = resEntry->resources();
+      mesos::OfferID offerId = resource->offer_id();
+      mesos::SlaveID slaveId = resource->slave_id();
+      mesos::Resources resources = resource->resources();
 
-      return { startState, *resEntry, { aspect, (size_t) i } };
+      return { startState, *resource, { aspect, (size_t) i } };
     }
   }
 
