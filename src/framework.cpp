@@ -94,18 +94,6 @@ static void updateFromEnv (const string& name, double& var) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update from env
-////////////////////////////////////////////////////////////////////////////////
-
-static void updateFromEnv (const string& name, bool& var) {
-  Option<string> env = os::getenv(name);
-
-  if (env.isSome()) {
-    var = env.get() == "true";
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -271,17 +259,17 @@ int main (int argc, char** argv) {
             "volume path (until persistent volumes become available)",
             "/tmp");
 
-  bool resetState;
+  string resetState;
   flags.add(&resetState,
             "reset_state",
             "ignore any old state",
-            false);
+            "false");
 
-  bool secondariesWithDBservers;
+  string secondariesWithDBservers;
   flags.add(&secondariesWithDBservers,
             "secondaries_with_dbservers",
             "run secondaries only on agents with DBservers",
-            false);
+            "false");
 
   // address of master and zookeeper
   string master;
@@ -373,7 +361,14 @@ int main (int argc, char** argv) {
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);
 
-  Global::setSecondariesWithDBservers(secondariesWithDBservers);
+  if (secondariesWithDBservers == "yes" || secondariesWithDBservers == "true" ||
+      secondariesWithDBservers == "y") {
+    Global::setSecondariesWithDBservers(true);
+  }
+  else {
+    Global::setSecondariesWithDBservers(false);
+  }
+
 
   LOG(INFO) << "Minimal resources agent: " << minimal_resources_agent;
   Global::setMinResourcesAgent(minimal_resources_agent);
@@ -401,7 +396,7 @@ int main (int argc, char** argv) {
   ArangoState state(frameworkName, zk);
   state.init();
 
-  if (resetState) {
+  if (resetState == "true" || resetState == "y" || resetState == "yes") {
     state.destroy();
   }
   else {
