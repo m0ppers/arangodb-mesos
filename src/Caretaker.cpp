@@ -113,7 +113,7 @@ static bool isSuitableOffer (const TargetEntry& target,
   }
 
   mesos::Resources offered = offer.resources();
-  offered = offered.flatten();
+  // We do not flatten here, because we need to retain the role in the offer
 
   mesos::Resources minimum = target.minimal_resources();
 
@@ -168,7 +168,9 @@ static bool isSuitableReservedOffer (const mesos::Resources& resources,
 /// @brief finds free ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
-static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
+static vector<uint32_t> findFreePorts (const mesos::Offer& offer, 
+                                       size_t len,
+                                       std::string& role) {
   static const size_t MAX_ITERATIONS = 1000;
 
   vector<uint32_t> result;
@@ -176,6 +178,12 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 
   for (int i = 0; i < offer.resources_size(); ++i) {
     const auto& resource = offer.resources(i);
+    if (resource.has_role()) {
+      role = resource.role();
+    }
+    else {
+      role = "*";
+    }
 
     if (resource.name() == "ports" && resource.type() == mesos::Value::RANGES) {
       const auto& ranges = resource.ranges();
@@ -210,12 +218,14 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 /// @brief generates resources from a list of ports
 ///////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources resourcesPorts (const vector<uint32_t>& ports) {
+static mesos::Resources resourcesPorts (const vector<uint32_t>& ports,
+                                        std::string const& role) {
   mesos::Resources resources;
 
   mesos::Resource res;
   res.set_name("ports");
   res.set_type(mesos::Value::RANGES);
+  res.set_role(role);
 
   for (uint32_t p : ports) {
     mesos::Value_Range* range = res.mutable_ranges()->add_range();
@@ -237,9 +247,10 @@ static mesos::Resources resourcesForReservation (const TargetEntry& target,
                                                  const mesos::Offer& offer,
                                                  vector<uint32_t>& ports) {
   mesos::Resources minimum = target.minimal_resources();
-  ports = findFreePorts(offer, target.number_ports());
+  std::string role;
+  ports = findFreePorts(offer, target.number_ports(), role);
 
-  minimum += resourcesPorts(ports);
+  minimum += resourcesPorts(ports, role);
 
   // TODO(fc) check if we could use additional resources
   
