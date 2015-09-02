@@ -123,43 +123,6 @@ precedence.
   
     The secret for authentication with the Mesos master.
 
-  - `ARANGODB_PRINCIPAL`, overriding `--principal`:
-
-    The authentication principal for the Mesos master.
-
-  - `ARANGODB_HTTP_PORT`, overriding `--http_port`:
-
-    This is the port the HTTP/REST API and web UI will listen to.
-
-  - `ARANGODB_ROLE`, overriding `--role`:
-
-    This is the Mesos role under which the framework/service is running.
-    The default is "*".
-
-  - `ARANGODB_USER`, overriding `--user`:
-
-    This is the user under which executors will be started by the Mesos
-    slaves. The default is to use the same user name as the framework
-    scheduler is running under.
-
-  - `ARANGODB_VOLUME_PATH`, overriding `--volume_path`:
-
-    All instances of ArangoDB will run in Docker containers and will
-    mount some directory below the path given here as a volume into the
-    container. That is, the actual persisted data and logs of the
-    database will reside below this path. Note that before the age of
-    persisted volumes this does not make much sense, since new instances
-    will usually be started by different Mesos slaves and thus will no
-    longer find the old state. Furthermore, nobody will clean up the
-    space used after termination! This will all be better when we have
-    persistent volumes and Mesos actually controls these resources in a
-    better way.
-
-  - `ARANGODB_WEBUI`, overriding `--webui`:
-
-    This is the URL of the web UI, if not given explicitly it is put
-    together with a guess of the hostname and the given port above.
-
   - `ARANGODB_ZK`, overriding `--zk`:
 
     This is the URL to access the persisted state in zookeeper, it will 
@@ -185,12 +148,14 @@ precedence.
     primary DBServer a secondary one is started which replicates the
     data from the primary.
 
-  - `ARANGODB_FRAMEWORK_NAME`, overriding `--framework_name`:
+  - `ARANGODB_ROLE`, overriding `--role`:
 
-    This is an ID which must be unique for the framework, in other
-    words, if one starts multiple instances of the ArangoDB framework,
-    each must have its own framework name. This name goes into the path
-    under which the persisted framework state is kept in zookeeper.
+    This is the Mesos role under which the framework/service is running.
+    The default is "*". Note that if you for example specify "slave_public"
+    here, then the framework will get offers for the role "slave_public"
+    as well as for the default role "*", but not for any others. If you
+    leave the default, you only get resource offers for the role "*" and
+    none else, so "*" is not a wildcard!
 
   - `ARANGODB_MINIMAL_RESOURCES_AGENT` overriding `--minimal_resources_agent`:
 
@@ -224,6 +189,58 @@ precedence.
 
     Initial number of coordinators to launch. Thus number can later be
     scaled up and down.
+
+  - `ARANGODB_PRINCIPAL`, overriding `--principal`:
+
+    The authentication principal for the Mesos master.
+
+  - `ARANGODB_USER`, overriding `--user`:
+
+    This is the user under which executors will be started by the Mesos
+    slaves. The default is to use the same user name as the framework
+    scheduler is running under.
+
+  - `ARANGODB_FRAMEWORK_NAME`, overriding `--framework_name`:
+
+    This is an ID which must be unique for the framework, in other
+    words, if one starts multiple instances of the ArangoDB framework,
+    each must have its own framework name. This name goes into the path
+    under which the persisted framework state is kept in zookeeper.
+
+  - `ARANGODB_WEBUI`, overriding `--webui`:
+
+    This is the URL of the web UI, if not given explicitly it is put
+    together with a guess of the hostname and the given port above.
+
+  - `ARANGODB_HTTP_PORT`, overriding `--http_port`:
+
+    This is the port the HTTP/REST API and web UI will listen to.
+
+  - `ARANGODB_FAILOVER_TIMEOUT`, overriding `--failover_timeout`:
+
+    This specifies the timeout in seconds until an automatic failover
+    is done in case of a task failure.
+
+  - `ARANGODB_VOLUME_PATH`, overriding `--volume_path`:
+
+    All instances of ArangoDB will run in Docker containers and will
+    mount some directory below the path given here as a volume into the
+    container. That is, the actual persisted data and logs of the
+    database will reside below this path. Note that before the age of
+    persisted volumes this does not make much sense, since new instances
+    will usually be started by different Mesos slaves and thus will no
+    longer find the old state. Furthermore, nobody will clean up the
+    space used after termination! This will all be better when we have
+    persistent volumes and Mesos actually controls these resources in a
+    better way.
+
+  - `ARANGODB_SECONDARIES_WITH_DBSERVERS`, overriding `--secondaries_with_dbservers`:
+
+    If this boolean value is set to "true", then the secondary DBServers
+    will only be started on nodes, where there is already another
+    primary server, but not its own master. This is often sensible for
+    a good distribution but not always. Note that if you have only
+    one DBServer, then you must set this option to "false".
 
 
 The HTTP/REST API
