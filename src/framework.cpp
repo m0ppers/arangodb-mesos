@@ -115,23 +115,10 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "Supported options:" << "\n"
        << flags.usage() << "\n"
        << "Supported environment:" << "\n"
-       << "  MESOS_MASTER         overrides '--master'\n"
-       << "\n"
-       << "  MESOS_AUTHENTICATE   enable authentication\n"
-       << "  ARANGODB_SECRET      secret for authentication\n"
-       << "\n"
-       << "  ARANGODB_PRINCIPAL   overrides '--principal'\n"
-       << "  ARANGODB_HTTP_PORT   overrides '--http_port'\n"
-       << "  ARANGODB_ROLE        overrides '--role'\n"
-       << "  ARANGODB_USER        overrides '--user'\n"
-       << "  ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
-       << "  ARANGODB_WEBUI       overrides '--webui'\n"
-       << "  ARANGODB_ZK          overrides '--zk'\n"
        << "  ARANGODB_MODE        overrides '--mode'\n"
        << "  ARANGODB_ASYNC_REPLICATION\n"
           "                       overrides '--async_replication'\n"
-       << "  ARANGODB_FRAMEWORK_NAME\n"
-       << "                       overrides '--framework_name'\n"
+       << "  ARANGODB_ROLE        overrides '--role'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_AGENT\n"
        << "                       overrides '--minimal_resources_agent'\n"
        << "  ARANGODB_MINIMAL_RESOURCES_DBSERVER\n"
@@ -145,6 +132,23 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "                       overrides '--nr_dbservers'\n"
        << "  ARANGODB_NR_COORDINATORS\n"
        << "                       overrides '--nr_coordinators'\n"
+       << "  ARANGODB_PRINCIPAL   overrides '--principal'\n"
+       << "  ARANGODB_USER        overrides '--user'\n"
+       << "  ARANGODB_FRAMEWORK_NAME\n"
+       << "                       overrides '--framework_name'\n"
+       << "  ARANGODB_WEBUI       overrides '--webui'\n"
+       << "  ARANGODB_HTTP_PORT   overrides '--http_port'\n"
+       << "  ARANGODB_FAILOVER_TIMEOUT\n"
+       << "                       overrides '--failover_timeout'\n"
+       << "  ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
+       << "  ARANGODB_SECONDARIES_WITH_DBSERVERS\n"
+       << "                       overrides '--secondaries_with_dbservers'\n"
+       << "  MESOS_MASTER         overrides '--master'\n"
+       << "\n"
+       << "  MESOS_AUTHENTICATE   enable authentication\n"
+       << "  ARANGODB_SECRET      secret for authentication\n"
+       << "\n"
+       << "  ARANGODB_ZK          overrides '--zk'\n"
        << "\n";
 }
 
@@ -273,12 +277,6 @@ int main (int argc, char** argv) {
             "ignore any old state",
             false);
 
-  bool coordinatorsPublic;
-  flags.add(&coordinatorsPublic,
-            "coordinators_public",
-            "run coordinator tasks on public agents",
-            false);
-
   bool secondariesWithDBservers;
   flags.add(&secondariesWithDBservers,
             "secondaries_with_dbservers",
@@ -339,7 +337,6 @@ int main (int argc, char** argv) {
   updateFromEnv("ARANGODB_FAILOVER_TIMEOUT", failoverTimeout);
   updateFromEnv("ARANGODB_VOLUME_PATH", volumePath);
   updateFromEnv("ARANGODB_RESET_STATE", resetState);
-  updateFromEnv("ARANGODB_COORDINATORS_PUBLIC", coordinatorsPublic);
   updateFromEnv("ARANGODB_SECONDARIES_WITH_DBSERVERS", secondariesWithDBservers);
 
   updateFromEnv("MESOS_MASTER", master);
@@ -376,7 +373,6 @@ int main (int argc, char** argv) {
   Global::setFrameworkName(frameworkName);
   Global::setVolumePath(volumePath);
 
-  Global::setCoordinatorsPublic(coordinatorsPublic);
   Global::setSecondariesWithDBservers(secondariesWithDBservers);
 
   LOG(INFO) << "Minimal resources agent: " << minimal_resources_agent;
