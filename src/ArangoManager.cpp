@@ -868,7 +868,7 @@ void ArangoManager::startInstance (InstanceActionState aspect,
 
   // docker info
   mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
-  docker->set_image("arangodb/arangodb-mesos:latest");
+  docker->set_image("arangodb/arangodb-mesos:devel");
   docker->set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
 
   // port mapping
