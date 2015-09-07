@@ -146,14 +146,20 @@ static void findFreePortsFromRange (set<uint32_t>& result,
 /// @brief finds free ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
-static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
+static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len,
+                                       std::string& role) {
   vector<mesos::Value::Range> resources;
   vector<mesos::Value::Range> reserved;
-  auto role = Global::role();
   auto principal = Global::principal();
 
   for (int i = 0; i < offer.resources_size(); ++i) {
     const auto& resource = offer.resources(i);
+    if (resource.has_role()) {
+      role = resource.role();
+    }
+    else {
+      role = "*";
+    }
 
     if (resource.name() == "ports" && resource.type() == mesos::Value::RANGES) {
       const auto& ranges = resource.ranges();
@@ -163,7 +169,8 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 
         // reserved resources: they must either be statically or
         // dynamically with matching principal
-        if (mesos::Resources::isReserved(resource, role)) {
+        // Do not insist on a role here.
+        if (mesos::Resources::isReserved(resource, Option<std::string>())) {
           if (mesos::Resources::isDynamicallyReserved(resource)) {
             if (resource.reservation().principal() == principal.principal()) {
               reserved.push_back(range);
@@ -195,12 +202,14 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 /// @brief generates resources from a list of ports
 ///////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources resourcesPorts (const vector<uint32_t>& ports) {
+static mesos::Resources resourcesPorts (const vector<uint32_t>& ports,
+                                        std::string const& role) {
   mesos::Resources resources;
 
   mesos::Resource res;
   res.set_name("ports");
   res.set_type(mesos::Value::RANGES);
+  res.set_role(role);
 
   for (uint32_t p : ports) {
     mesos::Value_Range* range = res.mutable_ranges()->add_range();
@@ -225,8 +234,9 @@ static mesos::Resources resourcesForTask (const mesos::Offer& offer,
   mesos::Resources minimum = target.minimal_resources();
 
   // add the ports
-  ports = findFreePorts(offer, target.number_ports());
-  minimum += resourcesPorts(ports);
+  std::string role;
+  ports = findFreePorts(offer, target.number_ports(), role);
+  minimum += resourcesPorts(ports, role);
 
   // TODO(fc) check if we could use additional resources
 
