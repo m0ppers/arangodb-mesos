@@ -72,7 +72,8 @@ static bool isSuitableOffer (const Target& target,
   }
 
   mesos::Resources offered = offer.resources();
-  offered = offered.flatten();
+  // FIXME: Do not flatten here, because we must keep the role!
+  //offered = offered.flatten();
 
   mesos::Resources minimum = target.minimal_resources();
 
@@ -96,10 +97,12 @@ static bool isSuitableOffer (const Target& target,
 /// @brief checks is the reservered resources are satisfied
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isSuitableReservedOffer (const mesos::Resources& resources,
-                                     const mesos::Offer& offer) {
+static bool isSuitableReservedOffer (mesos::Resources const& resources,
+                                     mesos::Offer const& offer,
+                                     ResourceCurrent const* resCur) {
   mesos::Resources offered = offer.resources();
-  mesos::Resources required = resources.flatten(Global::role(), Global::principal());
+  mesos::Resources required = resources.flatten(resCur->role(), 
+                                                Global::principal());
 
   if (! offered.contains(required)) {
     std::string offerString;
@@ -152,13 +155,19 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len,
   vector<mesos::Value::Range> reserved;
   auto principal = Global::principal();
 
+  role.clear();
   for (int i = 0; i < offer.resources_size(); ++i) {
     const auto& resource = offer.resources(i);
-    if (resource.has_role()) {
-      role = resource.role();
-    }
-    else {
-      role = "*";
+
+    // All resources offered will have the same role, since they are together
+    // in the same offer, we might as well take the role of any of them:
+    if (role.empty()) {
+      if (resource.has_role()) {
+        role = resource.role();
+      }
+      else {
+        role = "*";
+      }
     }
 
     if (resource.name() == "ports" && resource.type() == mesos::Value::RANGES) {
@@ -189,11 +198,15 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len,
     }
   }
 
+  // QUESTION: Why is n this and not just reserved.size()?
   size_t n = min(len, reserved.size());
 
   set<uint32_t> result;
   findFreePortsFromRange(result, reserved, n);
   findFreePortsFromRange(result, resources, len);
+
+  // QUESTION: Why are we potentially taking ranges from the reserved
+  // as well as from the unreserved resources?
 
   return vector<uint32_t>(result.begin(), result.end());
 }
@@ -229,6 +242,7 @@ static mesos::Resources resourcesPorts (const vector<uint32_t>& ports,
 
 static mesos::Resources resourcesForTask (const mesos::Offer& offer,
                                           const Target& target,
+                                          ResourceCurrent* resCur,
                                           vector<uint32_t>& ports) {
   mesos::Resources offered = offer.resources();
   mesos::Resources minimum = target.minimal_resources();
@@ -236,46 +250,48 @@ static mesos::Resources resourcesForTask (const mesos::Offer& offer,
   // add the ports
   std::string role;
   ports = findFreePorts(offer, target.number_ports(), role);
+  // Add ports with the role we actually found in the resource offer:
   minimum += resourcesPorts(ports, role);
+  resCur->set_role(role);   // Save role for later
 
   // TODO(fc) check if we could use additional resources
 
-  // and set the principal
-  return minimum = minimum.flatten(Global::role(), Global::principal());
+  // and set the principal, using the role we got from the offer
+  return minimum.flatten(role, Global::principal());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resources required for persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources resourcesForPersistence (const Target& target,
-                                                 const mesos::Offer& offer) {
+static mesos::Resources resourcesForPersistence (Target const& target,
+                                                 ResourceCurrent const* resCur,
+                                                 mesos::Offer const& offer) {
   mesos::Resources minimum = target.minimal_resources();
   minimum = filterIsDisk(minimum);
 
   // TODO(fc) check if we could use additional resources
 
-  minimum = minimum.flatten(Global::role(), Global::principal());
-
-  return minimum;
+  return minimum.flatten(resCur->role(), Global::principal());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resources required for starts with persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources suitablePersistent (const string& name,
-                                            const mesos::Resources& resources,
-                                            const mesos::Offer& offer,
-                                            const string& persistenceId,
-                                            string& containerPath) {
+static mesos::Resources suitablePersistent (string const& name,
+                                            mesos::Resources const& resources,
+                                            mesos::Offer const& offer,
+                                            string const& persistenceId,
+                                            string& containerPath,
+                                            ResourceCurrent const* resCur) {
   mesos::Resources offered = offer.resources();
   mesos::Resources offerDisk = filterIsDisk(offered);
   mesos::Resources offerNoneDisk = filterNotIsDisk(offered);
 
   mesos::Resources resourcesNoneDisk = filterNotIsDisk(resources);
   mesos::Resources resourcesDisk = filterIsDisk(resources);
-  mesos::Resources required = resourcesNoneDisk.flatten(Global::role(), Global::principal());
+  mesos::Resources required = resourcesNoneDisk.flatten(resCur->role(), Global::principal());
 
   if (! offerNoneDisk.contains(required)) {
     std::string offerString;
@@ -293,7 +309,7 @@ static mesos::Resources suitablePersistent (const string& name,
 
   size_t mds = diskspace(resourcesDisk);
 
-  string role = Global::role();
+  string role = resCur->role();
 
   for (const auto& res : offerDisk) {
     if (res.role() != role) {
@@ -361,10 +377,10 @@ static OfferAction requestPersistent (const string& upper,
                                       const mesos::Offer& offer,
                                       const Target& target,
                                       TaskPlan* task,
-                                      ResourceCurrent* resource) {
-  mesos::Resources resources = resource->resources();
+                                      ResourceCurrent* resCur) {
+  mesos::Resources resources = resCur->resources();
 
-  if (isSuitableReservedOffer(resources, offer)) {
+  if (isSuitableReservedOffer(resources, offer, resCur)) {
     double now = chrono::duration_cast<chrono::seconds>(
       chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -374,12 +390,12 @@ static OfferAction requestPersistent (const string& upper,
     task->set_started(now);
     task->set_persistence_id(persistentId);
 
-    resource->mutable_offer_id()->CopyFrom(offer.id());
+    resCur->mutable_offer_id()->CopyFrom(offer.id());
 
-    resources = resources.flatten(Global::role(), Global::principal());
-    resource->mutable_resources()->CopyFrom(resources);
+    resources = resources.flatten(resCur->role(), Global::principal());
+    resCur->mutable_resources()->CopyFrom(resources);
 
-    mesos::Resources volume = resourcesForPersistence(target, offer);
+    mesos::Resources volume = resourcesForPersistence(target, resCur, offer);
 
     return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, upper, persistentId };
   }
@@ -391,15 +407,15 @@ static OfferAction requestPersistent (const string& upper,
 /// @brief request to start with persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestStart (const string& upper,
-                                 const mesos::Offer& offer,
-                                 TaskPlan* task,
-                                 ResourceCurrent* resource) {
+static OfferAction requestStartPersistent (const string& upper,
+                                           const mesos::Offer& offer,
+                                           TaskPlan* task,
+                                           ResourceCurrent* resCur) {
   string persistenceId = task->persistence_id();
   string containerPath;
 
   mesos::Resources resources = suitablePersistent(
-    upper, resource->resources(), offer, persistenceId, containerPath);
+    upper, resCur->resources(), offer, persistenceId, containerPath, resCur);
 
   if (! resources.empty()) {
     double now = chrono::duration_cast<chrono::seconds>(
@@ -409,9 +425,9 @@ static OfferAction requestStart (const string& upper,
     task->set_persistence_id(persistenceId);
     task->set_started(now);
 
-    resource->mutable_offer_id()->CopyFrom(offer.id());
-    resource->mutable_resources()->CopyFrom(resources);
-    resource->set_container_path(containerPath);
+    resCur->mutable_offer_id()->CopyFrom(offer.id());
+    resCur->mutable_resources()->CopyFrom(resources);
+    resCur->set_container_path(containerPath);
 
     return { OfferActionState::USABLE };
   }
@@ -423,26 +439,26 @@ static OfferAction requestStart (const string& upper,
 /// @brief request to start without persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestStart (const mesos::Offer& offer,
-                                 TaskPlan* task,
-                                 ResourceCurrent* resource,
-                                 const mesos::Resources& resources,
-                                 const vector<uint32_t>& ports) {
+static OfferAction requestStartEphemeral (const mesos::Offer& offer,
+                                          TaskPlan* task,
+                                          ResourceCurrent* resCur,
+                                          const mesos::Resources& resources,
+                                          const vector<uint32_t>& ports) {
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
 
   task->set_state(TASK_STATE_TRYING_TO_START);
   task->set_started(now);
 
-  resource->mutable_slave_id()->CopyFrom(offer.slave_id());
-  resource->mutable_offer_id()->CopyFrom(offer.id());
-  resource->mutable_resources()->CopyFrom(resources.flatten());
-  resource->set_hostname(offer.hostname());
+  resCur->mutable_slave_id()->CopyFrom(offer.slave_id());
+  resCur->mutable_offer_id()->CopyFrom(offer.id());
+  resCur->mutable_resources()->CopyFrom(resources);
+  resCur->set_hostname(offer.hostname());
 
-  resource->clear_ports();
+  resCur->clear_ports();
 
   for (auto port : ports) {
-    resource->add_ports(port);
+    resCur->add_ports(port);
   }
 
   return { OfferActionState::USABLE };
@@ -455,12 +471,12 @@ static OfferAction requestStart (const mesos::Offer& offer,
 static OfferAction requestRestart (const string& upper,
                                    const mesos::Offer& offer,
                                    TaskPlan* task,
-                                   ResourceCurrent* resource) {
+                                   ResourceCurrent* resCur) {
   string persistenceId = task->persistence_id();
   string containerPath;
 
   mesos::Resources resources = suitablePersistent(
-    upper, resource->resources(), offer, persistenceId, containerPath);
+    upper, resCur->resources(), offer, persistenceId, containerPath, resCur);
 
   if (! resources.empty()) {
     double now = chrono::duration_cast<chrono::seconds>(
@@ -470,9 +486,9 @@ static OfferAction requestRestart (const string& upper,
     task->set_persistence_id(persistenceId);
     task->set_started(now);
 
-    resource->mutable_offer_id()->CopyFrom(offer.id());
-    resource->mutable_resources()->CopyFrom(resources);
-    resource->set_container_path(containerPath);
+    resCur->mutable_offer_id()->CopyFrom(offer.id());
+    resCur->mutable_resources()->CopyFrom(resources);
+    resCur->set_container_path(containerPath);
 
     return { OfferActionState::USABLE };
   }
@@ -530,7 +546,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   int p = tasks->entries_size();
 
   if (p == 0) {
-    LOG(INFO) << "nothing planed for " << name;
+    LOG(INFO) << "nothing planned for " << name;
     return { OfferActionState::IGNORE };
   }
 
@@ -545,24 +561,24 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
 
   for (int i = 0;  i < p;  ++i) {
     TaskPlan* task = tasks->mutable_entries(i);
-    ResourceCurrent* resource = current->mutable_entries(i);
+    ResourceCurrent* resCur = current->mutable_entries(i);
 
     if (task->state() == TASK_STATE_NEW) {
       required = i;
       continue;
     }
 
-    if (resource->slave_id().value() == offerSlaveId) {
+    if (resCur->slave_id().value() == offerSlaveId) {
       switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE:
-          return requestPersistent(upper, offer, target, task, resource);
+          return requestPersistent(upper, offer, target, task, resCur);
 
         case TASK_STATE_TRYING_TO_PERSIST:
-          return requestStart(upper, offer, task, resource);
+          return requestStartPersistent(upper, offer, task, resCur);
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
-          return requestRestart(upper, offer, task, resource);
+          return requestRestart(upper, offer, task, resCur);
 
         default:
           return { OfferActionState::IGNORE };
@@ -627,20 +643,20 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   // ...........................................................................
 
   TaskPlan* task = tasks->mutable_entries(required);
-  ResourceCurrent* resource = current->mutable_entries(required);
+  ResourceCurrent* resCur = current->mutable_entries(required);
 
   vector<uint32_t> ports;
-  mesos::Resources resources = resourcesForTask(offer, target, ports);
+  mesos::Resources resources = resourcesForTask(offer, target, resCur, ports);
 
   if (! persistent) {
-    return requestStart(offer, task, resource, resources, ports);
+    return requestStartEphemeral(offer, task, resCur, resources, ports);
   }
 
   // ...........................................................................
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
-  return requestReservation(offer, task, resource, resources, ports);
+  return requestReservation(offer, task, resCur, resources, ports);
 }
 
 // -----------------------------------------------------------------------------
@@ -942,24 +958,24 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
           break;
       }
 
-      ResourceCurrent* resource = resources->mutable_entries(i);
+      ResourceCurrent* resCur = resources->mutable_entries(i);
 
       task->set_state(TASK_STATE_RUNNING);
       task->set_started(now);
 
       instance->set_state(INSTANCE_STATE_STARTING);
-      instance->set_hostname(resource->hostname());
+      instance->set_hostname(resCur->hostname());
       instance->clear_ports();
 
-      for (int j = 0;  j < resource->ports_size();  ++j) {
-        instance->add_ports(resource->ports(j));
+      for (int j = 0;  j < resCur->ports_size();  ++j) {
+        instance->add_ports(resCur->ports(j));
       }
 
-      mesos::OfferID offerId = resource->offer_id();
-      mesos::SlaveID slaveId = resource->slave_id();
-      mesos::Resources resources = resource->resources();
+      mesos::OfferID offerId = resCur->offer_id();
+      mesos::SlaveID slaveId = resCur->slave_id();
+      mesos::Resources resources = resCur->resources();
 
-      return { startState, *resource, { aspect, (size_t) i } };
+      return { startState, *resCur, { aspect, (size_t) i } };
     }
   }
 

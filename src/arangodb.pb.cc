@@ -155,13 +155,14 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Plan));
   ResourceCurrent_descriptor_ = file->message_type(5);
-  static const int ResourceCurrent_offsets_[6] = {
+  static const int ResourceCurrent_offsets_[7] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, slave_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, offer_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, ports_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, hostname_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, container_path_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ResourceCurrent, role_),
   };
   ResourceCurrent_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -359,49 +360,49 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "(\0132\023.arangodb.TasksPlan\022)\n\014coordinators\030"
     "\002 \002(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030"
     "\003 \002(\0132\023.arangodb.TasksPlan\022(\n\013secondarie"
-    "s\030\004 \002(\0132\023.arangodb.TasksPlan\"\262\001\n\017Resourc"
+    "s\030\004 \002(\0132\023.arangodb.TasksPlan\"\300\001\n\017Resourc"
     "eCurrent\022 \n\010slave_id\030\001 \001(\0132\016.mesos.Slave"
     "ID\022 \n\010offer_id\030\002 \001(\0132\016.mesos.OfferID\022\"\n\t"
     "resources\030\003 \003(\0132\017.mesos.Resource\022\r\n\005port"
     "s\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t\022\026\n\016container_p"
-    "ath\030\006 \001(\t\">\n\020ResourcesCurrent\022*\n\007entries"
-    "\030\001 \003(\0132\031.arangodb.ResourceCurrent\"\304\001\n\017In"
-    "stanceCurrent\022D\n\005state\030\001 \002(\0162\036.arangodb."
-    "InstanceCurrentState:\025INSTANCE_STATE_UNU"
-    "SED\022\"\n\ttask_info\030\002 \001(\0132\017.mesos.TaskInfo\022"
-    "&\n\013task_status\030\003 \001(\0132\021.mesos.TaskStatus\022"
-    "\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t\">\n\020Inst"
-    "ancesCurrent\022*\n\007entries\030\001 \003(\0132\031.arangodb"
-    ".InstanceCurrent\"\356\004\n\007Current\0224\n\020agency_r"
-    "esources\030\001 \002(\0132\032.arangodb.ResourcesCurre"
-    "nt\0229\n\025coordinator_resources\030\002 \002(\0132\032.aran"
-    "godb.ResourcesCurrent\022>\n\032primary_dbserve"
-    "r_resources\030\003 \002(\0132\032.arangodb.ResourcesCu"
-    "rrent\022@\n\034secondary_dbserver_resources\030\004 "
-    "\002(\0132\032.arangodb.ResourcesCurrent\022*\n\006agent"
-    "s\030\005 \002(\0132\032.arangodb.InstancesCurrent\0220\n\014c"
-    "oordinators\030\006 \002(\0132\032.arangodb.InstancesCu"
-    "rrent\0225\n\021primary_dbservers\030\007 \002(\0132\032.arang"
-    "odb.InstancesCurrent\0227\n\023secondary_dbserv"
-    "ers\030\010 \002(\0132\032.arangodb.InstancesCurrent\022\030\n"
-    "\020cluster_complete\030\t \002(\010\022%\n\035cluster_boots"
-    "trappedDBservers\030\n \002(\010\022\032\n\022cluster_upgrad"
-    "edDB\030\013 \002(\010\022(\n cluster_bootstrappedCoordi"
-    "nators\030\014 \002(\010\022\033\n\023cluster_initialized\030\r \002("
-    "\010\"\227\001\n\005State\022(\n\014framework_id\030\001 \001(\0132\022.meso"
-    "s.FrameworkID\022\"\n\007targets\030\002 \002(\0132\021.arangod"
-    "b.Targets\022\034\n\004plan\030\003 \002(\0132\016.arangodb.Plan\022"
-    "\"\n\007current\030\004 \002(\0132\021.arangodb.Current*\364\001\n\r"
-    "TaskPlanState\022\022\n\016TASK_STATE_NEW\020\001\022 \n\034TAS"
-    "K_STATE_TRYING_TO_RESERVE\020\002\022 \n\034TASK_STAT"
-    "E_TRYING_TO_PERSIST\020\003\022\036\n\032TASK_STATE_TRYI"
-    "NG_TO_START\020\004\022 \n\034TASK_STATE_TRYING_TO_RE"
-    "START\020\005\022\026\n\022TASK_STATE_RUNNING\020\006\022\025\n\021TASK_"
-    "STATE_KILLED\020\007\022\032\n\026TASK_STATE_FAILED_OVER"
-    "\020\010*\206\001\n\024InstanceCurrentState\022\031\n\025INSTANCE_"
-    "STATE_UNUSED\020\001\022\033\n\027INSTANCE_STATE_STARTIN"
-    "G\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003\022\032\n\026INSTA"
-    "NCE_STATE_STOPPED\020\004", 2419);
+    "ath\030\006 \001(\t\022\014\n\004role\030\007 \001(\t\">\n\020ResourcesCurr"
+    "ent\022*\n\007entries\030\001 \003(\0132\031.arangodb.Resource"
+    "Current\"\304\001\n\017InstanceCurrent\022D\n\005state\030\001 \002"
+    "(\0162\036.arangodb.InstanceCurrentState:\025INST"
+    "ANCE_STATE_UNUSED\022\"\n\ttask_info\030\002 \001(\0132\017.m"
+    "esos.TaskInfo\022&\n\013task_status\030\003 \001(\0132\021.mes"
+    "os.TaskStatus\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname"
+    "\030\005 \001(\t\">\n\020InstancesCurrent\022*\n\007entries\030\001 "
+    "\003(\0132\031.arangodb.InstanceCurrent\"\356\004\n\007Curre"
+    "nt\0224\n\020agency_resources\030\001 \002(\0132\032.arangodb."
+    "ResourcesCurrent\0229\n\025coordinator_resource"
+    "s\030\002 \002(\0132\032.arangodb.ResourcesCurrent\022>\n\032p"
+    "rimary_dbserver_resources\030\003 \002(\0132\032.arango"
+    "db.ResourcesCurrent\022@\n\034secondary_dbserve"
+    "r_resources\030\004 \002(\0132\032.arangodb.ResourcesCu"
+    "rrent\022*\n\006agents\030\005 \002(\0132\032.arangodb.Instanc"
+    "esCurrent\0220\n\014coordinators\030\006 \002(\0132\032.arango"
+    "db.InstancesCurrent\0225\n\021primary_dbservers"
+    "\030\007 \002(\0132\032.arangodb.InstancesCurrent\0227\n\023se"
+    "condary_dbservers\030\010 \002(\0132\032.arangodb.Insta"
+    "ncesCurrent\022\030\n\020cluster_complete\030\t \002(\010\022%\n"
+    "\035cluster_bootstrappedDBservers\030\n \002(\010\022\032\n\022"
+    "cluster_upgradedDB\030\013 \002(\010\022(\n cluster_boot"
+    "strappedCoordinators\030\014 \002(\010\022\033\n\023cluster_in"
+    "itialized\030\r \002(\010\"\227\001\n\005State\022(\n\014framework_i"
+    "d\030\001 \001(\0132\022.mesos.FrameworkID\022\"\n\007targets\030\002"
+    " \002(\0132\021.arangodb.Targets\022\034\n\004plan\030\003 \002(\0132\016."
+    "arangodb.Plan\022\"\n\007current\030\004 \002(\0132\021.arangod"
+    "b.Current*\364\001\n\rTaskPlanState\022\022\n\016TASK_STAT"
+    "E_NEW\020\001\022 \n\034TASK_STATE_TRYING_TO_RESERVE\020"
+    "\002\022 \n\034TASK_STATE_TRYING_TO_PERSIST\020\003\022\036\n\032T"
+    "ASK_STATE_TRYING_TO_START\020\004\022 \n\034TASK_STAT"
+    "E_TRYING_TO_RESTART\020\005\022\026\n\022TASK_STATE_RUNN"
+    "ING\020\006\022\025\n\021TASK_STATE_KILLED\020\007\022\032\n\026TASK_STA"
+    "TE_FAILED_OVER\020\010*\206\001\n\024InstanceCurrentStat"
+    "e\022\031\n\025INSTANCE_STATE_UNUSED\020\001\022\033\n\027INSTANCE"
+    "_STATE_STARTING\020\002\022\032\n\026INSTANCE_STATE_RUNN"
+    "ING\020\003\022\032\n\026INSTANCE_STATE_STOPPED\020\004", 2433);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   Target::default_instance_ = new Target();
@@ -2187,6 +2188,7 @@ const int ResourceCurrent::kResourcesFieldNumber;
 const int ResourceCurrent::kPortsFieldNumber;
 const int ResourceCurrent::kHostnameFieldNumber;
 const int ResourceCurrent::kContainerPathFieldNumber;
+const int ResourceCurrent::kRoleFieldNumber;
 #endif  // !_MSC_VER
 
 ResourceCurrent::ResourceCurrent()
@@ -2211,6 +2213,7 @@ void ResourceCurrent::SharedCtor() {
   offer_id_ = NULL;
   hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   container_path_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  role_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -2224,6 +2227,9 @@ void ResourceCurrent::SharedDtor() {
   }
   if (container_path_ != &::google::protobuf::internal::kEmptyString) {
     delete container_path_;
+  }
+  if (role_ != &::google::protobuf::internal::kEmptyString) {
+    delete role_;
   }
   if (this != default_instance_) {
     delete slave_id_;
@@ -2268,6 +2274,11 @@ void ResourceCurrent::Clear() {
     if (has_container_path()) {
       if (container_path_ != &::google::protobuf::internal::kEmptyString) {
         container_path_->clear();
+      }
+    }
+    if (has_role()) {
+      if (role_ != &::google::protobuf::internal::kEmptyString) {
+        role_->clear();
       }
     }
   }
@@ -2377,6 +2388,23 @@ bool ResourceCurrent::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(58)) goto parse_role;
+        break;
+      }
+
+      // optional string role = 7;
+      case 7: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_role:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_role()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->role().data(), this->role().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -2441,6 +2469,15 @@ void ResourceCurrent::SerializeWithCachedSizes(
       6, this->container_path(), output);
   }
 
+  // optional string role = 7;
+  if (has_role()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->role().data(), this->role().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      7, this->role(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -2496,6 +2533,16 @@ void ResourceCurrent::SerializeWithCachedSizes(
         6, this->container_path(), target);
   }
 
+  // optional string role = 7;
+  if (has_role()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->role().data(), this->role().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        7, this->role(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -2533,6 +2580,13 @@ int ResourceCurrent::ByteSize() const {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->container_path());
+    }
+
+    // optional string role = 7;
+    if (has_role()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->role());
     }
 
   }
@@ -2594,6 +2648,9 @@ void ResourceCurrent::MergeFrom(const ResourceCurrent& from) {
     if (from.has_container_path()) {
       set_container_path(from.container_path());
     }
+    if (from.has_role()) {
+      set_role(from.role());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -2632,6 +2689,7 @@ void ResourceCurrent::Swap(ResourceCurrent* other) {
     ports_.Swap(&other->ports_);
     std::swap(hostname_, other->hostname_);
     std::swap(container_path_, other->container_path_);
+    std::swap(role_, other->role_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

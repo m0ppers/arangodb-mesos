@@ -800,6 +800,18 @@ class ResourceCurrent : public ::google::protobuf::Message {
   inline ::std::string* release_container_path();
   inline void set_allocated_container_path(::std::string* container_path);
 
+  // optional string role = 7;
+  inline bool has_role() const;
+  inline void clear_role();
+  static const int kRoleFieldNumber = 7;
+  inline const ::std::string& role() const;
+  inline void set_role(const ::std::string& value);
+  inline void set_role(const char* value);
+  inline void set_role(const char* value, size_t size);
+  inline ::std::string* mutable_role();
+  inline ::std::string* release_role();
+  inline void set_allocated_role(::std::string* role);
+
   // @@protoc_insertion_point(class_scope:arangodb.ResourceCurrent)
  private:
   inline void set_has_slave_id();
@@ -810,6 +822,8 @@ class ResourceCurrent : public ::google::protobuf::Message {
   inline void clear_has_hostname();
   inline void set_has_container_path();
   inline void clear_has_container_path();
+  inline void set_has_role();
+  inline void clear_has_role();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -819,9 +833,10 @@ class ResourceCurrent : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > ports_;
   ::std::string* hostname_;
   ::std::string* container_path_;
+  ::std::string* role_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -2414,6 +2429,76 @@ inline void ResourceCurrent::set_allocated_container_path(::std::string* contain
   } else {
     clear_has_container_path();
     container_path_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string role = 7;
+inline bool ResourceCurrent::has_role() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void ResourceCurrent::set_has_role() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void ResourceCurrent::clear_has_role() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void ResourceCurrent::clear_role() {
+  if (role_ != &::google::protobuf::internal::kEmptyString) {
+    role_->clear();
+  }
+  clear_has_role();
+}
+inline const ::std::string& ResourceCurrent::role() const {
+  return *role_;
+}
+inline void ResourceCurrent::set_role(const ::std::string& value) {
+  set_has_role();
+  if (role_ == &::google::protobuf::internal::kEmptyString) {
+    role_ = new ::std::string;
+  }
+  role_->assign(value);
+}
+inline void ResourceCurrent::set_role(const char* value) {
+  set_has_role();
+  if (role_ == &::google::protobuf::internal::kEmptyString) {
+    role_ = new ::std::string;
+  }
+  role_->assign(value);
+}
+inline void ResourceCurrent::set_role(const char* value, size_t size) {
+  set_has_role();
+  if (role_ == &::google::protobuf::internal::kEmptyString) {
+    role_ = new ::std::string;
+  }
+  role_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* ResourceCurrent::mutable_role() {
+  set_has_role();
+  if (role_ == &::google::protobuf::internal::kEmptyString) {
+    role_ = new ::std::string;
+  }
+  return role_;
+}
+inline ::std::string* ResourceCurrent::release_role() {
+  clear_has_role();
+  if (role_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = role_;
+    role_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void ResourceCurrent::set_allocated_role(::std::string* role) {
+  if (role_ != &::google::protobuf::internal::kEmptyString) {
+    delete role_;
+  }
+  if (role) {
+    set_has_role();
+    role_ = role;
+  } else {
+    clear_has_role();
+    role_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

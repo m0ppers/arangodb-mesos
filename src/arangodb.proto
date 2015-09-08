@@ -75,6 +75,7 @@ message ResourceCurrent {
   repeated uint32               ports = 4;
   optional string               hostname = 5;
   optional string               container_path = 6;
+  optional string               role = 7;
 }
 
 
