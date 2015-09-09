@@ -46,7 +46,7 @@ message TaskPlan {
 
   required bool          is_primary = 2;
   optional string        persistence_id = 3;
-  required double        started = 4;
+  optional double        started = 4;
 }
 
 

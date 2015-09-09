@@ -438,7 +438,7 @@ class TaskPlan : public ::google::protobuf::Message {
   inline ::std::string* release_persistence_id();
   inline void set_allocated_persistence_id(::std::string* persistence_id);
 
-  // required double started = 4;
+  // optional double started = 4;
   inline bool has_started() const;
   inline void clear_started();
   static const int kStartedFieldNumber = 4;
@@ -1955,7 +1955,7 @@ inline void TaskPlan::set_allocated_persistence_id(::std::string* persistence_id
   }
 }
 
-// required double started = 4;
+// optional double started = 4;
 inline bool TaskPlan::has_started() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }

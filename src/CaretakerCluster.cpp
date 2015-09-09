@@ -300,7 +300,8 @@ void CaretakerCluster::updatePlan () {
       resources->add_entries();
 
       InstancesCurrent* instances = current.mutable_coordinators();
-      instances->add_entries();
+      InstanceCurrent* inst = instances->add_entries();
+      inst->set_state(INSTANCE_STATE_UNUSED);
     }
   }
 

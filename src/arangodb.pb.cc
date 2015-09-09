@@ -355,7 +355,7 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "\n\010TaskPlan\0226\n\005state\030\001 \002(\0162\027.arangodb.Tas"
     "kPlanState:\016TASK_STATE_NEW\022\022\n\nis_primary"
     "\030\002 \002(\010\022\026\n\016persistence_id\030\003 \001(\t\022\017\n\007starte"
-    "d\030\004 \002(\001\"0\n\tTasksPlan\022#\n\007entries\030\001 \003(\0132\022."
+    "d\030\004 \001(\001\"0\n\tTasksPlan\022#\n\007entries\030\001 \003(\0132\022."
     "arangodb.TaskPlan\"\250\001\n\004Plan\022#\n\006agents\030\001 \002"
     "(\0132\023.arangodb.TasksPlan\022)\n\014coordinators\030"
     "\002 \002(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030"
@@ -1403,7 +1403,7 @@ bool TaskPlan::MergePartialFromCodedStream(
         break;
       }
 
-      // required double started = 4;
+      // optional double started = 4;
       case 4: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
@@ -1457,7 +1457,7 @@ void TaskPlan::SerializeWithCachedSizes(
       3, this->persistence_id(), output);
   }
 
-  // required double started = 4;
+  // optional double started = 4;
   if (has_started()) {
     ::google::protobuf::internal::WireFormatLite::WriteDouble(4, this->started(), output);
   }
@@ -1491,7 +1491,7 @@ void TaskPlan::SerializeWithCachedSizes(
         3, this->persistence_id(), target);
   }
 
-  // required double started = 4;
+  // optional double started = 4;
   if (has_started()) {
     target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(4, this->started(), target);
   }
@@ -1525,7 +1525,7 @@ int TaskPlan::ByteSize() const {
           this->persistence_id());
     }
 
-    // required double started = 4;
+    // optional double started = 4;
     if (has_started()) {
       total_size += 1 + 8;
     }
@@ -1586,7 +1586,7 @@ void TaskPlan::CopyFrom(const TaskPlan& from) {
 }
 
 bool TaskPlan::IsInitialized() const {
-  if ((_has_bits_[0] & 0x0000000b) != 0x0000000b) return false;
+  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
 
   return true;
 }
