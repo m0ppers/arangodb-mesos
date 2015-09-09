@@ -737,8 +737,8 @@ bool ArangoManager::makePersistentVolume (const string& name,
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoManager::makeDynamicReservation (const mesos::Offer& offer,
-                                                const mesos::Resources& resources) {
+bool ArangoManager::makeDynamicReservation (mesos::Offer const& offer,
+                                            mesos::Resources const& resources) {
   const string& offerId = offer.id().value();
   mesos::Resources res = resources.flatten(Global::role(), Global::principal());
 
