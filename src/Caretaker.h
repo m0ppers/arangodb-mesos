@@ -75,12 +75,11 @@ namespace arangodb {
 // --SECTION--                                                 class OfferAction
 // -----------------------------------------------------------------------------
 
-  class OfferAction {
-    public:
-      OfferActionState _state;
-      mesos::Resources _resources;
-      std::string _name;
-      std::string _persistentId;
+  struct OfferAction {
+    OfferActionState _state;
+    mesos::Resources _resources;
+    std::string _name;
+    std::string _persistentId;
   };
 
 // -----------------------------------------------------------------------------

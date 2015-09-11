@@ -405,7 +405,8 @@ vector<string> ArangoManager::dbserverEndpoints () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::dispatch () {
-  static const int SLEEP_SEC = 10;
+  //static const int SLEEP_SEC = 10;
+  static const int SLEEP_SEC = 1;
 
   prepareReconciliation();
 
@@ -900,11 +901,20 @@ void ArangoManager::startInstance (InstanceActionState aspect,
   mapping->set_protocol("tcp");
 
   // volume
-  string path = "arangodb_" + Global::frameworkName() + "_" 
-                + state.frameworkId() + "_" + myName;
   mesos::Volume* volume = container.add_volumes();
   volume->set_container_path("/data");
-  volume->set_host_path(Global::volumePath() + "/" + path);
+  mesos::Resources res = info.resources();
+  res = arangodb::filterIsDisk(res);
+  mesos::Resource& disk = *(res.begin());
+  if (disk.has_disk() && disk.disk().has_volume()) {
+    volume->set_host_path("../../../../../../../../" +
+                          info.container_path());
+  }
+  else {
+    string path = "arangodb_" + Global::frameworkName() + "_" 
+                  + state.frameworkId() + "_" + myName;
+    volume->set_host_path(Global::volumePath() + "/" + path);
+  }
   volume->set_mode(mesos::Volume::RW);
 
   // sets the task_id (in case we crash) before we start

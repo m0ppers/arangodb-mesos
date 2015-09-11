@@ -225,23 +225,40 @@ bool arangodb::notIsDisk (const mesos::Resource& resource) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief extracts number of avaiable ports from an offer
+/// @brief is-default-role filter
 ///////////////////////////////////////////////////////////////////////////////
 
-size_t arangodb::numberPorts (const mesos::Offer& offer) {
+bool arangodb::isDefaultRole (mesos::Resource const& resource) {
+  return ! resource.has_role() || resource.role() == "*";
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief extracts number of avaiable ports from an offer, if the given
+/// role string is empty, port ranges with any role are counted, otherwise
+/// we only count port ranges with that role.
+///////////////////////////////////////////////////////////////////////////////
+
+size_t arangodb::numberPorts (mesos::Offer const& offer,
+                              std::string const& role) {
   size_t value = 0;
 
   for (int i = 0; i < offer.resources_size(); ++i) {
-    const auto& resource = offer.resources(i);
+    auto const& resource = offer.resources(i);
 
     if (resource.name() == "ports" &&
         resource.type() == mesos::Value::RANGES) {
-      const auto& ranges = resource.ranges();
-      
-      for (int j = 0; j < ranges.range_size(); ++j) {
-        const auto& range = ranges.range(j);
+      if (role.empty() ||
+          (resource.has_role() && resource.role() == role)) {
+           // note that role is optional but has a default, therefore
+           // has_role() should always be true. Should, for whatever reason,
+           // no role be set in the offer, we do not count this range!
+        const auto& ranges = resource.ranges();
+        
+        for (int j = 0; j < ranges.range_size(); ++j) {
+          const auto& range = ranges.range(j);
 
-        value += range.end() - range.begin() + 1;
+          value += range.end() - range.begin() + 1;
+        }
       }
     }
   }
@@ -279,6 +296,23 @@ mesos::Resources arangodb::filterIsPersistentVolume (const mesos::Resources& res
 
 mesos::Resources arangodb::filterNotIsPorts (const mesos::Resources& resources) {
   return resources.filter(notIsPorts);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief intersect two sets of resources
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::Resources arangodb::intersectResources (mesos::Resources const& a,
+                                               mesos::Resources const& b) {
+  return a-(a-b);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the default role resources
+////////////////////////////////////////////////////////////////////////////////
+
+mesos::Resources arangodb::filterIsDefaultRole (const mesos::Resources& resources) {
+  return resources.filter(isDefaultRole);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

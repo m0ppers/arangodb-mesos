@@ -45,11 +45,13 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the number of ports
+/// @brief checks the number of ports, if the given role is empty, all ports
+/// in the offer are taken, otherwise, only ports with that role are counted.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool checkPorts (size_t numberOfPorts, const mesos::Offer& offer) {
-  if (numberPorts(offer) < numberOfPorts) {
+static bool checkPorts (size_t numberOfPorts, const mesos::Offer& offer,
+                        std::string const& role) {
+  if (numberPorts(offer, role) < numberOfPorts) {
     return false;
   }
 
@@ -57,28 +59,43 @@ static bool checkPorts (size_t numberOfPorts, const mesos::Offer& offer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks is the minimum resources are satisfied
+/// @brief checks if the minimum resources are satisfied, the flag withRole
+/// indicates whether or not the roles in the offer are taken into account.
+/// With withRole==false, the offer as well as the minimum resources are
+/// flattened to our role before the comparison and ports for all roles
+/// in the offer are counted. With withRole==true, the minimum resources
+/// are flattened to Global::role() and the offer is untouched to check
+/// the minimum.
+/// For the ports we do not care about reservations, we simply see whether
+/// any ports for our role or "*" are included in the offer.
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isSuitableOffer (const Target& target,
-                             const mesos::Offer& offer) {
-  if (! checkPorts(target.number_ports(), offer)) {
+static bool isSuitableOffer (Target const& target,
+                             mesos::Offer const& offer,
+                             bool withRole) {
+  // Note that we do not care whether or not ports are reserved for us
+  // or are role "*".
+  if (! checkPorts(target.number_ports(), offer, "")) {
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
     << "offer " << offer.id().value() << " does not have " 
-    << target.number_ports() << " ports";
+    << target.number_ports() << " ports"
+    << (withRole ? " for Role" + Global::role() : " for any role");
 
     return false;
   }
 
+  // Never need to flatten the offered resources, since we use find:
   mesos::Resources offered = offer.resources();
-  // FIXME: Do not flatten here, because we must keep the role!
-  //offered = offered.flatten();
 
+  // Always flatten the minimal resources with our role, because find is 
+  // flexible:
   mesos::Resources minimum = target.minimal_resources();
+  minimum = minimum.flatten(Global::role());
 
-  if (! offered.contains(minimum)) {
-    std::string offerString;
+  Option<mesos::Resources> found = offered.find(minimum);
+  std::string offerString;
+  if (! found.isSome()) {
     pbjson::pb2json(&offer, offerString);
      
     LOG(INFO) 
@@ -90,58 +107,109 @@ static bool isSuitableOffer (const Target& target,
     return false;
   }
 
+  if (withRole) {
+    mesos::Resources defaultRole = arangodb::filterIsDefaultRole(found.get());
+    if (! defaultRole.empty()) {
+      pbjson::pb2json(&offer, offerString);
+       
+      LOG(INFO) 
+      << "DEBUG isSuitableOffer: "
+      << "offer " << offer.id().value() << " meets the " 
+      << "minimal resource requirements " << minimum
+      << " but needs role \"*\" for this: " << defaultRole
+      << "\noffer: " << offerString;
+
+      return false;
+    }
+  }
+
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks is the reservered resources are satisfied
+/// @brief checks if we have enough reserved resources to get a persistent vol
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool isSuitableReservedOffer (mesos::Resources const& resources,
-                                     mesos::Offer const& offer,
-                                     ResourceCurrent const* resCur) {
-  mesos::Resources offered = offer.resources();
-  mesos::Resources required = resources.flatten(resCur->role(), 
-                                                Global::principal());
-
-  if (! offered.contains(required)) {
-    std::string offerString;
-    pbjson::pb2json(&offer, offerString);
-
-    LOG(INFO) 
-    << "DEBUG isSuitableReservedOffer: "
-    << "offer " << offer.id().value() << " [" << offer.resources()
-    << "] does not have minimal resource requirements "
-    << required
-    << "\noffer: " << offerString;
-
+static bool isSuitableReservedOffer (mesos::Offer const& offer,
+                                     Target const& target,
+                                     ResourceCurrent const* resCur,
+                                     mesos::Resources& toMakePersistent) {
+  // The condition here is that our minimal resources are all met with
+  // reserved resources and that there is a single disk resource that
+  // is not yet persistent for anybody and that we can make persistent
+  // for us:
+  if (! isSuitableOffer(target, offer, true)) {
+    LOG(INFO) << "Offer does not contain enough reserved resources.";
     return false;
   }
 
-  return true;
+  // Now study the offered and needed disk resources only:
+  mesos::Resources offered = offer.resources();
+  offered = arangodb::filterIsDisk(offered);
+
+  mesos::Resources required = target.minimal_resources();
+  required = arangodb::filterIsDisk(required);
+  required = required.flatten(Global::role(), Global::principal());
+  // Now required is a single resource of type disk with our role.
+
+  for (mesos::Resource& res : offered) {
+    mesos::Resources oneResource;
+    oneResource += res;
+    if (oneResource.contains(required)) {
+      toMakePersistent = required;
+      return true;
+    }
+  }
+
+  std::string offerString;
+  pbjson::pb2json(&offer, offerString);
+   
+  LOG(INFO) 
+  << "DEBUG isSuitableReservedOffer: "
+  << "offer " << offer.id().value() << " meets the " 
+  << "minimal resource requirements "
+  << "but lacks a reserved disk resource to make persistent"
+  << "\noffer: " << offerString;
+
+  return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief finds free ports from a ranges
 ///////////////////////////////////////////////////////////////////////////////
 
-static void findFreePortsFromRange (set<uint32_t>& result,
-                                    const vector<mesos::Value::Range>& ranges,
+static void findFreePortsFromRange (mesos::Resources& result,
+                                    vector<mesos::Value::Range> const& ranges,
+                                    vector<bool> const& isDynRes,
+                                    bool reserved,
+                                    size_t& found,
                                     size_t len) {
-  static const size_t MAX_ITERATIONS = 1000;
+  for (size_t rangeChoice = 0; rangeChoice < ranges.size(); rangeChoice++) {
 
-  default_random_engine generator;
-  uniform_int_distribution<int> d1(0, ranges.size() - 1);
+    const auto& resource = ranges.at(rangeChoice);
 
-  for (size_t i = 0;  i < MAX_ITERATIONS;  ++i) {
-    if (result.size() >= len) {
-      return;
+    for (uint32_t port = resource.begin(); port <= resource.end(); port++) {
+      if (found >= len) {
+        return;
+      }
+      mesos::Resource onePort;
+      onePort.set_name("ports");
+      onePort.set_type(mesos::Value::RANGES);
+      auto* r = onePort.mutable_ranges()->add_range();
+      r->set_begin(port);
+      r->set_end(port);
+      if (! reserved) {
+        onePort.set_role("*");
+      }
+      else {
+        onePort.set_role(Global::role());
+        if (isDynRes[rangeChoice]) {
+          onePort.mutable_reservation()->CopyFrom(Global::principal());
+        }
+      }
+      result += onePort;
+      found++;
     }
-
-    const auto& resource = ranges.at(d1(generator));
-    uniform_int_distribution<uint32_t> d2(resource.begin(), resource.end());
-
-    result.insert(d2(generator));
   }
 }
 
@@ -149,26 +217,15 @@ static void findFreePortsFromRange (set<uint32_t>& result,
 /// @brief finds free ports from an offer
 ///////////////////////////////////////////////////////////////////////////////
 
-static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len,
-                                       std::string& role) {
+static mesos::Resources findFreePorts (const mesos::Offer& offer, size_t len) {
   vector<mesos::Value::Range> resources;
   vector<mesos::Value::Range> reserved;
-  auto principal = Global::principal();
+  vector<bool>                isDynamicallyReserved;
 
-  role.clear();
+  auto const& principal = Global::principal();
+
   for (int i = 0; i < offer.resources_size(); ++i) {
     const auto& resource = offer.resources(i);
-
-    // All resources offered will have the same role, since they are together
-    // in the same offer, we might as well take the role of any of them:
-    if (role.empty()) {
-      if (resource.has_role()) {
-        role = resource.role();
-      }
-      else {
-        role = "*";
-      }
-    }
 
     if (resource.name() == "ports" && resource.type() == mesos::Value::RANGES) {
       const auto& ranges = resource.ranges();
@@ -178,15 +235,16 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len,
 
         // reserved resources: they must either be statically or
         // dynamically with matching principal
-        // Do not insist on a role here.
         if (mesos::Resources::isReserved(resource, Option<std::string>())) {
           if (mesos::Resources::isDynamicallyReserved(resource)) {
             if (resource.reservation().principal() == principal.principal()) {
               reserved.push_back(range);
+              isDynamicallyReserved.push_back(true);
             }
           }
           else {
             reserved.push_back(range);
+            isDynamicallyReserved.push_back(false);
           }
         }
 
@@ -198,81 +256,79 @@ static vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len,
     }
   }
 
-  // QUESTION: Why is n this and not just reserved.size()?
-  size_t n = min(len, reserved.size());
+  mesos::Resources result;
+  size_t found = 0;
+  findFreePortsFromRange(result, reserved, isDynamicallyReserved, true, 
+                         found, len);
+  findFreePortsFromRange(result, resources, isDynamicallyReserved, false, 
+                         found, len);
 
-  set<uint32_t> result;
-  findFreePortsFromRange(result, reserved, n);
-  findFreePortsFromRange(result, resources, len);
-
-  // QUESTION: Why are we potentially taking ranges from the reserved
-  // as well as from the unreserved resources?
-
-  return vector<uint32_t>(result.begin(), result.end());
-}
-
-///////////////////////////////////////////////////////////////////////////////
-/// @brief generates resources from a list of ports
-///////////////////////////////////////////////////////////////////////////////
-
-static mesos::Resources resourcesPorts (const vector<uint32_t>& ports,
-                                        std::string const& role) {
-  mesos::Resources resources;
-
-  mesos::Resource res;
-  res.set_name("ports");
-  res.set_type(mesos::Value::RANGES);
-  res.set_role(role);
-
-  for (uint32_t p : ports) {
-    mesos::Value_Range* range = res.mutable_ranges()->add_range();
-
-    range->set_begin(p);
-    range->set_end(p);
-  }
-
-  resources += res;
-
-  return resources;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resources required for reservation
+/// @brief resources required for the start of an ephemeral task
 ////////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources resourcesForTask (const mesos::Offer& offer,
-                                          const Target& target,
-                                          ResourceCurrent* resCur,
-                                          vector<uint32_t>& ports) {
+static mesos::Resources resourcesForStartEphemeral (mesos::Offer const& offer,
+                                                    Target const& target,
+                                                    ResourceCurrent* resCur) {
   mesos::Resources offered = offer.resources();
   mesos::Resources minimum = target.minimal_resources();
+  
+  // We know that the minimal resources fit into the offered resources,
+  // when we ignore roles. We now have to grab as much as the minimal 
+  // resources prescribe (always with role "*"), but prefer the role
+  // specific resources and only turn to the "*" resources if the others
+  // are not enough.
+#if 0  
+  // Old approach without find:
+  minimum = minimum.flatten(Global.role());
+  mesos::Resources roleSpecificPart 
+      = arangodb::intersectResources(offered, minimum);
+  mesos::Resources defaultPart = minimum - roleSpecificPart;
+  defaultPart.flatten();
+  mesos::Resources toUse = roleSpecificPart + defaultPart;
+#endif
+  Option<mesos::Resources> toUseOpt = offered.find(minimum);
+  mesos::Resources toUse;
+  if (toUseOpt.isSome()) {
+    toUse = toUseOpt.get();
+  }
+  // toUse will be empty, when it does not fit, we will run into an error later.
 
-  // add the ports
-  std::string role;
-  ports = findFreePorts(offer, target.number_ports(), role);
   // Add ports with the role we actually found in the resource offer:
-  minimum += resourcesPorts(ports, role);
-  resCur->set_role(role);   // Save role for later
+  toUse += findFreePorts(offer, target.number_ports());
 
   // TODO(fc) check if we could use additional resources
 
-  // and set the principal, using the role we got from the offer
-  return minimum.flatten(role, Global::principal());
+  return toUse;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief resources required for persistent volume
+/// @brief resources required for a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-static mesos::Resources resourcesForPersistence (Target const& target,
-                                                 ResourceCurrent const* resCur,
-                                                 mesos::Offer const& offer) {
+static mesos::Resources resourcesForRequestReservation (
+                                    mesos::Offer const& offer,
+                                    Target const& target,
+                                    ResourceCurrent* resCur) {
+  mesos::Resources offered = offer.resources();
   mesos::Resources minimum = target.minimal_resources();
-  minimum = filterIsDisk(minimum);
+  
+  // We know that the minimal resources fit into the offered resources,
+  // when we ignore roles. We now have to reserve that part of the 
+  // resources with role "*" that is necessary to have all of the minimal
+  // resources with our role.
+  minimum = minimum.flatten(Global::role());
+  mesos::Resources roleSpecificPart 
+      = arangodb::intersectResources(offered, minimum);
+  mesos::Resources defaultPart = minimum - roleSpecificPart;
+  defaultPart.flatten();
 
   // TODO(fc) check if we could use additional resources
 
-  return minimum.flatten(resCur->role(), Global::principal());
+  return defaultPart;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,39 +336,50 @@ static mesos::Resources resourcesForPersistence (Target const& target,
 ////////////////////////////////////////////////////////////////////////////////
 
 static mesos::Resources suitablePersistent (string const& name,
-                                            mesos::Resources const& resources,
                                             mesos::Offer const& offer,
+                                            Target const& target,
+                                            ResourceCurrent* resCur,
                                             string const& persistenceId,
-                                            string& containerPath,
-                                            ResourceCurrent const* resCur) {
+                                            string& containerPath) {
+
+  // However, we have to check that there is a single disk resource that
+  // is large enough and has the right persistent ID for us. Therefore
+  // we have to separate disk and non-disk resources and proceed similar
+  // to resourcesForStartEphemeral for the non-disk resources and
+  // special for the disk-resources:
+
+  // For logging:
+  std::string offerString;
+
   mesos::Resources offered = offer.resources();
-  mesos::Resources offerDisk = filterIsDisk(offered);
-  mesos::Resources offerNoneDisk = filterNotIsDisk(offered);
+  mesos::Resources offeredDisk = filterIsDisk(offered);
+  offered = filterNotIsDisk(offered);
 
-  mesos::Resources resourcesNoneDisk = filterNotIsDisk(resources);
-  mesos::Resources resourcesDisk = filterIsDisk(resources);
-  mesos::Resources required = resourcesNoneDisk.flatten(resCur->role(), Global::principal());
+  mesos::Resources minimum = target.minimal_resources();
+  minimum = minimum.flatten(Global::role());
+  mesos::Resources minimumDisk = filterIsDisk(minimum);
+  minimum = filterNotIsDisk(minimum);
 
-  if (! offerNoneDisk.contains(required)) {
-    std::string offerString;
+  Option<mesos::Resources> toUseOpt = offered.find(minimum);
+  if (! toUseOpt.isSome()) {
     pbjson::pb2json(&offer, offerString);
-
     LOG(INFO) 
     << "DEBUG suitablePersistent(" << name << "): "
     << "offer " << offer.id().value() << " [" << offer.resources()
     << "] does not have minimal resource requirements "
-    << required
+    << minimum
     << "\noffer: " << offerString;
-
-    return mesos::Resources();
+    return mesos::Resources();    // this indicates an error, ignore offer
   }
+  mesos::Resources toUse = toUseOpt.get();
 
-  size_t mds = diskspace(resourcesDisk);
+  // Now look at the disk resources:
+  size_t mds = diskspace(minimumDisk);
 
-  string role = resCur->role();
+  bool found = false;
 
-  for (const auto& res : offerDisk) {
-    if (res.role() != role) {
+  for (const auto& res : offeredDisk) {
+    if (res.role() != Global::role()) {
       continue;
     }
 
@@ -332,55 +399,46 @@ static mesos::Resources suitablePersistent (string const& name,
       continue;
     }
 
-    containerPath = res.disk().volume().container_path();
+    containerPath = "volumes/roles/" + Global::role() + "/" + persistenceId;
 
-    return resourcesNoneDisk + res;
+    toUse += res;
+    found = true;
+    break;
   }
 
-  return mesos::Resources();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request to make a reservation
-////////////////////////////////////////////////////////////////////////////////
-
-static OfferAction requestReservation (const mesos::Offer& offer,
-                                       TaskPlan* task,
-                                       ResourceCurrent* resource,
-                                       const mesos::Resources& resources,
-                                       const vector<uint32_t>& ports) {
-  double now = chrono::duration_cast<chrono::seconds>(
-    chrono::steady_clock::now().time_since_epoch()).count();
-
-  task->set_state(TASK_STATE_TRYING_TO_RESERVE);
-  task->set_started(now);
-
-  resource->mutable_slave_id()->CopyFrom(offer.slave_id());
-  resource->mutable_offer_id()->CopyFrom(offer.id());
-  resource->mutable_resources()->CopyFrom(resources);
-  resource->set_hostname(offer.hostname());
-
-  resource->clear_ports();
-
-  for (auto port : ports) {
-    resource->add_ports(port);
+  if (! found) {
+    pbjson::pb2json(&offer, offerString);
+    LOG(INFO) 
+    << "DEBUG suitablePersistent(" << name << "): "
+    << "offer " << offer.id().value() << " [" << offer.resources()
+    << "] does not have enough persistent disk resources"
+    << minimumDisk
+    << "\noffer: " << offerString;
+    return mesos::Resources();  // indicates failure
   }
 
-  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources - offer.resources() };
+  // Add ports with the role we actually found in the resource offer:
+  toUse += findFreePorts(offer, target.number_ports());
+
+  LOG(INFO)
+  << "DEBUG suitablePersistent(" << name << "): SUCCESS";
+
+  return toUse;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to make offer persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestPersistent (const string& upper,
-                                      const mesos::Offer& offer,
-                                      const Target& target,
+static OfferAction requestPersistent (string const& upper,
+                                      mesos::Offer const& offer,
+                                      Target const& target,
                                       TaskPlan* task,
                                       ResourceCurrent* resCur) {
-  mesos::Resources resources = resCur->resources();
+  mesos::Resources volume;
 
-  if (isSuitableReservedOffer(resources, offer, resCur)) {
+  if (isSuitableReservedOffer(offer, target, resCur, volume)) {
     double now = chrono::duration_cast<chrono::seconds>(
       chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -392,30 +450,64 @@ static OfferAction requestPersistent (const string& upper,
 
     resCur->mutable_offer_id()->CopyFrom(offer.id());
 
-    resources = resources.flatten(resCur->role(), Global::principal());
-    resCur->mutable_resources()->CopyFrom(resources);
+    volume = volume.flatten(Global::role(), Global::principal());
+    resCur->mutable_resources()->CopyFrom(volume);
 
-    mesos::Resources volume = resourcesForPersistence(target, resCur, offer);
-
-    return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, upper, persistentId };
+    return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, 
+             upper, persistentId };
   }
 
   return { OfferActionState::IGNORE };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief request to make a reservation
+////////////////////////////////////////////////////////////////////////////////
+
+static OfferAction requestReservation (std::string const& upper,
+                                       mesos::Offer const& offer,
+                                       Target const& target,
+                                       TaskPlan* task,
+                                       ResourceCurrent* resCur) {
+  mesos::Resources resources
+        = resourcesForRequestReservation(offer, target, resCur);
+
+  if (resources.empty()) {
+    // We have everything needed reserved for our role, so we can
+    // directly move on to the persistent volume:
+    return requestPersistent(upper, offer, target, task, resCur);
+  }
+
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
+  task->set_state(TASK_STATE_TRYING_TO_RESERVE);
+  task->set_started(now);
+
+  resCur->mutable_slave_id()->CopyFrom(offer.slave_id());
+  resCur->mutable_offer_id()->CopyFrom(offer.id());
+  resCur->mutable_resources()->CopyFrom(resources);
+  resCur->set_hostname(offer.hostname());
+
+  resCur->clear_ports();
+
+  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief request to start with persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestStartPersistent (const string& upper,
-                                           const mesos::Offer& offer,
+static OfferAction requestStartPersistent (string const& upper,
+                                           mesos::Offer const& offer,
+                                           Target const& target,
                                            TaskPlan* task,
                                            ResourceCurrent* resCur) {
   string persistenceId = task->persistence_id();
   string containerPath;
 
   mesos::Resources resources = suitablePersistent(
-    upper, resCur->resources(), offer, persistenceId, containerPath, resCur);
+    upper, offer, target, resCur, persistenceId, containerPath);
 
   if (! resources.empty()) {
     double now = chrono::duration_cast<chrono::seconds>(
@@ -429,6 +521,23 @@ static OfferAction requestStartPersistent (const string& upper,
     resCur->mutable_resources()->CopyFrom(resources);
     resCur->set_container_path(containerPath);
 
+    resCur->clear_ports();
+
+    for (auto& res : resources) {
+      if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
+        auto const& ranges = res.ranges();
+        for (int r = 0; r < ranges.range_size(); r++) {
+          for (uint64_t i = ranges.range(r).begin();
+               i <= ranges.range(r).end(); i++) {
+            resCur->add_ports(i);
+          }
+        }
+      }
+    }
+
+    LOG(INFO) << "Trying to start with resources:\n"
+              << resources;
+
     return { OfferActionState::USABLE };
   }
 
@@ -439,11 +548,14 @@ static OfferAction requestStartPersistent (const string& upper,
 /// @brief request to start without persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestStartEphemeral (const mesos::Offer& offer,
+static OfferAction requestStartEphemeral (mesos::Offer const& offer,
+                                          Target const& target,
                                           TaskPlan* task,
-                                          ResourceCurrent* resCur,
-                                          const mesos::Resources& resources,
-                                          const vector<uint32_t>& ports) {
+                                          ResourceCurrent* resCur) {
+
+  mesos::Resources resources 
+      = resourcesForStartEphemeral(offer, target, resCur);
+
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -457,8 +569,16 @@ static OfferAction requestStartEphemeral (const mesos::Offer& offer,
 
   resCur->clear_ports();
 
-  for (auto port : ports) {
-    resCur->add_ports(port);
+  for (auto& res : resources) {
+    if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
+      auto const& ranges = res.ranges();
+      for (int r = 0; r < ranges.range_size(); r++) {
+        for (uint64_t i = ranges.range(r).begin();
+             i <= ranges.range(r).end(); i++) {
+          resCur->add_ports(i);
+        }
+      }
+    }
   }
 
   return { OfferActionState::USABLE };
@@ -468,15 +588,21 @@ static OfferAction requestStartEphemeral (const mesos::Offer& offer,
 /// @brief request to restart
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestRestart (const string& upper,
-                                   const mesos::Offer& offer,
+static OfferAction requestRestart (string const& upper,
+                                   mesos::Offer const& offer,
+                                   Target const& target,
                                    TaskPlan* task,
                                    ResourceCurrent* resCur) {
+
+  if (! isSuitableOffer(target, offer, true)) {
+    return { OfferActionState::IGNORE };
+  }
+
   string persistenceId = task->persistence_id();
   string containerPath;
 
   mesos::Resources resources = suitablePersistent(
-    upper, resCur->resources(), offer, persistenceId, containerPath, resCur);
+    upper, offer, target, resCur, persistenceId, containerPath);
 
   if (! resources.empty()) {
     double now = chrono::duration_cast<chrono::seconds>(
@@ -528,18 +654,23 @@ Caretaker::~Caretaker () {
 
 OfferAction Caretaker::checkResourceOffer (const string& name,
                                            bool persistent,
-                                           const Target& target,
+                                           Target const& target,
                                            TasksPlan* tasks,
                                            ResourcesCurrent* current,
-                                           const mesos::Offer& offer) {
+                                           mesos::Offer const& offer) {
   string upper = name;
-  for (auto& c : upper) { c = toupper(c); }
+  for (auto& c : upper) { 
+    c = toupper(c);
+  }
           
   // ...........................................................................
-  // check that the minimal resources are satisfied
+  // check that the minimal resources are satisfied, here we ignore roles, if
+  // we are after a persistent volume, since we can always reserve more
+  // resources for our role dynamically. If we are after ephemeral resources,
+  // we do
   // ...........................................................................
 
-  if (! isSuitableOffer(target, offer)) {
+  if (! isSuitableOffer(target, offer, false)) {
     return { OfferActionState::IGNORE };
   }
 
@@ -551,15 +682,17 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   }
 
   // ...........................................................................
-  // we do not want to start two instances on the same slave; if we get an offer
-  // for the same slave, check if we are currently trying to reserve or persist
-  // for this slave; if not, ignore the offer.
+  // we do not want to start two instances of the same type on the same
+  // slave; if we get an offer for the same slave, check if we are
+  // currently trying to reserve or persist for this slave; if not,
+  // ignore the offer.
   // ...........................................................................
 
   int required = -1;
-  const string& offerSlaveId = offer.slave_id().value();
+  string const& offerSlaveId = offer.slave_id().value();
 
-  for (int i = 0;  i < p;  ++i) {
+  for (int i = p-1; i >= 0; --i) {  // backwards to prefer earlier ones in
+                                    // the required variable
     TaskPlan* task = tasks->mutable_entries(i);
     ResourceCurrent* resCur = current->mutable_entries(i);
 
@@ -574,11 +707,11 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
           return requestPersistent(upper, offer, target, task, resCur);
 
         case TASK_STATE_TRYING_TO_PERSIST:
-          return requestStartPersistent(upper, offer, task, resCur);
+          return requestStartPersistent(upper, offer, target, task, resCur);
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
-          return requestRestart(upper, offer, task, resCur);
+          return requestRestart(upper, offer, target, task, resCur);
 
         default:
           return { OfferActionState::IGNORE };
@@ -604,7 +737,8 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
     ResourceCurrent const& primaryResEntry
       = globalCurrent.primary_dbserver_resources().entries(required);
 
-    if (offer.slave_id().value() == primaryResEntry.slave_id().value()) {
+    if (primaryResEntry.has_slave_id() &&
+        offer.slave_id().value() == primaryResEntry.slave_id().value()) {
       // we decline this offer, there will be another one
       LOG(INFO) << "secondary not on same slave as its primary";
       return { OfferActionState::IGNORE };
@@ -624,7 +758,8 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
     int found = -1;
 
     for (int i = 0; i < primaryResEntries.entries_size(); i++) {
-      if (offer.slave_id().value()
+      if (primaryResEntries.entries(i).has_slave_id() &&
+          offer.slave_id().value()
           == primaryResEntries.entries(i).slave_id().value()) {
         found = i;
         break;
@@ -645,18 +780,15 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   TaskPlan* task = tasks->mutable_entries(required);
   ResourceCurrent* resCur = current->mutable_entries(required);
 
-  vector<uint32_t> ports;
-  mesos::Resources resources = resourcesForTask(offer, target, resCur, ports);
-
   if (! persistent) {
-    return requestStartEphemeral(offer, task, resCur, resources, ports);
+    return requestStartEphemeral(offer, target, task, resCur);
   }
 
   // ...........................................................................
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
-  return requestReservation(offer, task, resCur, resources, ports);
+  return requestReservation(upper, offer, target, task, resCur);
 }
 
 // -----------------------------------------------------------------------------

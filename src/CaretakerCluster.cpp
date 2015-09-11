@@ -71,8 +71,9 @@ CaretakerCluster::CaretakerCluster () {
       setStandardMinimum(agency, 0);
     }
     else {
+      mesos::Resources res = x.get().flatten();   // always flatten to role "*"
       auto m = agency->mutable_minimal_resources();
-      m->CopyFrom(x.get());
+      m->CopyFrom(res);
     }
   }
 
@@ -93,8 +94,9 @@ CaretakerCluster::CaretakerCluster () {
       setStandardMinimum(coordinator, 1);
     }
     else {
+      mesos::Resources res = x.get().flatten();   // always flatten to role "*"
       auto m = coordinator->mutable_minimal_resources();
-      m->CopyFrom(x.get());
+      m->CopyFrom(res);
     }
   }
 
@@ -115,8 +117,9 @@ CaretakerCluster::CaretakerCluster () {
       setStandardMinimum(dbserver, 1);
     }
     else {
+      mesos::Resources res = x.get().flatten();   // always flatten to role "*"
       auto m = dbserver->mutable_minimal_resources();
-      m->CopyFrom(x.get());
+      m->CopyFrom(res);
     }
   }
 
@@ -137,8 +140,9 @@ CaretakerCluster::CaretakerCluster () {
       setStandardMinimum(secondary, 1);
     }
     else {
+      mesos::Resources res = x.get().flatten();   // always flatten to role "*"
       auto m = secondary->mutable_minimal_resources();
-      m->CopyFrom(x.get());
+      m->CopyFrom(res);
     }
   }
 
@@ -207,7 +211,8 @@ void CaretakerCluster::updatePlan () {
       resources->add_entries();
 
       InstancesCurrent* instances = current.mutable_agents();
-      instances->add_entries();
+      InstanceCurrent* inst = instances->add_entries();
+      inst->set_state(INSTANCE_STATE_UNUSED);
     }
   }
   
@@ -245,7 +250,8 @@ void CaretakerCluster::updatePlan () {
       resources->add_entries();
 
       InstancesCurrent* instances = current.mutable_primary_dbservers();
-      instances->add_entries();
+      InstanceCurrent* inst = instances->add_entries();
+      inst->set_state(INSTANCE_STATE_UNUSED);
 
       if (Global::asyncReplication()) {
         task = tasks2->add_entries();
@@ -256,7 +262,8 @@ void CaretakerCluster::updatePlan () {
         resources->add_entries();
 
         instances = current.mutable_secondary_dbservers();
-        instances->add_entries();
+        inst = instances->add_entries();
+        inst->set_state(INSTANCE_STATE_UNUSED);
       }
     }
   }
@@ -349,7 +356,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   OfferAction action;
 
-#if 1
+#if 0
   // Further debugging output:
   LOG(INFO) 
   << "checkOffer, here is the state:\n"
@@ -380,49 +387,64 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
-    return action;
+
+    LOG(INFO) 
+    << "checkOffer, here is the state:\n"
+    << "TARGETS:" << Global::state().jsonTargets() << "\n"
+    << "PLAN:"   << Global::state().jsonPlan() << "\n"
+    << "CURRENT:"<< Global::state().jsonCurrent() << "\n";
+
+    if (! current.cluster_initialized() ||
+        action._state != OfferActionState::IGNORE) {
+      return action;
+    }
+
+    // Otherwise, fall through to give other task types a chance to look
+    // at the offer.
   }
 
-  // Agency is running, make sure it is initialized:
-  std::string agentHost 
-    = Global::state().current().agents().entries(0).hostname();
-  uint32_t port 
-    = Global::state().current().agents().entries(0).ports(0);
-  std::string url = "http://" + agentHost + ":" + to_string(port) +
-                    "/v2/keys/arango/InitDone";
-  std::string body;
-  int res = doHTTPGet(url, body);
-  if (res == 0) {
-    // Quickly check the JSON result:
-    picojson::value s;
-    std::string err = picojson::parse(s, body);
+  if (! current.cluster_initialized()) {
+    // Agency is running, make sure it is initialized:
+    std::string agentHost 
+      = Global::state().current().agents().entries(0).hostname();
+    uint32_t port 
+      = Global::state().current().agents().entries(0).ports(0);
+    std::string url = "http://" + agentHost + ":" + to_string(port) +
+                      "/v2/keys/arango/InitDone";
+    std::string body;
+    int res = doHTTPGet(url, body);
+    if (res == 0) {
+      // Quickly check the JSON result:
+      picojson::value s;
+      std::string err = picojson::parse(s, body);
 
-    res = -2;  // Will rest to 0 if all is OK
-    if (err.empty()) {
-      if (s.is<picojson::object>()) {
-        auto& o = s.get<picojson::object>();
-        auto& n = o["node"];
-        if (n.is<picojson::object>()) {
-          auto& oo = n.get<picojson::object>();
-          auto& v = oo["value"];
-          if (v.is<string>()) {
-            string vv = v.get<string>();
-            if (vv == "true") {
-              res = 0;  // all OK
+      res = -2;  // Will rest to 0 if all is OK
+      if (err.empty()) {
+        if (s.is<picojson::object>()) {
+          auto& o = s.get<picojson::object>();
+          auto& n = o["node"];
+          if (n.is<picojson::object>()) {
+            auto& oo = n.get<picojson::object>();
+            auto& v = oo["value"];
+            if (v.is<string>()) {
+              string vv = v.get<string>();
+              if (vv == "true") {
+                res = 0;  // all OK
+              }
             }
           }
         }
       }
     }
-  }
-  if (res != 0) {
-    // Ignore the offer, since the agency is not yet ready:
+    if (res != 0) {
+      // Ignore the offer, since the agency is not yet ready:
+      LOG(INFO)
+      << "agency is not yet properly initialized, decline offer.";
+      return { OfferActionState::IGNORE };
+    }
     LOG(INFO)
-    << "agency is not yet properly initialized, decline offer.";
-    return { OfferActionState::IGNORE };
+    << "agency is up and running.";
   }
-  LOG(INFO)
-  << "agency is up and running.";
   
   // Now look after the DBservers:
   plannedInstances = plan.dbservers().entries_size();
@@ -441,7 +463,12 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
-    return action;
+    if (! current.cluster_initialized() ||
+        action._state != OfferActionState::IGNORE) {
+      return action;
+    }
+    // Otherwise, fall through to give other task types a chance to look
+    // at the offer.
   }
 
   // Now the secondaries, if needed:
@@ -462,7 +489,12 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
       // Save new state:
       Global::state().setPlan(plan);
       Global::state().setCurrent(current);
-      return action;
+      if (! current.cluster_initialized() ||
+          action._state != OfferActionState::IGNORE) {
+        return action;
+      }
+      // Otherwise, fall through to give other task types a chance to look
+      // at the offer.
     }
   }
 
