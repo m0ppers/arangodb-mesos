@@ -160,7 +160,6 @@ InstanceAction CaretakerStandalone::checkInstance () {
   Current current = Global::state().current();
 
   auto res = checkStartInstance(
-    "dbserver",
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
     plan.mutable_dbservers(),

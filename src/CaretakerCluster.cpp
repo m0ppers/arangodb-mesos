@@ -539,7 +539,6 @@ InstanceAction CaretakerCluster::checkInstance () {
   Current current = Global::state().current();
 
   InstanceAction res = checkStartInstance(
-    "agency",
     AspectType::AGENT,
     InstanceActionState::START_AGENT,
     plan.mutable_agents(),
@@ -556,7 +555,6 @@ InstanceAction CaretakerCluster::checkInstance () {
   // OK, agents are fine, move on to DBservers:
 
   res = checkStartInstance(
-    "dbserver",
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
     plan.mutable_dbservers(),
@@ -574,7 +572,6 @@ InstanceAction CaretakerCluster::checkInstance () {
 
   if (Global::asyncReplication()) {
     res = checkStartInstance(
-      "secondary",
       AspectType::SECONDARY_DBSERVER,
       InstanceActionState::START_SECONDARY_DBSERVER,
       plan.mutable_dbservers(),
@@ -592,7 +589,6 @@ InstanceAction CaretakerCluster::checkInstance () {
   // Finally, the coordinators:
 
   res = checkStartInstance(
-    "coordinator",
     AspectType::COORDINATOR,
     InstanceActionState::START_COORDINATOR,
     plan.mutable_coordinators(),

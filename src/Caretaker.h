@@ -223,8 +223,7 @@ OfferAction checkResourceOffer (std::string const& name,
 /// @brief checks if we can/should start a new instance
 ////////////////////////////////////////////////////////////////////////////////
 
-      static InstanceAction checkStartInstance (const std::string& name,
-                                                AspectType,
+      static InstanceAction checkStartInstance (AspectType,
                                                 InstanceActionState,
                                                 TasksPlan*,
                                                 ResourcesCurrent*,

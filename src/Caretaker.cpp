@@ -1109,8 +1109,7 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 // FIXME: remove name argument which is unused
-InstanceAction Caretaker::checkStartInstance (const string& name,
-                                              AspectType aspect,
+InstanceAction Caretaker::checkStartInstance (AspectType aspect,
                                               InstanceActionState startState,
                                               TasksPlan* tasks,
                                               ResourcesCurrent* resources,
