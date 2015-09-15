@@ -108,11 +108,14 @@ message ResourceCurrent {
   optional string               container_path = 6;
 }
 
-// The slave_id and offer_id and resources are set whenever an offer is
-// found suitable for usage. For persistent tasks this can happen multiple
-// times on the way from state TASK_STATE_NEW to TASK_STATE_RUNNING.
-// When a timeout happens and the state goes back to TASK_STATE_NEW, then
-// this information is cleared out.
+// The slave_id and offer_id and resources are set whenever an
+// offer is found suitable for usage. For persistent tasks this can
+// happen multiple times on the way from state TASK_STATE_NEW to
+// TASK_STATE_RUNNING. When a timeout happens and the state goes back to
+// TASK_STATE_NEW, then this information is cleared out. The resources
+// always reflect the resources used to order the latest step, such that
+// the timeouts can use them.
+
 
 message ResourcesCurrent {
   repeated ResourceCurrent entries = 1;

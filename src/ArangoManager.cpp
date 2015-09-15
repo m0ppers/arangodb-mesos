@@ -523,8 +523,111 @@ void ArangoManager::reconcileTasks () {
 /// @brief checks for timeout
 ////////////////////////////////////////////////////////////////////////////////
 
+static double const TryingToReserveTimeout = 30;  // seconds
+static double const TryingToPersistTimeout = 30;
+static double const TryingToStartTimeout   = 120; // docker pull might take
+static double const TryingToRestartTimeout = 120;
+static double const TryingToResurrectTimeout = 900;  // Patience before we
+                                                     // give up on a persistent
+                                                     // task.
+// Note that the failover timeout can be configured by the user via a
+// command line option.
+
 bool ArangoManager::checkTimeouts () {
-  // TODO(fc) check all timeouts and change state
+  std::vector<AspectType> aspects 
+    = { AspectType::AGENT, AspectType::PRIMARY_DBSERVER,
+        AspectType::SECONDARY_DBSERVER, AspectType::COORDINATOR };
+
+  for (auto aspect : aspects) {
+    TasksPlan* tasksPlan;
+    InstancesCurrent* instsCurr;
+    switch (aspect) {
+      case AspectType::AGENT:
+        tasksPlan = Global::state().plan().mutable_agents();
+        instsCurr = Global::state().current().mutable_agents();
+        break;
+      case AspectType::PRIMARY_DBSERVER:
+        tasksPlan = Global::state().plan().mutable_dbservers();
+        instsCurr = Global::state().current().mutable_primary_dbservers();
+        break;
+      case AspectType::SECONDARY_DBSERVER:
+        tasksPlan = Global::state().plan().mutable_secondaries();
+        instsCurr = Global::state().current().mutable_secondary_dbservers();
+        break;
+      case AspectType::COORDINATOR:
+        tasksPlan = Global::state().plan().mutable_coordinators();
+        instsCurr = Global::state().current().mutable_coordinators();
+        break;
+      default:  // never happens
+        tasksPlan = nullptr;
+        instsCurr = nullptr;
+        break;
+    }
+    double now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+    double timeStamp;
+    for (int i = 0; i < tasksPlan->entries_size(); i++) {
+      TaskPlan* tp = tasksPlan->mutable_entries(i);
+      InstanceCurrent* ic = instsCurr->mutable_entries(i);
+      switch (tp->state()) {
+        case TASK_STATE_NEW:
+          // Wait forever here, no timeout.
+          break;
+        case TASK_STATE_TRYING_TO_RESERVE:
+          // After a timeout, go back to state TASK_STATE_NEW, because
+          // there was no satisfactory answer to our reservation request:
+          timeStamp = tp->started();
+          if (timeStamp - now > TryingToReserveTimeout) {
+            LOG(INFO) << "Timeout " << TryingToReserveTimeout << "s reached "
+                      << " for task " << ic->task_info().name();
+            LOG(INFO) << "Calling UNRESERVE for offer ";
+            // FIXME: call UNRESERVE, unfortunately, we do no longer know
+            // what we reserved. :-(
+            tp->set_state(TASK_STATE_NEW);
+          }
+          break;
+        case TASK_STATE_TRYING_TO_PERSIST:
+          // After a timeout, go back to state TASK_STATE_NEW, because
+          // there was no satisfactory answer to our persistence request:
+          timeStamp = tp->started();
+          if (timeStamp - now > TryingToPersistTimeout) {
+            LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
+                      << " for task " << ic->task_info().name();
+            LOG(INFO) << "Calling UNRESERVE for offer ";
+            // FIXME: call UNRESERVE, unfortunately, we do no longer know
+            // what we did reserved. :-(
+            tp->set_state(TASK_STATE_NEW);
+          }
+          // ...
+          break;
+        case TASK_STATE_TRYING_TO_START:
+          // After a timeout, go back to state TASK_STATE_NEW, because
+          // there was no satisfactory answer to our start request:
+          // ...
+          break;
+        case TASK_STATE_RUNNING:
+          // Run forever here, no timeout.
+          break;
+        case TASK_STATE_KILLED:
+          // After some time being killed, we have to take action and
+          // engage in some automatic failover procedure:
+          // ...
+          break;
+        case TASK_STATE_TRYING_TO_RESTART:
+          // We got the offer for a restart, but the restart is not happening.
+          // We need to go back to state TASK_STATE_KILLED to wait for another
+          // offer.
+          // ...
+          break;
+        case TASK_STATE_FAILED_OVER:
+          // This task has been replaced by its failover partner, now we
+          // finally lose patience to wait for a restart and give up on the
+          // task. We free all resources and go back to TASK_STATE_NEW
+          // ...
+          break;
+      }
+    }
+  }
   return false;
 }
 
@@ -579,15 +682,15 @@ void ArangoManager::applyStatusUpdates () {
 bool ArangoManager::checkOutstandOffers () {
   Caretaker& caretaker = Global::caretaker();
 
-  // .............................................................................
+  // ...........................................................................
   // first of all, update our plan
-  // .............................................................................
+  // ...........................................................................
 
   caretaker.updatePlan();
 
-  // .............................................................................
+  // ...........................................................................
   // check all stored offers
-  // .............................................................................
+  // ...........................................................................
 
   unordered_map<string, mesos::Offer> next;
   vector<pair<mesos::Offer, mesos::Resources>> dynamic;
@@ -621,25 +724,25 @@ bool ArangoManager::checkOutstandOffers () {
     _storedOffers.swap(next);
   }
 
-  // .............................................................................
+  // ...........................................................................
   // decline unusable offers
-  // .............................................................................
+  // ...........................................................................
 
   for (auto&& offer : declined) {
     Global::scheduler().declineOffer(offer.id());
   }
 
-  // .............................................................................
+  // ...........................................................................
   // try to make the dynamic reservations
-  // .............................................................................
+  // ...........................................................................
 
   for (auto&& offer_res : dynamic) {
     makeDynamicReservation(offer_res.first, offer_res.second);
   }
 
-  // .............................................................................
+  // ...........................................................................
   // try to make a persistent volumes
-  // .............................................................................
+  // ...........................................................................
 
   for (auto&& offer_res : persistent) {
     makePersistentVolume(offer_res.second._name,
@@ -812,7 +915,7 @@ void ArangoManager::startInstance (InstanceActionState aspect,
       break;
   }
 
-  string myName = type + to_string(pos._pos + 1);
+  string myName = "ArangoDB_" + type + to_string(pos._pos + 1);
 
   // command to execute
   mesos::CommandInfo command;
