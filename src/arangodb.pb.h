@@ -996,30 +996,6 @@ class InstanceCurrent : public ::google::protobuf::Message {
   inline ::mesos::TaskStatus* release_task_status();
   inline void set_allocated_task_status(::mesos::TaskStatus* task_status);
 
-  // repeated uint32 ports = 4;
-  inline int ports_size() const;
-  inline void clear_ports();
-  static const int kPortsFieldNumber = 4;
-  inline ::google::protobuf::uint32 ports(int index) const;
-  inline void set_ports(int index, ::google::protobuf::uint32 value);
-  inline void add_ports(::google::protobuf::uint32 value);
-  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-      ports() const;
-  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-      mutable_ports();
-
-  // optional string hostname = 5;
-  inline bool has_hostname() const;
-  inline void clear_hostname();
-  static const int kHostnameFieldNumber = 5;
-  inline const ::std::string& hostname() const;
-  inline void set_hostname(const ::std::string& value);
-  inline void set_hostname(const char* value);
-  inline void set_hostname(const char* value, size_t size);
-  inline ::std::string* mutable_hostname();
-  inline ::std::string* release_hostname();
-  inline void set_allocated_hostname(::std::string* hostname);
-
   // @@protoc_insertion_point(class_scope:arangodb.InstanceCurrent)
  private:
   inline void set_has_state();
@@ -1028,19 +1004,15 @@ class InstanceCurrent : public ::google::protobuf::Message {
   inline void clear_has_task_info();
   inline void set_has_task_status();
   inline void clear_has_task_status();
-  inline void set_has_hostname();
-  inline void clear_has_hostname();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::mesos::TaskInfo* task_info_;
   ::mesos::TaskStatus* task_status_;
-  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > ports_;
-  ::std::string* hostname_;
   int state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -2546,101 +2518,6 @@ inline void InstanceCurrent::set_allocated_task_status(::mesos::TaskStatus* task
     set_has_task_status();
   } else {
     clear_has_task_status();
-  }
-}
-
-// repeated uint32 ports = 4;
-inline int InstanceCurrent::ports_size() const {
-  return ports_.size();
-}
-inline void InstanceCurrent::clear_ports() {
-  ports_.Clear();
-}
-inline ::google::protobuf::uint32 InstanceCurrent::ports(int index) const {
-  return ports_.Get(index);
-}
-inline void InstanceCurrent::set_ports(int index, ::google::protobuf::uint32 value) {
-  ports_.Set(index, value);
-}
-inline void InstanceCurrent::add_ports(::google::protobuf::uint32 value) {
-  ports_.Add(value);
-}
-inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-InstanceCurrent::ports() const {
-  return ports_;
-}
-inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-InstanceCurrent::mutable_ports() {
-  return &ports_;
-}
-
-// optional string hostname = 5;
-inline bool InstanceCurrent::has_hostname() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void InstanceCurrent::set_has_hostname() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void InstanceCurrent::clear_has_hostname() {
-  _has_bits_[0] &= ~0x00000010u;
-}
-inline void InstanceCurrent::clear_hostname() {
-  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
-    hostname_->clear();
-  }
-  clear_has_hostname();
-}
-inline const ::std::string& InstanceCurrent::hostname() const {
-  return *hostname_;
-}
-inline void InstanceCurrent::set_hostname(const ::std::string& value) {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  hostname_->assign(value);
-}
-inline void InstanceCurrent::set_hostname(const char* value) {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  hostname_->assign(value);
-}
-inline void InstanceCurrent::set_hostname(const char* value, size_t size) {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  hostname_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* InstanceCurrent::mutable_hostname() {
-  set_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    hostname_ = new ::std::string;
-  }
-  return hostname_;
-}
-inline ::std::string* InstanceCurrent::release_hostname() {
-  clear_has_hostname();
-  if (hostname_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = hostname_;
-    hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void InstanceCurrent::set_allocated_hostname(::std::string* hostname) {
-  if (hostname_ != &::google::protobuf::internal::kEmptyString) {
-    delete hostname_;
-  }
-  if (hostname) {
-    set_has_hostname();
-    hostname_ = hostname;
-  } else {
-    clear_has_hostname();
-    hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

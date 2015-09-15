@@ -6,6 +6,13 @@ package arangodb;
 // --SECTION--                                                            TARGET
 // -----------------------------------------------------------------------------
 
+// This is set from the outside by the user, usually via command line options,
+// environment variables, or via the web UI later on. The mode and whether
+// or not we use asynchronous replication cannot be changed after the first
+// startup of the cluster.
+
+// The framework regularly adapts the plan (see below) to changes in the target.
+
 message Target {
   required uint32         instances = 1;
   repeated mesos.Resource minimal_resources = 2;
@@ -28,6 +35,16 @@ message Targets {
 // --SECTION--                                                              PLAN
 // -----------------------------------------------------------------------------
 
+// The plan is changed by the framework as a reaction to target changes or
+// events. It reflects the intention of the framework and thus the state of
+// the cluster it wants to achieve. Here we also store how much progress
+// with respect to reservations and persistent volumes we have made so far.
+// This data is also used to implement timeouts in ArangoManager.cpp.
+
+// The framework reacts to offers and messages and events it gets and takes
+// measures accordingly to implement the plan in the current cluster state,
+// which is stored in the current part of the state (see below).
+
 enum TaskPlanState {
   TASK_STATE_NEW               = 1;
   TASK_STATE_TRYING_TO_RESERVE = 2;
@@ -39,7 +56,11 @@ enum TaskPlanState {
   TASK_STATE_FAILED_OVER       = 8;
 }
 
-
+// The persistence_id and the started timestamp are set whenever the
+// state chances due to some reaction on an offer. The persistence_id is
+// unset, if the entry refers to an ephemeral task (i.e. a coordinator).
+// When the state goes back to TASK_STATE_NEW on a timeout, the 
+// persistence_id and start timestamp are cleared.
 
 message TaskPlan {
   required TaskPlanState state = 1 [default = TASK_STATE_NEW];
@@ -68,6 +89,16 @@ message Plan {
 // --SECTION--                                                           CURRENT
 // -----------------------------------------------------------------------------
 
+// This current section of the state describes the current state of
+// the cluster insofar it is known to the framework. It is constantly
+// updated by incoming messages, events and measures taken by the
+// framework. For each task there are essentially two entries, one for
+// the resources used (ResourceCurrent) and another for the current
+// state of the task. The mesos.TaskInfo describes the task and contains
+// all information needed for Mesos and its docker containerizer to
+// launch the task. The mesos.TaskStatus is the latest status update
+// from Mesos about the task.
+
 message ResourceCurrent {
   optional mesos.SlaveID        slave_id = 1;
   optional mesos.OfferID        offer_id = 2;
@@ -77,7 +108,11 @@ message ResourceCurrent {
   optional string               container_path = 6;
 }
 
-
+// The slave_id and offer_id and resources are set whenever an offer is
+// found suitable for usage. For persistent tasks this can happen multiple
+// times on the way from state TASK_STATE_NEW to TASK_STATE_RUNNING.
+// When a timeout happens and the state goes back to TASK_STATE_NEW, then
+// this information is cleared out.
 
 message ResourcesCurrent {
   repeated ResourceCurrent entries = 1;
@@ -92,6 +127,17 @@ enum InstanceCurrentState {
   INSTANCE_STATE_STOPPED  = 4;
 }
 
+// task_info is initialized by Caretaker::setTaskId, where essentially only
+// the actual taskID is set and everything else is cleared out. task_status
+// is cleared on that occasion as well. setTaskId is called just before the
+// task is actually started in ArangoManager::startInstance.
+// Just after that Caretaker::setTaskInfo is called, which sets task_info
+// with the return value of the scheduler call, delivering feedback from
+// the system about the starting of this particular task.
+// Later, when status updates come in from the Mesos master, the local 
+// information is updated in the ArangoManager::applyStatusUpdates, it
+// calls Caretaker::setTaskStatus, which in turn sets task_status. Finally,
+// the state is set by calling Caretaker::setInstanceState.
 
 
 message InstanceCurrent {
@@ -99,8 +145,6 @@ message InstanceCurrent {
 
   optional mesos.TaskInfo       task_info = 2;
   optional mesos.TaskStatus     task_status = 3;
-  repeated uint32               ports = 4;
-  optional string               hostname = 5;
 }
 
 

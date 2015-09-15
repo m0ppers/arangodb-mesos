@@ -100,9 +100,9 @@ vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 
 static bool bootstrapDBservers () {
   string hostname 
-    = Global::state().current().coordinators().entries(0).hostname();
+    = Global::state().current().coordinator_resources().entries(0).hostname();
   uint32_t port
-    = Global::state().current().coordinators().entries(0).ports(0);
+    = Global::state().current().coordinator_resources().entries(0).ports(0);
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/bootstrapDbServers";
   string body = "{\"isRelaunch\":false}";
@@ -125,9 +125,9 @@ static bool bootstrapDBservers () {
 
 static bool upgradeClusterDatabase () {
   string hostname 
-    = Global::state().current().coordinators().entries(0).hostname();
+    = Global::state().current().coordinator_resources().entries(0).hostname();
   uint32_t port
-    = Global::state().current().coordinators().entries(0).ports(0);
+    = Global::state().current().coordinator_resources().entries(0).ports(0);
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/upgradeClusterDatabase";
   string body = "{\"isRelaunch\":false}";
@@ -154,9 +154,9 @@ static bool bootstrapCoordinators () {
   bool error = false;
   for (int i = 0; i < number; i++) { 
     string hostname 
-      = Global::state().current().coordinators().entries(i).hostname();
+      = Global::state().current().coordinator_resources().entries(i).hostname();
     uint32_t port
-      = Global::state().current().coordinators().entries(i).ports(0);
+      = Global::state().current().coordinator_resources().entries(i).ports(0);
     string url = "http://" + hostname + ":" + to_string(port) +
                       "/_admin/cluster/bootstrapCoordinator";
     string body = "{\"isRelaunch\":false}";
@@ -360,14 +360,17 @@ void ArangoManager::destroy () {
 
 vector<string> ArangoManager::coordinatorEndpoints () {
   Current current = Global::state().current();
-  auto const& coordinators = current.coordinators();
+  //auto const& coordinators = current.coordinators();
+  auto const& coordinator_resources = current.coordinator_resources();
 
   vector<string> endpoints;
 
-  for (int i = 0;  i < coordinators.entries_size();  ++i) {
-    auto const& coordinator = coordinators.entries(i);
-    if (coordinator.has_hostname() && coordinator.ports_size() > 0) {
-      string endpoint = "http://" + coordinator.hostname() + ":" + to_string(coordinator.ports(0));
+  for (int i = 0;  i < coordinator_resources.entries_size();  ++i) {
+    //auto const& coordinator = coordinators.entries(i);
+    auto const& coord_res = coordinator_resources.entries(i);
+    if (coord_res.has_hostname() && coord_res.ports_size() > 0) {
+      string endpoint = "http://" + coord_res.hostname() + ":" 
+                        + to_string(coord_res.ports(0));
       endpoints.push_back(endpoint);
     }
   }
@@ -381,14 +384,15 @@ vector<string> ArangoManager::coordinatorEndpoints () {
 
 vector<string> ArangoManager::dbserverEndpoints () {
   Current current = Global::state().current();
-  auto const& dbservers = current.primary_dbservers();
+  auto const& dbserver_resources = current.primary_dbserver_resources();
 
   vector<string> endpoints;
 
-  for (int i = 0;  i < dbservers.entries_size();  ++i) {
-    auto const& dbserver = dbservers.entries(i);
-    if (dbserver.has_hostname() && dbserver.ports_size() > 0) {
-      string endpoint = "http://" + dbserver.hostname() + ":" + to_string(dbserver.ports(0));
+  for (int i = 0; i < dbserver_resources.entries_size();  ++i) {
+    auto const& dbs_res = dbserver_resources.entries(i);
+    if (dbs_res.has_hostname() && dbs_res.ports_size() > 0) {
+      string endpoint = "http://" + dbs_res.hostname() + ":" 
+                        + to_string(dbs_res.ports(0));
       endpoints.push_back(endpoint);
     }
   }
@@ -838,10 +842,10 @@ void ArangoManager::startInstance (InstanceActionState aspect,
         command.set_value("standalone");
       }
       else {
-        auto agents = state.current().agents();
+        auto agency_resources = state.current().agency_resources();
         command.set_value("cluster");
-        string hostname = agents.entries(0).hostname();
-        uint32_t port = agents.entries(0).ports(0);
+        string hostname = agency_resources.entries(0).hostname();
+        uint32_t port = agency_resources.entries(0).ports(0);
         command.add_arguments(
             "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
         command.add_arguments(myName);
@@ -943,7 +947,7 @@ void ArangoManager::startInstance (InstanceActionState aspect,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::fillKnownInstances (AspectType type,
-                                            const InstancesCurrent& instances) {
+                                        const InstancesCurrent& instances) {
   LOG(INFO)
   << "recovering instance type " << (int) type;
 

@@ -588,13 +588,13 @@ static OfferAction requestStartEphemeral (mesos::Offer const& offer,
 /// @brief request to restart
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestRestart (string const& upper,
-                                   mesos::Offer const& offer,
-                                   Target const& target,
-                                   TaskPlan* task,
-                                   ResourceCurrent* resCur) {
+static OfferAction requestRestartPersistent (string const& upper,
+                                             mesos::Offer const& offer,
+                                             Target const& target,
+                                             TaskPlan* task,
+                                             ResourceCurrent* resCur) {
 
-  if (! isSuitableOffer(target, offer, true)) {
+  if (! isSuitableOffer(target, offer, false)) {
     return { OfferActionState::IGNORE };
   }
 
@@ -620,6 +620,47 @@ static OfferAction requestRestart (string const& upper,
   }
 
   return { OfferActionState::IGNORE };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request to restart
+////////////////////////////////////////////////////////////////////////////////
+
+static OfferAction requestRestartEphemeral (string const& upper,
+                                            mesos::Offer const& offer,
+                                            Target const& target,
+                                            TaskPlan* task,
+                                            ResourceCurrent* resCur) {
+
+  mesos::Resources resources 
+      = resourcesForStartEphemeral(offer, target, resCur);
+
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
+  task->set_state(TASK_STATE_TRYING_TO_RESTART);
+  task->set_started(now);
+
+  resCur->mutable_slave_id()->CopyFrom(offer.slave_id());
+  resCur->mutable_offer_id()->CopyFrom(offer.id());
+  resCur->mutable_resources()->CopyFrom(resources);
+  resCur->set_hostname(offer.hostname());
+
+  resCur->clear_ports();
+
+  for (auto& res : resources) {
+    if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
+      auto const& ranges = res.ranges();
+      for (int r = 0; r < ranges.range_size(); r++) {
+        for (uint64_t i = ranges.range(r).begin();
+             i <= ranges.range(r).end(); i++) {
+          resCur->add_ports(i);
+        }
+      }
+    }
+  }
+
+  return { OfferActionState::USABLE };
 }
 
 // -----------------------------------------------------------------------------
@@ -711,7 +752,12 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
-          return requestRestart(upper, offer, target, task, resCur);
+          if (upper == "COORDINATOR") {
+            return requestRestartEphemeral(upper, offer, target, task, resCur);
+          }
+          else {
+            return requestRestartPersistent(upper, offer, target, task, resCur);
+          }
 
         default:
           return { OfferActionState::IGNORE };
@@ -1096,12 +1142,6 @@ InstanceAction Caretaker::checkStartInstance (const string& name,
       task->set_started(now);
 
       instance->set_state(INSTANCE_STATE_STARTING);
-      instance->set_hostname(resCur->hostname());
-      instance->clear_ports();
-
-      for (int j = 0;  j < resCur->ports_size();  ++j) {
-        instance->add_ports(resCur->ports(j));
-      }
 
       mesos::OfferID offerId = resCur->offer_id();
       mesos::SlaveID slaveId = resCur->slave_id();

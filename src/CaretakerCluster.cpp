@@ -406,9 +406,9 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   if (! current.cluster_initialized()) {
     // Agency is running, make sure it is initialized:
     std::string agentHost 
-      = Global::state().current().agents().entries(0).hostname();
+      = Global::state().current().agency_resources().entries(0).hostname();
     uint32_t port 
-      = Global::state().current().agents().entries(0).ports(0);
+      = Global::state().current().agency_resources().entries(0).ports(0);
     std::string url = "http://" + agentHost + ":" + to_string(port) +
                       "/v2/keys/arango/InitDone";
     std::string body;
