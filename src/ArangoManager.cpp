@@ -918,7 +918,8 @@ void ArangoManager::startInstance (InstanceActionState aspect,
       break;
   }
 
-  string myName = "ArangoDB_" + type + to_string(pos._pos + 1);
+  string myInternalName = type + to_string(pos._pos + 1);
+  string myName = "ArangoDB_" + myInternalName;
 
   // command to execute
   mesos::CommandInfo command;
@@ -954,7 +955,7 @@ void ArangoManager::startInstance (InstanceActionState aspect,
         uint32_t port = agents.entries(0).ports(0);
         command.add_arguments(
             "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
-        command.add_arguments(myName);
+        command.add_arguments(myInternalName);
       }
       break;
     }
