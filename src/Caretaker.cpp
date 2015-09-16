@@ -132,7 +132,6 @@ static bool isSuitableOffer (Target const& target,
 
 static bool isSuitableReservedOffer (mesos::Offer const& offer,
                                      Target const& target,
-                                     ResourceCurrent const* resCur,
                                      mesos::Resources& toMakePersistent) {
   // The condition here is that our minimal resources are all met with
   // reserved resources and that there is a single disk resource that
@@ -271,8 +270,7 @@ static mesos::Resources findFreePorts (const mesos::Offer& offer, size_t len) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static mesos::Resources resourcesForStartEphemeral (mesos::Offer const& offer,
-                                                    Target const& target,
-                                                    ResourceCurrent* resCur) {
+                                                    Target const& target) {
   mesos::Resources offered = offer.resources();
   mesos::Resources minimum = target.minimal_resources();
   
@@ -311,8 +309,7 @@ static mesos::Resources resourcesForStartEphemeral (mesos::Offer const& offer,
 
 static mesos::Resources resourcesForRequestReservation (
                                     mesos::Offer const& offer,
-                                    Target const& target,
-                                    ResourceCurrent* resCur) {
+                                    Target const& target) {
   mesos::Resources offered = offer.resources();
   mesos::Resources minimum = target.minimal_resources();
   
@@ -338,7 +335,6 @@ static mesos::Resources resourcesForRequestReservation (
 static mesos::Resources suitablePersistent (string const& name,
                                             mesos::Offer const& offer,
                                             Target const& target,
-                                            ResourceCurrent* resCur,
                                             string const& persistenceId,
                                             string& containerPath) {
 
@@ -435,10 +431,10 @@ static OfferAction requestPersistent (string const& upper,
                                       mesos::Offer const& offer,
                                       Target const& target,
                                       TaskPlan* task,
-                                      ResourceCurrent* resCur) {
+                                      TaskCurrent* resCur) {
   mesos::Resources volume;
 
-  if (isSuitableReservedOffer(offer, target, resCur, volume)) {
+  if (isSuitableReservedOffer(offer, target, volume)) {
     double now = chrono::duration_cast<chrono::seconds>(
       chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -468,14 +464,14 @@ static OfferAction requestReservation (std::string const& upper,
                                        mesos::Offer const& offer,
                                        Target const& target,
                                        TaskPlan* task,
-                                       ResourceCurrent* resCur) {
+                                       TaskCurrent* taskCur) {
   mesos::Resources resources
-        = resourcesForRequestReservation(offer, target, resCur);
+        = resourcesForRequestReservation(offer, target);
 
   if (resources.empty()) {
     // We have everything needed reserved for our role, so we can
     // directly move on to the persistent volume:
-    return requestPersistent(upper, offer, target, task, resCur);
+    return requestPersistent(upper, offer, target, task, taskCur);
   }
 
   double now = chrono::duration_cast<chrono::seconds>(
@@ -484,12 +480,12 @@ static OfferAction requestReservation (std::string const& upper,
   task->set_state(TASK_STATE_TRYING_TO_RESERVE);
   task->set_started(now);
 
-  resCur->mutable_slave_id()->CopyFrom(offer.slave_id());
-  resCur->mutable_offer_id()->CopyFrom(offer.id());
-  resCur->mutable_resources()->CopyFrom(resources);
-  resCur->set_hostname(offer.hostname());
+  taskCur->mutable_slave_id()->CopyFrom(offer.slave_id());
+  taskCur->mutable_offer_id()->CopyFrom(offer.id());
+  taskCur->mutable_resources()->CopyFrom(resources);
+  taskCur->set_hostname(offer.hostname());
 
-  resCur->clear_ports();
+  taskCur->clear_ports();
 
   return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
 }
@@ -502,12 +498,12 @@ static OfferAction requestStartPersistent (string const& upper,
                                            mesos::Offer const& offer,
                                            Target const& target,
                                            TaskPlan* task,
-                                           ResourceCurrent* resCur) {
+                                           TaskCurrent* taskCur) {
   string persistenceId = task->persistence_id();
   string containerPath;
 
   mesos::Resources resources = suitablePersistent(
-    upper, offer, target, resCur, persistenceId, containerPath);
+    upper, offer, target, persistenceId, containerPath);
 
   if (! resources.empty()) {
     double now = chrono::duration_cast<chrono::seconds>(
@@ -517,11 +513,11 @@ static OfferAction requestStartPersistent (string const& upper,
     task->set_persistence_id(persistenceId);
     task->set_started(now);
 
-    resCur->mutable_offer_id()->CopyFrom(offer.id());
-    resCur->mutable_resources()->CopyFrom(resources);
-    resCur->set_container_path(containerPath);
+    taskCur->mutable_offer_id()->CopyFrom(offer.id());
+    taskCur->mutable_resources()->CopyFrom(resources);
+    taskCur->set_container_path(containerPath);
 
-    resCur->clear_ports();
+    taskCur->clear_ports();
 
     for (auto& res : resources) {
       if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
@@ -529,7 +525,7 @@ static OfferAction requestStartPersistent (string const& upper,
         for (int r = 0; r < ranges.range_size(); r++) {
           for (uint64_t i = ranges.range(r).begin();
                i <= ranges.range(r).end(); i++) {
-            resCur->add_ports(i);
+            taskCur->add_ports(i);
           }
         }
       }
@@ -551,10 +547,10 @@ static OfferAction requestStartPersistent (string const& upper,
 static OfferAction requestStartEphemeral (mesos::Offer const& offer,
                                           Target const& target,
                                           TaskPlan* task,
-                                          ResourceCurrent* resCur) {
+                                          TaskCurrent* taskCur) {
 
   mesos::Resources resources 
-      = resourcesForStartEphemeral(offer, target, resCur);
+      = resourcesForStartEphemeral(offer, target);
 
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
@@ -562,12 +558,12 @@ static OfferAction requestStartEphemeral (mesos::Offer const& offer,
   task->set_state(TASK_STATE_TRYING_TO_START);
   task->set_started(now);
 
-  resCur->mutable_slave_id()->CopyFrom(offer.slave_id());
-  resCur->mutable_offer_id()->CopyFrom(offer.id());
-  resCur->mutable_resources()->CopyFrom(resources);
-  resCur->set_hostname(offer.hostname());
+  taskCur->mutable_slave_id()->CopyFrom(offer.slave_id());
+  taskCur->mutable_offer_id()->CopyFrom(offer.id());
+  taskCur->mutable_resources()->CopyFrom(resources);
+  taskCur->set_hostname(offer.hostname());
 
-  resCur->clear_ports();
+  taskCur->clear_ports();
 
   for (auto& res : resources) {
     if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
@@ -575,7 +571,7 @@ static OfferAction requestStartEphemeral (mesos::Offer const& offer,
       for (int r = 0; r < ranges.range_size(); r++) {
         for (uint64_t i = ranges.range(r).begin();
              i <= ranges.range(r).end(); i++) {
-          resCur->add_ports(i);
+          taskCur->add_ports(i);
         }
       }
     }
@@ -592,7 +588,7 @@ static OfferAction requestRestartPersistent (string const& upper,
                                              mesos::Offer const& offer,
                                              Target const& target,
                                              TaskPlan* task,
-                                             ResourceCurrent* resCur) {
+                                             TaskCurrent* taskCur) {
 
   if (! isSuitableOffer(target, offer, false)) {
     return { OfferActionState::IGNORE };
@@ -602,7 +598,7 @@ static OfferAction requestRestartPersistent (string const& upper,
   string containerPath;
 
   mesos::Resources resources = suitablePersistent(
-    upper, offer, target, resCur, persistenceId, containerPath);
+    upper, offer, target, persistenceId, containerPath);
 
   if (! resources.empty()) {
     double now = chrono::duration_cast<chrono::seconds>(
@@ -612,9 +608,9 @@ static OfferAction requestRestartPersistent (string const& upper,
     task->set_persistence_id(persistenceId);
     task->set_started(now);
 
-    resCur->mutable_offer_id()->CopyFrom(offer.id());
-    resCur->mutable_resources()->CopyFrom(resources);
-    resCur->set_container_path(containerPath);
+    taskCur->mutable_offer_id()->CopyFrom(offer.id());
+    taskCur->mutable_resources()->CopyFrom(resources);
+    taskCur->set_container_path(containerPath);
 
     return { OfferActionState::USABLE };
   }
@@ -630,10 +626,10 @@ static OfferAction requestRestartEphemeral (string const& upper,
                                             mesos::Offer const& offer,
                                             Target const& target,
                                             TaskPlan* task,
-                                            ResourceCurrent* resCur) {
+                                            TaskCurrent* taskCur) {
 
   mesos::Resources resources 
-      = resourcesForStartEphemeral(offer, target, resCur);
+      = resourcesForStartEphemeral(offer, target);
 
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
@@ -641,12 +637,12 @@ static OfferAction requestRestartEphemeral (string const& upper,
   task->set_state(TASK_STATE_TRYING_TO_RESTART);
   task->set_started(now);
 
-  resCur->mutable_slave_id()->CopyFrom(offer.slave_id());
-  resCur->mutable_offer_id()->CopyFrom(offer.id());
-  resCur->mutable_resources()->CopyFrom(resources);
-  resCur->set_hostname(offer.hostname());
+  taskCur->mutable_slave_id()->CopyFrom(offer.slave_id());
+  taskCur->mutable_offer_id()->CopyFrom(offer.id());
+  taskCur->mutable_resources()->CopyFrom(resources);
+  taskCur->set_hostname(offer.hostname());
 
-  resCur->clear_ports();
+  taskCur->clear_ports();
 
   for (auto& res : resources) {
     if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
@@ -654,7 +650,7 @@ static OfferAction requestRestartEphemeral (string const& upper,
       for (int r = 0; r < ranges.range_size(); r++) {
         for (uint64_t i = ranges.range(r).begin();
              i <= ranges.range(r).end(); i++) {
-          resCur->add_ports(i);
+          taskCur->add_ports(i);
         }
       }
     }
@@ -697,7 +693,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
                                            bool persistent,
                                            Target const& target,
                                            TasksPlan* tasks,
-                                           ResourcesCurrent* current,
+                                           TasksCurrent* current,
                                            mesos::Offer const& offer) {
   string upper = name;
   for (auto& c : upper) { 
@@ -735,28 +731,28 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   for (int i = p-1; i >= 0; --i) {  // backwards to prefer earlier ones in
                                     // the required variable
     TaskPlan* task = tasks->mutable_entries(i);
-    ResourceCurrent* resCur = current->mutable_entries(i);
+    TaskCurrent* taskCur = current->mutable_entries(i);
 
     if (task->state() == TASK_STATE_NEW) {
       required = i;
       continue;
     }
 
-    if (resCur->slave_id().value() == offerSlaveId) {
+    if (taskCur->slave_id().value() == offerSlaveId) {
       switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE:
-          return requestPersistent(upper, offer, target, task, resCur);
+          return requestPersistent(upper, offer, target, task, taskCur);
 
         case TASK_STATE_TRYING_TO_PERSIST:
-          return requestStartPersistent(upper, offer, target, task, resCur);
+          return requestStartPersistent(upper, offer, target, task, taskCur);
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
           if (upper == "COORDINATOR") {
-            return requestRestartEphemeral(upper, offer, target, task, resCur);
+            return requestRestartEphemeral(upper, offer, target, task, taskCur);
           }
           else {
-            return requestRestartPersistent(upper, offer, target, task, resCur);
+            return requestRestartPersistent(upper, offer, target, task, taskCur);
           }
 
         default:
@@ -780,8 +776,8 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
 
   if (name == "secondary") {
     Current globalCurrent = Global::state().current();
-    ResourceCurrent const& primaryResEntry
-      = globalCurrent.primary_dbserver_resources().entries(required);
+    TaskCurrent const& primaryResEntry
+      = globalCurrent.dbservers().entries(required);
 
     if (primaryResEntry.has_slave_id() &&
         offer.slave_id().value() == primaryResEntry.slave_id().value()) {
@@ -798,8 +794,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
 
   if (Global::secondariesWithDBservers() && name == "secondary") {
     Current globalCurrent = Global::state().current();
-    ResourcesCurrent const& primaryResEntries
-      = globalCurrent.primary_dbserver_resources();
+    TasksCurrent const& primaryResEntries = globalCurrent.dbservers();
 
     int found = -1;
 
@@ -824,17 +819,17 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   // ...........................................................................
 
   TaskPlan* task = tasks->mutable_entries(required);
-  ResourceCurrent* resCur = current->mutable_entries(required);
+  TaskCurrent* taskCur = current->mutable_entries(required);
 
   if (! persistent) {
-    return requestStartEphemeral(offer, target, task, resCur);
+    return requestStartEphemeral(offer, target, task, taskCur);
   }
 
   // ...........................................................................
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
-  return requestReservation(upper, offer, target, task, resCur);
+  return requestReservation(upper, offer, target, task, taskCur);
 }
 
 // -----------------------------------------------------------------------------
@@ -854,7 +849,7 @@ OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
   action = checkResourceOffer("primary", true,
                               targets.dbservers(),
                               plan.mutable_dbservers(),
-                              current.mutable_primary_dbserver_resources(),
+                              current.mutable_dbservers(),
                               offer);
 
   Global::state().setPlan(plan);
@@ -880,49 +875,31 @@ void Caretaker::setTaskId (const AspectPosition& pos,
   info.mutable_task_id()->CopyFrom(taskId);
   info.mutable_slave_id()->CopyFrom(slaveId);
 
+  TaskCurrent* taskCur = nullptr;
+
   switch (pos._type) {
     case AspectType::AGENT:
-      current.mutable_agents()
-        ->mutable_entries(p)
-        ->mutable_task_info()
-        ->CopyFrom(info);
-
-      current.mutable_agents()
-        ->mutable_entries(p)
-        ->clear_task_status();
+      taskCur = current.mutable_agents()->mutable_entries(p);
+      taskCur->mutable_task_info()->CopyFrom(info);
+      taskCur->clear_task_status();
       break;
 
     case AspectType::PRIMARY_DBSERVER:
-      current.mutable_primary_dbservers()
-        ->mutable_entries(p)
-        ->mutable_task_info()
-        ->CopyFrom(info);
-
-      current.mutable_primary_dbservers()
-        ->mutable_entries(p)
-        ->clear_task_status();
+      taskCur = current.mutable_dbservers()->mutable_entries(p);
+      taskCur->mutable_task_info()->CopyFrom(info);
+      taskCur->clear_task_status();
       break;
 
     case AspectType::SECONDARY_DBSERVER:
-      current.mutable_secondary_dbservers()
-        ->mutable_entries(p)
-        ->mutable_task_info()
-        ->CopyFrom(info);
-
-      current.mutable_secondary_dbservers()
-        ->mutable_entries(p)
-        ->clear_task_status();
+      taskCur = current.mutable_secondaries()->mutable_entries(p);
+      taskCur->mutable_task_info()->CopyFrom(info);
+      taskCur->clear_task_status();
       break;
 
     case AspectType::COORDINATOR:
-      current.mutable_coordinators()
-        ->mutable_entries(p)
-        ->mutable_task_info()
-        ->CopyFrom(info);
-
-      current.mutable_coordinators()
-        ->mutable_entries(p)
-        ->clear_task_status();
+      taskCur = current.mutable_coordinators()->mutable_entries(p);
+      taskCur->mutable_task_info()->CopyFrom(info);
+      taskCur->clear_task_status();
       break;
 
     case AspectType::UNKNOWN:
@@ -953,14 +930,14 @@ void Caretaker::setTaskInfo (const AspectPosition& pos,
       break;
 
     case AspectType::PRIMARY_DBSERVER:
-      current.mutable_primary_dbservers()
+      current.mutable_dbservers()
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
       break;
 
     case AspectType::SECONDARY_DBSERVER:
-      current.mutable_secondary_dbservers()
+      current.mutable_secondaries()
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
@@ -1001,14 +978,14 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
       break;
 
     case AspectType::PRIMARY_DBSERVER:
-      current.mutable_primary_dbservers()
+      current.mutable_dbservers()
         ->mutable_entries(p)
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
       break;
 
     case AspectType::SECONDARY_DBSERVER:
-      current.mutable_secondary_dbservers()
+      current.mutable_secondaries()
         ->mutable_entries(p)
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
@@ -1036,35 +1013,35 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Caretaker::setInstanceState (const AspectPosition& pos,
-                                  InstanceCurrentState state) {
+                                  TaskCurrentState state) {
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
 
   Current current = Global::state().current();
   Plan plan = Global::state().plan();
 
-  InstancesCurrent* instances = nullptr;
+  TasksCurrent* currents = nullptr;
   TasksPlan* tasks = nullptr;
   int p = pos._pos;
 
   switch (pos._type) {
     case AspectType::AGENT:
-      instances = current.mutable_agents();
+      currents = current.mutable_agents();
       tasks = plan.mutable_agents();
       break;
 
     case AspectType::PRIMARY_DBSERVER:
-      instances = current.mutable_primary_dbservers();
+      currents = current.mutable_dbservers();
       tasks = plan.mutable_dbservers();
       break;
 
     case AspectType::SECONDARY_DBSERVER:
-      instances = current.mutable_secondary_dbservers();
+      currents = current.mutable_secondaries();
       tasks = plan.mutable_secondaries();
       break;
 
     case AspectType::COORDINATOR:
-      instances = current.mutable_coordinators();
+      currents = current.mutable_coordinators();
       tasks = plan.mutable_coordinators();
       break;
 
@@ -1074,7 +1051,7 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
       return;
   }
 
-  instances->mutable_entries(p)->set_state(state);
+  currents->mutable_entries(p)->set_state(state);
 
   switch (state) {
     case INSTANCE_STATE_UNUSED:
@@ -1108,12 +1085,10 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
 /// @brief checks if we can/should start a new instance
 ////////////////////////////////////////////////////////////////////////////////
 
-// FIXME: remove name argument which is unused
 InstanceAction Caretaker::checkStartInstance (AspectType aspect,
                                               InstanceActionState startState,
                                               TasksPlan* tasks,
-                                              ResourcesCurrent* resources,
-                                              InstancesCurrent* instances) {
+                                              TasksCurrent* currents) {
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -1122,7 +1097,7 @@ InstanceAction Caretaker::checkStartInstance (AspectType aspect,
     auto state = task->state();
 
     if (state == TASK_STATE_TRYING_TO_START || state == TASK_STATE_TRYING_TO_RESTART) {
-      InstanceCurrent* instance = instances->mutable_entries(i);
+      TaskCurrent* instance = currents->mutable_entries(i);
 
       switch (instance->state()) {
         case INSTANCE_STATE_UNUSED:
@@ -1135,18 +1110,16 @@ InstanceAction Caretaker::checkStartInstance (AspectType aspect,
           break;
       }
 
-      ResourceCurrent* resCur = resources->mutable_entries(i);
-
       task->set_state(TASK_STATE_RUNNING);
       task->set_started(now);
 
       instance->set_state(INSTANCE_STATE_STARTING);
 
-      mesos::OfferID offerId = resCur->offer_id();
-      mesos::SlaveID slaveId = resCur->slave_id();
-      mesos::Resources resources = resCur->resources();
+      mesos::OfferID offerId = instance->offer_id();
+      mesos::SlaveID slaveId = instance->slave_id();
+      mesos::Resources resources = instance->resources();
 
-      return { startState, *resCur, { aspect, (size_t) i } };
+      return { startState, *instance, { aspect, (size_t) i } };
     }
   }
 

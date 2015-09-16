@@ -49,11 +49,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 void fillTaskStatus (vector<mesos::TaskStatus>& result,
-                     const InstancesCurrent& instances) {
+                     const TasksCurrent& currents) {
 
   // we have to check the TaskInfo (not TaskStatus!)
-  for (int i = 0;  i < instances.entries_size();  ++i) {
-    const InstanceCurrent& entry = instances.entries(i);
+  for (int i = 0;  i < currents.entries_size();  ++i) {
+    TaskCurrent const& entry = currents.entries(i);
 
     switch (entry.state()) {
       case INSTANCE_STATE_UNUSED:
@@ -164,12 +164,8 @@ void ArangoState::init () {
   _state.mutable_current();
   _state.mutable_current()->mutable_agents();
   _state.mutable_current()->mutable_coordinators();
-  _state.mutable_current()->mutable_primary_dbservers();
-  _state.mutable_current()->mutable_secondary_dbservers();
-  _state.mutable_current()->mutable_agency_resources();
-  _state.mutable_current()->mutable_coordinator_resources();
-  _state.mutable_current()->mutable_primary_dbserver_resources();
-  _state.mutable_current()->mutable_secondary_dbserver_resources();
+  _state.mutable_current()->mutable_dbservers();
+  _state.mutable_current()->mutable_secondaries();
 
   _state.mutable_current()->set_cluster_complete(false);
   _state.mutable_current()->set_cluster_bootstrappeddbservers(false);
@@ -387,8 +383,8 @@ vector<mesos::TaskStatus> ArangoState::knownTaskStatus () {
 
   fillTaskStatus(result, _state.current().agents());
   fillTaskStatus(result, _state.current().coordinators());
-  fillTaskStatus(result, _state.current().primary_dbservers());
-  fillTaskStatus(result, _state.current().secondary_dbservers());
+  fillTaskStatus(result, _state.current().dbservers());
+  fillTaskStatus(result, _state.current().secondaries());
 
   return result;
 }

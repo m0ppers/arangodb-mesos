@@ -40,10 +40,8 @@ class Targets;
 class TaskPlan;
 class TasksPlan;
 class Plan;
-class ResourceCurrent;
-class ResourcesCurrent;
-class InstanceCurrent;
-class InstancesCurrent;
+class TaskCurrent;
+class TasksCurrent;
 class Current;
 class State;
 
@@ -72,26 +70,26 @@ inline bool TaskPlanState_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<TaskPlanState>(
     TaskPlanState_descriptor(), name, value);
 }
-enum InstanceCurrentState {
+enum TaskCurrentState {
   INSTANCE_STATE_UNUSED = 1,
   INSTANCE_STATE_STARTING = 2,
   INSTANCE_STATE_RUNNING = 3,
   INSTANCE_STATE_STOPPED = 4
 };
-bool InstanceCurrentState_IsValid(int value);
-const InstanceCurrentState InstanceCurrentState_MIN = INSTANCE_STATE_UNUSED;
-const InstanceCurrentState InstanceCurrentState_MAX = INSTANCE_STATE_STOPPED;
-const int InstanceCurrentState_ARRAYSIZE = InstanceCurrentState_MAX + 1;
+bool TaskCurrentState_IsValid(int value);
+const TaskCurrentState TaskCurrentState_MIN = INSTANCE_STATE_UNUSED;
+const TaskCurrentState TaskCurrentState_MAX = INSTANCE_STATE_STOPPED;
+const int TaskCurrentState_ARRAYSIZE = TaskCurrentState_MAX + 1;
 
-const ::google::protobuf::EnumDescriptor* InstanceCurrentState_descriptor();
-inline const ::std::string& InstanceCurrentState_Name(InstanceCurrentState value) {
+const ::google::protobuf::EnumDescriptor* TaskCurrentState_descriptor();
+inline const ::std::string& TaskCurrentState_Name(TaskCurrentState value) {
   return ::google::protobuf::internal::NameOfEnum(
-    InstanceCurrentState_descriptor(), value);
+    TaskCurrentState_descriptor(), value);
 }
-inline bool InstanceCurrentState_Parse(
-    const ::std::string& name, InstanceCurrentState* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<InstanceCurrentState>(
-    InstanceCurrentState_descriptor(), name, value);
+inline bool TaskCurrentState_Parse(
+    const ::std::string& name, TaskCurrentState* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<TaskCurrentState>(
+    TaskCurrentState_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -680,14 +678,14 @@ class Plan : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
-class ResourceCurrent : public ::google::protobuf::Message {
+class TaskCurrent : public ::google::protobuf::Message {
  public:
-  ResourceCurrent();
-  virtual ~ResourceCurrent();
+  TaskCurrent();
+  virtual ~TaskCurrent();
 
-  ResourceCurrent(const ResourceCurrent& from);
+  TaskCurrent(const TaskCurrent& from);
 
-  inline ResourceCurrent& operator=(const ResourceCurrent& from) {
+  inline TaskCurrent& operator=(const TaskCurrent& from) {
     CopyFrom(from);
     return *this;
   }
@@ -701,17 +699,17 @@ class ResourceCurrent : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const ResourceCurrent& default_instance();
+  static const TaskCurrent& default_instance();
 
-  void Swap(ResourceCurrent* other);
+  void Swap(TaskCurrent* other);
 
   // implements Message ----------------------------------------------
 
-  ResourceCurrent* New() const;
+  TaskCurrent* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const ResourceCurrent& from);
-  void MergeFrom(const ResourceCurrent& from);
+  void CopyFrom(const TaskCurrent& from);
+  void MergeFrom(const TaskCurrent& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -800,7 +798,32 @@ class ResourceCurrent : public ::google::protobuf::Message {
   inline ::std::string* release_container_path();
   inline void set_allocated_container_path(::std::string* container_path);
 
-  // @@protoc_insertion_point(class_scope:arangodb.ResourceCurrent)
+  // required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
+  inline bool has_state() const;
+  inline void clear_state();
+  static const int kStateFieldNumber = 7;
+  inline ::arangodb::TaskCurrentState state() const;
+  inline void set_state(::arangodb::TaskCurrentState value);
+
+  // optional .mesos.TaskInfo task_info = 8;
+  inline bool has_task_info() const;
+  inline void clear_task_info();
+  static const int kTaskInfoFieldNumber = 8;
+  inline const ::mesos::TaskInfo& task_info() const;
+  inline ::mesos::TaskInfo* mutable_task_info();
+  inline ::mesos::TaskInfo* release_task_info();
+  inline void set_allocated_task_info(::mesos::TaskInfo* task_info);
+
+  // optional .mesos.TaskStatus task_status = 9;
+  inline bool has_task_status() const;
+  inline void clear_task_status();
+  static const int kTaskStatusFieldNumber = 9;
+  inline const ::mesos::TaskStatus& task_status() const;
+  inline ::mesos::TaskStatus* mutable_task_status();
+  inline ::mesos::TaskStatus* release_task_status();
+  inline void set_allocated_task_status(::mesos::TaskStatus* task_status);
+
+  // @@protoc_insertion_point(class_scope:arangodb.TaskCurrent)
  private:
   inline void set_has_slave_id();
   inline void clear_has_slave_id();
@@ -810,194 +833,6 @@ class ResourceCurrent : public ::google::protobuf::Message {
   inline void clear_has_hostname();
   inline void set_has_container_path();
   inline void clear_has_container_path();
-
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-
-  ::mesos::SlaveID* slave_id_;
-  ::mesos::OfferID* offer_id_;
-  ::google::protobuf::RepeatedPtrField< ::mesos::Resource > resources_;
-  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > ports_;
-  ::std::string* hostname_;
-  ::std::string* container_path_;
-
-  mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
-
-  friend void  protobuf_AddDesc_arangodb_2eproto();
-  friend void protobuf_AssignDesc_arangodb_2eproto();
-  friend void protobuf_ShutdownFile_arangodb_2eproto();
-
-  void InitAsDefaultInstance();
-  static ResourceCurrent* default_instance_;
-};
-// -------------------------------------------------------------------
-
-class ResourcesCurrent : public ::google::protobuf::Message {
- public:
-  ResourcesCurrent();
-  virtual ~ResourcesCurrent();
-
-  ResourcesCurrent(const ResourcesCurrent& from);
-
-  inline ResourcesCurrent& operator=(const ResourcesCurrent& from) {
-    CopyFrom(from);
-    return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const ResourcesCurrent& default_instance();
-
-  void Swap(ResourcesCurrent* other);
-
-  // implements Message ----------------------------------------------
-
-  ResourcesCurrent* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const ResourcesCurrent& from);
-  void MergeFrom(const ResourcesCurrent& from);
-  void Clear();
-  bool IsInitialized() const;
-
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-
-  ::google::protobuf::Metadata GetMetadata() const;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // repeated .arangodb.ResourceCurrent entries = 1;
-  inline int entries_size() const;
-  inline void clear_entries();
-  static const int kEntriesFieldNumber = 1;
-  inline const ::arangodb::ResourceCurrent& entries(int index) const;
-  inline ::arangodb::ResourceCurrent* mutable_entries(int index);
-  inline ::arangodb::ResourceCurrent* add_entries();
-  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >&
-      entries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >*
-      mutable_entries();
-
-  // @@protoc_insertion_point(class_scope:arangodb.ResourcesCurrent)
- private:
-
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-
-  ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent > entries_;
-
-  mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
-
-  friend void  protobuf_AddDesc_arangodb_2eproto();
-  friend void protobuf_AssignDesc_arangodb_2eproto();
-  friend void protobuf_ShutdownFile_arangodb_2eproto();
-
-  void InitAsDefaultInstance();
-  static ResourcesCurrent* default_instance_;
-};
-// -------------------------------------------------------------------
-
-class InstanceCurrent : public ::google::protobuf::Message {
- public:
-  InstanceCurrent();
-  virtual ~InstanceCurrent();
-
-  InstanceCurrent(const InstanceCurrent& from);
-
-  inline InstanceCurrent& operator=(const InstanceCurrent& from) {
-    CopyFrom(from);
-    return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const InstanceCurrent& default_instance();
-
-  void Swap(InstanceCurrent* other);
-
-  // implements Message ----------------------------------------------
-
-  InstanceCurrent* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const InstanceCurrent& from);
-  void MergeFrom(const InstanceCurrent& from);
-  void Clear();
-  bool IsInitialized() const;
-
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-
-  ::google::protobuf::Metadata GetMetadata() const;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
-  inline bool has_state() const;
-  inline void clear_state();
-  static const int kStateFieldNumber = 1;
-  inline ::arangodb::InstanceCurrentState state() const;
-  inline void set_state(::arangodb::InstanceCurrentState value);
-
-  // optional .mesos.TaskInfo task_info = 2;
-  inline bool has_task_info() const;
-  inline void clear_task_info();
-  static const int kTaskInfoFieldNumber = 2;
-  inline const ::mesos::TaskInfo& task_info() const;
-  inline ::mesos::TaskInfo* mutable_task_info();
-  inline ::mesos::TaskInfo* release_task_info();
-  inline void set_allocated_task_info(::mesos::TaskInfo* task_info);
-
-  // optional .mesos.TaskStatus task_status = 3;
-  inline bool has_task_status() const;
-  inline void clear_task_status();
-  static const int kTaskStatusFieldNumber = 3;
-  inline const ::mesos::TaskStatus& task_status() const;
-  inline ::mesos::TaskStatus* mutable_task_status();
-  inline ::mesos::TaskStatus* release_task_status();
-  inline void set_allocated_task_status(::mesos::TaskStatus* task_status);
-
-  // @@protoc_insertion_point(class_scope:arangodb.InstanceCurrent)
- private:
   inline void set_has_state();
   inline void clear_has_state();
   inline void set_has_task_info();
@@ -1007,30 +842,36 @@ class InstanceCurrent : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
+  ::mesos::SlaveID* slave_id_;
+  ::mesos::OfferID* offer_id_;
+  ::google::protobuf::RepeatedPtrField< ::mesos::Resource > resources_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > ports_;
+  ::std::string* hostname_;
+  ::std::string* container_path_;
   ::mesos::TaskInfo* task_info_;
   ::mesos::TaskStatus* task_status_;
   int state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static InstanceCurrent* default_instance_;
+  static TaskCurrent* default_instance_;
 };
 // -------------------------------------------------------------------
 
-class InstancesCurrent : public ::google::protobuf::Message {
+class TasksCurrent : public ::google::protobuf::Message {
  public:
-  InstancesCurrent();
-  virtual ~InstancesCurrent();
+  TasksCurrent();
+  virtual ~TasksCurrent();
 
-  InstancesCurrent(const InstancesCurrent& from);
+  TasksCurrent(const TasksCurrent& from);
 
-  inline InstancesCurrent& operator=(const InstancesCurrent& from) {
+  inline TasksCurrent& operator=(const TasksCurrent& from) {
     CopyFrom(from);
     return *this;
   }
@@ -1044,17 +885,17 @@ class InstancesCurrent : public ::google::protobuf::Message {
   }
 
   static const ::google::protobuf::Descriptor* descriptor();
-  static const InstancesCurrent& default_instance();
+  static const TasksCurrent& default_instance();
 
-  void Swap(InstancesCurrent* other);
+  void Swap(TasksCurrent* other);
 
   // implements Message ----------------------------------------------
 
-  InstancesCurrent* New() const;
+  TasksCurrent* New() const;
   void CopyFrom(const ::google::protobuf::Message& from);
   void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const InstancesCurrent& from);
-  void MergeFrom(const InstancesCurrent& from);
+  void CopyFrom(const TasksCurrent& from);
+  void MergeFrom(const TasksCurrent& from);
   void Clear();
   bool IsInitialized() const;
 
@@ -1077,24 +918,24 @@ class InstancesCurrent : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // repeated .arangodb.InstanceCurrent entries = 1;
+  // repeated .arangodb.TaskCurrent entries = 1;
   inline int entries_size() const;
   inline void clear_entries();
   static const int kEntriesFieldNumber = 1;
-  inline const ::arangodb::InstanceCurrent& entries(int index) const;
-  inline ::arangodb::InstanceCurrent* mutable_entries(int index);
-  inline ::arangodb::InstanceCurrent* add_entries();
-  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >&
+  inline const ::arangodb::TaskCurrent& entries(int index) const;
+  inline ::arangodb::TaskCurrent* mutable_entries(int index);
+  inline ::arangodb::TaskCurrent* add_entries();
+  inline const ::google::protobuf::RepeatedPtrField< ::arangodb::TaskCurrent >&
       entries() const;
-  inline ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >*
+  inline ::google::protobuf::RepeatedPtrField< ::arangodb::TaskCurrent >*
       mutable_entries();
 
-  // @@protoc_insertion_point(class_scope:arangodb.InstancesCurrent)
+  // @@protoc_insertion_point(class_scope:arangodb.TasksCurrent)
  private:
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent > entries_;
+  ::google::protobuf::RepeatedPtrField< ::arangodb::TaskCurrent > entries_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
@@ -1104,7 +945,7 @@ class InstancesCurrent : public ::google::protobuf::Message {
   friend void protobuf_ShutdownFile_arangodb_2eproto();
 
   void InitAsDefaultInstance();
-  static InstancesCurrent* default_instance_;
+  static TasksCurrent* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -1162,131 +1003,87 @@ class Current : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required .arangodb.ResourcesCurrent agency_resources = 1;
-  inline bool has_agency_resources() const;
-  inline void clear_agency_resources();
-  static const int kAgencyResourcesFieldNumber = 1;
-  inline const ::arangodb::ResourcesCurrent& agency_resources() const;
-  inline ::arangodb::ResourcesCurrent* mutable_agency_resources();
-  inline ::arangodb::ResourcesCurrent* release_agency_resources();
-  inline void set_allocated_agency_resources(::arangodb::ResourcesCurrent* agency_resources);
-
-  // required .arangodb.ResourcesCurrent coordinator_resources = 2;
-  inline bool has_coordinator_resources() const;
-  inline void clear_coordinator_resources();
-  static const int kCoordinatorResourcesFieldNumber = 2;
-  inline const ::arangodb::ResourcesCurrent& coordinator_resources() const;
-  inline ::arangodb::ResourcesCurrent* mutable_coordinator_resources();
-  inline ::arangodb::ResourcesCurrent* release_coordinator_resources();
-  inline void set_allocated_coordinator_resources(::arangodb::ResourcesCurrent* coordinator_resources);
-
-  // required .arangodb.ResourcesCurrent primary_dbserver_resources = 3;
-  inline bool has_primary_dbserver_resources() const;
-  inline void clear_primary_dbserver_resources();
-  static const int kPrimaryDbserverResourcesFieldNumber = 3;
-  inline const ::arangodb::ResourcesCurrent& primary_dbserver_resources() const;
-  inline ::arangodb::ResourcesCurrent* mutable_primary_dbserver_resources();
-  inline ::arangodb::ResourcesCurrent* release_primary_dbserver_resources();
-  inline void set_allocated_primary_dbserver_resources(::arangodb::ResourcesCurrent* primary_dbserver_resources);
-
-  // required .arangodb.ResourcesCurrent secondary_dbserver_resources = 4;
-  inline bool has_secondary_dbserver_resources() const;
-  inline void clear_secondary_dbserver_resources();
-  static const int kSecondaryDbserverResourcesFieldNumber = 4;
-  inline const ::arangodb::ResourcesCurrent& secondary_dbserver_resources() const;
-  inline ::arangodb::ResourcesCurrent* mutable_secondary_dbserver_resources();
-  inline ::arangodb::ResourcesCurrent* release_secondary_dbserver_resources();
-  inline void set_allocated_secondary_dbserver_resources(::arangodb::ResourcesCurrent* secondary_dbserver_resources);
-
-  // required .arangodb.InstancesCurrent agents = 5;
+  // required .arangodb.TasksCurrent agents = 1;
   inline bool has_agents() const;
   inline void clear_agents();
-  static const int kAgentsFieldNumber = 5;
-  inline const ::arangodb::InstancesCurrent& agents() const;
-  inline ::arangodb::InstancesCurrent* mutable_agents();
-  inline ::arangodb::InstancesCurrent* release_agents();
-  inline void set_allocated_agents(::arangodb::InstancesCurrent* agents);
+  static const int kAgentsFieldNumber = 1;
+  inline const ::arangodb::TasksCurrent& agents() const;
+  inline ::arangodb::TasksCurrent* mutable_agents();
+  inline ::arangodb::TasksCurrent* release_agents();
+  inline void set_allocated_agents(::arangodb::TasksCurrent* agents);
 
-  // required .arangodb.InstancesCurrent coordinators = 6;
+  // required .arangodb.TasksCurrent coordinators = 2;
   inline bool has_coordinators() const;
   inline void clear_coordinators();
-  static const int kCoordinatorsFieldNumber = 6;
-  inline const ::arangodb::InstancesCurrent& coordinators() const;
-  inline ::arangodb::InstancesCurrent* mutable_coordinators();
-  inline ::arangodb::InstancesCurrent* release_coordinators();
-  inline void set_allocated_coordinators(::arangodb::InstancesCurrent* coordinators);
+  static const int kCoordinatorsFieldNumber = 2;
+  inline const ::arangodb::TasksCurrent& coordinators() const;
+  inline ::arangodb::TasksCurrent* mutable_coordinators();
+  inline ::arangodb::TasksCurrent* release_coordinators();
+  inline void set_allocated_coordinators(::arangodb::TasksCurrent* coordinators);
 
-  // required .arangodb.InstancesCurrent primary_dbservers = 7;
-  inline bool has_primary_dbservers() const;
-  inline void clear_primary_dbservers();
-  static const int kPrimaryDbserversFieldNumber = 7;
-  inline const ::arangodb::InstancesCurrent& primary_dbservers() const;
-  inline ::arangodb::InstancesCurrent* mutable_primary_dbservers();
-  inline ::arangodb::InstancesCurrent* release_primary_dbservers();
-  inline void set_allocated_primary_dbservers(::arangodb::InstancesCurrent* primary_dbservers);
+  // required .arangodb.TasksCurrent dbservers = 3;
+  inline bool has_dbservers() const;
+  inline void clear_dbservers();
+  static const int kDbserversFieldNumber = 3;
+  inline const ::arangodb::TasksCurrent& dbservers() const;
+  inline ::arangodb::TasksCurrent* mutable_dbservers();
+  inline ::arangodb::TasksCurrent* release_dbservers();
+  inline void set_allocated_dbservers(::arangodb::TasksCurrent* dbservers);
 
-  // required .arangodb.InstancesCurrent secondary_dbservers = 8;
-  inline bool has_secondary_dbservers() const;
-  inline void clear_secondary_dbservers();
-  static const int kSecondaryDbserversFieldNumber = 8;
-  inline const ::arangodb::InstancesCurrent& secondary_dbservers() const;
-  inline ::arangodb::InstancesCurrent* mutable_secondary_dbservers();
-  inline ::arangodb::InstancesCurrent* release_secondary_dbservers();
-  inline void set_allocated_secondary_dbservers(::arangodb::InstancesCurrent* secondary_dbservers);
+  // required .arangodb.TasksCurrent secondaries = 4;
+  inline bool has_secondaries() const;
+  inline void clear_secondaries();
+  static const int kSecondariesFieldNumber = 4;
+  inline const ::arangodb::TasksCurrent& secondaries() const;
+  inline ::arangodb::TasksCurrent* mutable_secondaries();
+  inline ::arangodb::TasksCurrent* release_secondaries();
+  inline void set_allocated_secondaries(::arangodb::TasksCurrent* secondaries);
 
-  // required bool cluster_complete = 9;
+  // required bool cluster_complete = 5;
   inline bool has_cluster_complete() const;
   inline void clear_cluster_complete();
-  static const int kClusterCompleteFieldNumber = 9;
+  static const int kClusterCompleteFieldNumber = 5;
   inline bool cluster_complete() const;
   inline void set_cluster_complete(bool value);
 
-  // required bool cluster_bootstrappedDBservers = 10;
+  // required bool cluster_bootstrappedDBservers = 6;
   inline bool has_cluster_bootstrappeddbservers() const;
   inline void clear_cluster_bootstrappeddbservers();
-  static const int kClusterBootstrappedDBserversFieldNumber = 10;
+  static const int kClusterBootstrappedDBserversFieldNumber = 6;
   inline bool cluster_bootstrappeddbservers() const;
   inline void set_cluster_bootstrappeddbservers(bool value);
 
-  // required bool cluster_upgradedDB = 11;
+  // required bool cluster_upgradedDB = 7;
   inline bool has_cluster_upgradeddb() const;
   inline void clear_cluster_upgradeddb();
-  static const int kClusterUpgradedDBFieldNumber = 11;
+  static const int kClusterUpgradedDBFieldNumber = 7;
   inline bool cluster_upgradeddb() const;
   inline void set_cluster_upgradeddb(bool value);
 
-  // required bool cluster_bootstrappedCoordinators = 12;
+  // required bool cluster_bootstrappedCoordinators = 8;
   inline bool has_cluster_bootstrappedcoordinators() const;
   inline void clear_cluster_bootstrappedcoordinators();
-  static const int kClusterBootstrappedCoordinatorsFieldNumber = 12;
+  static const int kClusterBootstrappedCoordinatorsFieldNumber = 8;
   inline bool cluster_bootstrappedcoordinators() const;
   inline void set_cluster_bootstrappedcoordinators(bool value);
 
-  // required bool cluster_initialized = 13;
+  // required bool cluster_initialized = 9;
   inline bool has_cluster_initialized() const;
   inline void clear_cluster_initialized();
-  static const int kClusterInitializedFieldNumber = 13;
+  static const int kClusterInitializedFieldNumber = 9;
   inline bool cluster_initialized() const;
   inline void set_cluster_initialized(bool value);
 
   // @@protoc_insertion_point(class_scope:arangodb.Current)
  private:
-  inline void set_has_agency_resources();
-  inline void clear_has_agency_resources();
-  inline void set_has_coordinator_resources();
-  inline void clear_has_coordinator_resources();
-  inline void set_has_primary_dbserver_resources();
-  inline void clear_has_primary_dbserver_resources();
-  inline void set_has_secondary_dbserver_resources();
-  inline void clear_has_secondary_dbserver_resources();
   inline void set_has_agents();
   inline void clear_has_agents();
   inline void set_has_coordinators();
   inline void clear_has_coordinators();
-  inline void set_has_primary_dbservers();
-  inline void clear_has_primary_dbservers();
-  inline void set_has_secondary_dbservers();
-  inline void clear_has_secondary_dbservers();
+  inline void set_has_dbservers();
+  inline void clear_has_dbservers();
+  inline void set_has_secondaries();
+  inline void clear_has_secondaries();
   inline void set_has_cluster_complete();
   inline void clear_has_cluster_complete();
   inline void set_has_cluster_bootstrappeddbservers();
@@ -1300,14 +1097,10 @@ class Current : public ::google::protobuf::Message {
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::arangodb::ResourcesCurrent* agency_resources_;
-  ::arangodb::ResourcesCurrent* coordinator_resources_;
-  ::arangodb::ResourcesCurrent* primary_dbserver_resources_;
-  ::arangodb::ResourcesCurrent* secondary_dbserver_resources_;
-  ::arangodb::InstancesCurrent* agents_;
-  ::arangodb::InstancesCurrent* coordinators_;
-  ::arangodb::InstancesCurrent* primary_dbservers_;
-  ::arangodb::InstancesCurrent* secondary_dbservers_;
+  ::arangodb::TasksCurrent* agents_;
+  ::arangodb::TasksCurrent* coordinators_;
+  ::arangodb::TasksCurrent* dbservers_;
+  ::arangodb::TasksCurrent* secondaries_;
   bool cluster_complete_;
   bool cluster_bootstrappeddbservers_;
   bool cluster_upgradeddb_;
@@ -1315,7 +1108,7 @@ class Current : public ::google::protobuf::Message {
   bool cluster_initialized_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(13 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -2121,37 +1914,37 @@ inline void Plan::set_allocated_secondaries(::arangodb::TasksPlan* secondaries) 
 
 // -------------------------------------------------------------------
 
-// ResourceCurrent
+// TaskCurrent
 
 // optional .mesos.SlaveID slave_id = 1;
-inline bool ResourceCurrent::has_slave_id() const {
+inline bool TaskCurrent::has_slave_id() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void ResourceCurrent::set_has_slave_id() {
+inline void TaskCurrent::set_has_slave_id() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void ResourceCurrent::clear_has_slave_id() {
+inline void TaskCurrent::clear_has_slave_id() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void ResourceCurrent::clear_slave_id() {
+inline void TaskCurrent::clear_slave_id() {
   if (slave_id_ != NULL) slave_id_->::mesos::SlaveID::Clear();
   clear_has_slave_id();
 }
-inline const ::mesos::SlaveID& ResourceCurrent::slave_id() const {
+inline const ::mesos::SlaveID& TaskCurrent::slave_id() const {
   return slave_id_ != NULL ? *slave_id_ : *default_instance_->slave_id_;
 }
-inline ::mesos::SlaveID* ResourceCurrent::mutable_slave_id() {
+inline ::mesos::SlaveID* TaskCurrent::mutable_slave_id() {
   set_has_slave_id();
   if (slave_id_ == NULL) slave_id_ = new ::mesos::SlaveID;
   return slave_id_;
 }
-inline ::mesos::SlaveID* ResourceCurrent::release_slave_id() {
+inline ::mesos::SlaveID* TaskCurrent::release_slave_id() {
   clear_has_slave_id();
   ::mesos::SlaveID* temp = slave_id_;
   slave_id_ = NULL;
   return temp;
 }
-inline void ResourceCurrent::set_allocated_slave_id(::mesos::SlaveID* slave_id) {
+inline void TaskCurrent::set_allocated_slave_id(::mesos::SlaveID* slave_id) {
   delete slave_id_;
   slave_id_ = slave_id;
   if (slave_id) {
@@ -2162,34 +1955,34 @@ inline void ResourceCurrent::set_allocated_slave_id(::mesos::SlaveID* slave_id) 
 }
 
 // optional .mesos.OfferID offer_id = 2;
-inline bool ResourceCurrent::has_offer_id() const {
+inline bool TaskCurrent::has_offer_id() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void ResourceCurrent::set_has_offer_id() {
+inline void TaskCurrent::set_has_offer_id() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void ResourceCurrent::clear_has_offer_id() {
+inline void TaskCurrent::clear_has_offer_id() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void ResourceCurrent::clear_offer_id() {
+inline void TaskCurrent::clear_offer_id() {
   if (offer_id_ != NULL) offer_id_->::mesos::OfferID::Clear();
   clear_has_offer_id();
 }
-inline const ::mesos::OfferID& ResourceCurrent::offer_id() const {
+inline const ::mesos::OfferID& TaskCurrent::offer_id() const {
   return offer_id_ != NULL ? *offer_id_ : *default_instance_->offer_id_;
 }
-inline ::mesos::OfferID* ResourceCurrent::mutable_offer_id() {
+inline ::mesos::OfferID* TaskCurrent::mutable_offer_id() {
   set_has_offer_id();
   if (offer_id_ == NULL) offer_id_ = new ::mesos::OfferID;
   return offer_id_;
 }
-inline ::mesos::OfferID* ResourceCurrent::release_offer_id() {
+inline ::mesos::OfferID* TaskCurrent::release_offer_id() {
   clear_has_offer_id();
   ::mesos::OfferID* temp = offer_id_;
   offer_id_ = NULL;
   return temp;
 }
-inline void ResourceCurrent::set_allocated_offer_id(::mesos::OfferID* offer_id) {
+inline void TaskCurrent::set_allocated_offer_id(::mesos::OfferID* offer_id) {
   delete offer_id_;
   offer_id_ = offer_id;
   if (offer_id) {
@@ -2200,103 +1993,103 @@ inline void ResourceCurrent::set_allocated_offer_id(::mesos::OfferID* offer_id) 
 }
 
 // repeated .mesos.Resource resources = 3;
-inline int ResourceCurrent::resources_size() const {
+inline int TaskCurrent::resources_size() const {
   return resources_.size();
 }
-inline void ResourceCurrent::clear_resources() {
+inline void TaskCurrent::clear_resources() {
   resources_.Clear();
 }
-inline const ::mesos::Resource& ResourceCurrent::resources(int index) const {
+inline const ::mesos::Resource& TaskCurrent::resources(int index) const {
   return resources_.Get(index);
 }
-inline ::mesos::Resource* ResourceCurrent::mutable_resources(int index) {
+inline ::mesos::Resource* TaskCurrent::mutable_resources(int index) {
   return resources_.Mutable(index);
 }
-inline ::mesos::Resource* ResourceCurrent::add_resources() {
+inline ::mesos::Resource* TaskCurrent::add_resources() {
   return resources_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::mesos::Resource >&
-ResourceCurrent::resources() const {
+TaskCurrent::resources() const {
   return resources_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::mesos::Resource >*
-ResourceCurrent::mutable_resources() {
+TaskCurrent::mutable_resources() {
   return &resources_;
 }
 
 // repeated uint32 ports = 4;
-inline int ResourceCurrent::ports_size() const {
+inline int TaskCurrent::ports_size() const {
   return ports_.size();
 }
-inline void ResourceCurrent::clear_ports() {
+inline void TaskCurrent::clear_ports() {
   ports_.Clear();
 }
-inline ::google::protobuf::uint32 ResourceCurrent::ports(int index) const {
+inline ::google::protobuf::uint32 TaskCurrent::ports(int index) const {
   return ports_.Get(index);
 }
-inline void ResourceCurrent::set_ports(int index, ::google::protobuf::uint32 value) {
+inline void TaskCurrent::set_ports(int index, ::google::protobuf::uint32 value) {
   ports_.Set(index, value);
 }
-inline void ResourceCurrent::add_ports(::google::protobuf::uint32 value) {
+inline void TaskCurrent::add_ports(::google::protobuf::uint32 value) {
   ports_.Add(value);
 }
 inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
-ResourceCurrent::ports() const {
+TaskCurrent::ports() const {
   return ports_;
 }
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
-ResourceCurrent::mutable_ports() {
+TaskCurrent::mutable_ports() {
   return &ports_;
 }
 
 // optional string hostname = 5;
-inline bool ResourceCurrent::has_hostname() const {
+inline bool TaskCurrent::has_hostname() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void ResourceCurrent::set_has_hostname() {
+inline void TaskCurrent::set_has_hostname() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void ResourceCurrent::clear_has_hostname() {
+inline void TaskCurrent::clear_has_hostname() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void ResourceCurrent::clear_hostname() {
+inline void TaskCurrent::clear_hostname() {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     hostname_->clear();
   }
   clear_has_hostname();
 }
-inline const ::std::string& ResourceCurrent::hostname() const {
+inline const ::std::string& TaskCurrent::hostname() const {
   return *hostname_;
 }
-inline void ResourceCurrent::set_hostname(const ::std::string& value) {
+inline void TaskCurrent::set_hostname(const ::std::string& value) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(value);
 }
-inline void ResourceCurrent::set_hostname(const char* value) {
+inline void TaskCurrent::set_hostname(const char* value) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(value);
 }
-inline void ResourceCurrent::set_hostname(const char* value, size_t size) {
+inline void TaskCurrent::set_hostname(const char* value, size_t size) {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   hostname_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ResourceCurrent::mutable_hostname() {
+inline ::std::string* TaskCurrent::mutable_hostname() {
   set_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     hostname_ = new ::std::string;
   }
   return hostname_;
 }
-inline ::std::string* ResourceCurrent::release_hostname() {
+inline ::std::string* TaskCurrent::release_hostname() {
   clear_has_hostname();
   if (hostname_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -2306,7 +2099,7 @@ inline ::std::string* ResourceCurrent::release_hostname() {
     return temp;
   }
 }
-inline void ResourceCurrent::set_allocated_hostname(::std::string* hostname) {
+inline void TaskCurrent::set_allocated_hostname(::std::string* hostname) {
   if (hostname_ != &::google::protobuf::internal::kEmptyString) {
     delete hostname_;
   }
@@ -2320,53 +2113,53 @@ inline void ResourceCurrent::set_allocated_hostname(::std::string* hostname) {
 }
 
 // optional string container_path = 6;
-inline bool ResourceCurrent::has_container_path() const {
+inline bool TaskCurrent::has_container_path() const {
   return (_has_bits_[0] & 0x00000020u) != 0;
 }
-inline void ResourceCurrent::set_has_container_path() {
+inline void TaskCurrent::set_has_container_path() {
   _has_bits_[0] |= 0x00000020u;
 }
-inline void ResourceCurrent::clear_has_container_path() {
+inline void TaskCurrent::clear_has_container_path() {
   _has_bits_[0] &= ~0x00000020u;
 }
-inline void ResourceCurrent::clear_container_path() {
+inline void TaskCurrent::clear_container_path() {
   if (container_path_ != &::google::protobuf::internal::kEmptyString) {
     container_path_->clear();
   }
   clear_has_container_path();
 }
-inline const ::std::string& ResourceCurrent::container_path() const {
+inline const ::std::string& TaskCurrent::container_path() const {
   return *container_path_;
 }
-inline void ResourceCurrent::set_container_path(const ::std::string& value) {
+inline void TaskCurrent::set_container_path(const ::std::string& value) {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   container_path_->assign(value);
 }
-inline void ResourceCurrent::set_container_path(const char* value) {
+inline void TaskCurrent::set_container_path(const char* value) {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   container_path_->assign(value);
 }
-inline void ResourceCurrent::set_container_path(const char* value, size_t size) {
+inline void TaskCurrent::set_container_path(const char* value, size_t size) {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   container_path_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* ResourceCurrent::mutable_container_path() {
+inline ::std::string* TaskCurrent::mutable_container_path() {
   set_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     container_path_ = new ::std::string;
   }
   return container_path_;
 }
-inline ::std::string* ResourceCurrent::release_container_path() {
+inline ::std::string* TaskCurrent::release_container_path() {
   clear_has_container_path();
   if (container_path_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -2376,7 +2169,7 @@ inline ::std::string* ResourceCurrent::release_container_path() {
     return temp;
   }
 }
-inline void ResourceCurrent::set_allocated_container_path(::std::string* container_path) {
+inline void TaskCurrent::set_allocated_container_path(::std::string* container_path) {
   if (container_path_ != &::google::protobuf::internal::kEmptyString) {
     delete container_path_;
   }
@@ -2389,91 +2182,58 @@ inline void ResourceCurrent::set_allocated_container_path(::std::string* contain
   }
 }
 
-// -------------------------------------------------------------------
-
-// ResourcesCurrent
-
-// repeated .arangodb.ResourceCurrent entries = 1;
-inline int ResourcesCurrent::entries_size() const {
-  return entries_.size();
+// required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
+inline bool TaskCurrent::has_state() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
-inline void ResourcesCurrent::clear_entries() {
-  entries_.Clear();
+inline void TaskCurrent::set_has_state() {
+  _has_bits_[0] |= 0x00000040u;
 }
-inline const ::arangodb::ResourceCurrent& ResourcesCurrent::entries(int index) const {
-  return entries_.Get(index);
+inline void TaskCurrent::clear_has_state() {
+  _has_bits_[0] &= ~0x00000040u;
 }
-inline ::arangodb::ResourceCurrent* ResourcesCurrent::mutable_entries(int index) {
-  return entries_.Mutable(index);
-}
-inline ::arangodb::ResourceCurrent* ResourcesCurrent::add_entries() {
-  return entries_.Add();
-}
-inline const ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >&
-ResourcesCurrent::entries() const {
-  return entries_;
-}
-inline ::google::protobuf::RepeatedPtrField< ::arangodb::ResourceCurrent >*
-ResourcesCurrent::mutable_entries() {
-  return &entries_;
-}
-
-// -------------------------------------------------------------------
-
-// InstanceCurrent
-
-// required .arangodb.InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
-inline bool InstanceCurrent::has_state() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void InstanceCurrent::set_has_state() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void InstanceCurrent::clear_has_state() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void InstanceCurrent::clear_state() {
+inline void TaskCurrent::clear_state() {
   state_ = 1;
   clear_has_state();
 }
-inline ::arangodb::InstanceCurrentState InstanceCurrent::state() const {
-  return static_cast< ::arangodb::InstanceCurrentState >(state_);
+inline ::arangodb::TaskCurrentState TaskCurrent::state() const {
+  return static_cast< ::arangodb::TaskCurrentState >(state_);
 }
-inline void InstanceCurrent::set_state(::arangodb::InstanceCurrentState value) {
-  assert(::arangodb::InstanceCurrentState_IsValid(value));
+inline void TaskCurrent::set_state(::arangodb::TaskCurrentState value) {
+  assert(::arangodb::TaskCurrentState_IsValid(value));
   set_has_state();
   state_ = value;
 }
 
-// optional .mesos.TaskInfo task_info = 2;
-inline bool InstanceCurrent::has_task_info() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
+// optional .mesos.TaskInfo task_info = 8;
+inline bool TaskCurrent::has_task_info() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
-inline void InstanceCurrent::set_has_task_info() {
-  _has_bits_[0] |= 0x00000002u;
+inline void TaskCurrent::set_has_task_info() {
+  _has_bits_[0] |= 0x00000080u;
 }
-inline void InstanceCurrent::clear_has_task_info() {
-  _has_bits_[0] &= ~0x00000002u;
+inline void TaskCurrent::clear_has_task_info() {
+  _has_bits_[0] &= ~0x00000080u;
 }
-inline void InstanceCurrent::clear_task_info() {
+inline void TaskCurrent::clear_task_info() {
   if (task_info_ != NULL) task_info_->::mesos::TaskInfo::Clear();
   clear_has_task_info();
 }
-inline const ::mesos::TaskInfo& InstanceCurrent::task_info() const {
+inline const ::mesos::TaskInfo& TaskCurrent::task_info() const {
   return task_info_ != NULL ? *task_info_ : *default_instance_->task_info_;
 }
-inline ::mesos::TaskInfo* InstanceCurrent::mutable_task_info() {
+inline ::mesos::TaskInfo* TaskCurrent::mutable_task_info() {
   set_has_task_info();
   if (task_info_ == NULL) task_info_ = new ::mesos::TaskInfo;
   return task_info_;
 }
-inline ::mesos::TaskInfo* InstanceCurrent::release_task_info() {
+inline ::mesos::TaskInfo* TaskCurrent::release_task_info() {
   clear_has_task_info();
   ::mesos::TaskInfo* temp = task_info_;
   task_info_ = NULL;
   return temp;
 }
-inline void InstanceCurrent::set_allocated_task_info(::mesos::TaskInfo* task_info) {
+inline void TaskCurrent::set_allocated_task_info(::mesos::TaskInfo* task_info) {
   delete task_info_;
   task_info_ = task_info;
   if (task_info) {
@@ -2483,35 +2243,35 @@ inline void InstanceCurrent::set_allocated_task_info(::mesos::TaskInfo* task_inf
   }
 }
 
-// optional .mesos.TaskStatus task_status = 3;
-inline bool InstanceCurrent::has_task_status() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
+// optional .mesos.TaskStatus task_status = 9;
+inline bool TaskCurrent::has_task_status() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
-inline void InstanceCurrent::set_has_task_status() {
-  _has_bits_[0] |= 0x00000004u;
+inline void TaskCurrent::set_has_task_status() {
+  _has_bits_[0] |= 0x00000100u;
 }
-inline void InstanceCurrent::clear_has_task_status() {
-  _has_bits_[0] &= ~0x00000004u;
+inline void TaskCurrent::clear_has_task_status() {
+  _has_bits_[0] &= ~0x00000100u;
 }
-inline void InstanceCurrent::clear_task_status() {
+inline void TaskCurrent::clear_task_status() {
   if (task_status_ != NULL) task_status_->::mesos::TaskStatus::Clear();
   clear_has_task_status();
 }
-inline const ::mesos::TaskStatus& InstanceCurrent::task_status() const {
+inline const ::mesos::TaskStatus& TaskCurrent::task_status() const {
   return task_status_ != NULL ? *task_status_ : *default_instance_->task_status_;
 }
-inline ::mesos::TaskStatus* InstanceCurrent::mutable_task_status() {
+inline ::mesos::TaskStatus* TaskCurrent::mutable_task_status() {
   set_has_task_status();
   if (task_status_ == NULL) task_status_ = new ::mesos::TaskStatus;
   return task_status_;
 }
-inline ::mesos::TaskStatus* InstanceCurrent::release_task_status() {
+inline ::mesos::TaskStatus* TaskCurrent::release_task_status() {
   clear_has_task_status();
   ::mesos::TaskStatus* temp = task_status_;
   task_status_ = NULL;
   return temp;
 }
-inline void InstanceCurrent::set_allocated_task_status(::mesos::TaskStatus* task_status) {
+inline void TaskCurrent::set_allocated_task_status(::mesos::TaskStatus* task_status) {
   delete task_status_;
   task_status_ = task_status;
   if (task_status) {
@@ -2523,30 +2283,30 @@ inline void InstanceCurrent::set_allocated_task_status(::mesos::TaskStatus* task
 
 // -------------------------------------------------------------------
 
-// InstancesCurrent
+// TasksCurrent
 
-// repeated .arangodb.InstanceCurrent entries = 1;
-inline int InstancesCurrent::entries_size() const {
+// repeated .arangodb.TaskCurrent entries = 1;
+inline int TasksCurrent::entries_size() const {
   return entries_.size();
 }
-inline void InstancesCurrent::clear_entries() {
+inline void TasksCurrent::clear_entries() {
   entries_.Clear();
 }
-inline const ::arangodb::InstanceCurrent& InstancesCurrent::entries(int index) const {
+inline const ::arangodb::TaskCurrent& TasksCurrent::entries(int index) const {
   return entries_.Get(index);
 }
-inline ::arangodb::InstanceCurrent* InstancesCurrent::mutable_entries(int index) {
+inline ::arangodb::TaskCurrent* TasksCurrent::mutable_entries(int index) {
   return entries_.Mutable(index);
 }
-inline ::arangodb::InstanceCurrent* InstancesCurrent::add_entries() {
+inline ::arangodb::TaskCurrent* TasksCurrent::add_entries() {
   return entries_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >&
-InstancesCurrent::entries() const {
+inline const ::google::protobuf::RepeatedPtrField< ::arangodb::TaskCurrent >&
+TasksCurrent::entries() const {
   return entries_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::arangodb::InstanceCurrent >*
-InstancesCurrent::mutable_entries() {
+inline ::google::protobuf::RepeatedPtrField< ::arangodb::TaskCurrent >*
+TasksCurrent::mutable_entries() {
   return &entries_;
 }
 
@@ -2554,187 +2314,35 @@ InstancesCurrent::mutable_entries() {
 
 // Current
 
-// required .arangodb.ResourcesCurrent agency_resources = 1;
-inline bool Current::has_agency_resources() const {
+// required .arangodb.TasksCurrent agents = 1;
+inline bool Current::has_agents() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void Current::set_has_agency_resources() {
+inline void Current::set_has_agents() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void Current::clear_has_agency_resources() {
+inline void Current::clear_has_agents() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void Current::clear_agency_resources() {
-  if (agency_resources_ != NULL) agency_resources_->::arangodb::ResourcesCurrent::Clear();
-  clear_has_agency_resources();
-}
-inline const ::arangodb::ResourcesCurrent& Current::agency_resources() const {
-  return agency_resources_ != NULL ? *agency_resources_ : *default_instance_->agency_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::mutable_agency_resources() {
-  set_has_agency_resources();
-  if (agency_resources_ == NULL) agency_resources_ = new ::arangodb::ResourcesCurrent;
-  return agency_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::release_agency_resources() {
-  clear_has_agency_resources();
-  ::arangodb::ResourcesCurrent* temp = agency_resources_;
-  agency_resources_ = NULL;
-  return temp;
-}
-inline void Current::set_allocated_agency_resources(::arangodb::ResourcesCurrent* agency_resources) {
-  delete agency_resources_;
-  agency_resources_ = agency_resources;
-  if (agency_resources) {
-    set_has_agency_resources();
-  } else {
-    clear_has_agency_resources();
-  }
-}
-
-// required .arangodb.ResourcesCurrent coordinator_resources = 2;
-inline bool Current::has_coordinator_resources() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void Current::set_has_coordinator_resources() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void Current::clear_has_coordinator_resources() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void Current::clear_coordinator_resources() {
-  if (coordinator_resources_ != NULL) coordinator_resources_->::arangodb::ResourcesCurrent::Clear();
-  clear_has_coordinator_resources();
-}
-inline const ::arangodb::ResourcesCurrent& Current::coordinator_resources() const {
-  return coordinator_resources_ != NULL ? *coordinator_resources_ : *default_instance_->coordinator_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::mutable_coordinator_resources() {
-  set_has_coordinator_resources();
-  if (coordinator_resources_ == NULL) coordinator_resources_ = new ::arangodb::ResourcesCurrent;
-  return coordinator_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::release_coordinator_resources() {
-  clear_has_coordinator_resources();
-  ::arangodb::ResourcesCurrent* temp = coordinator_resources_;
-  coordinator_resources_ = NULL;
-  return temp;
-}
-inline void Current::set_allocated_coordinator_resources(::arangodb::ResourcesCurrent* coordinator_resources) {
-  delete coordinator_resources_;
-  coordinator_resources_ = coordinator_resources;
-  if (coordinator_resources) {
-    set_has_coordinator_resources();
-  } else {
-    clear_has_coordinator_resources();
-  }
-}
-
-// required .arangodb.ResourcesCurrent primary_dbserver_resources = 3;
-inline bool Current::has_primary_dbserver_resources() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void Current::set_has_primary_dbserver_resources() {
-  _has_bits_[0] |= 0x00000004u;
-}
-inline void Current::clear_has_primary_dbserver_resources() {
-  _has_bits_[0] &= ~0x00000004u;
-}
-inline void Current::clear_primary_dbserver_resources() {
-  if (primary_dbserver_resources_ != NULL) primary_dbserver_resources_->::arangodb::ResourcesCurrent::Clear();
-  clear_has_primary_dbserver_resources();
-}
-inline const ::arangodb::ResourcesCurrent& Current::primary_dbserver_resources() const {
-  return primary_dbserver_resources_ != NULL ? *primary_dbserver_resources_ : *default_instance_->primary_dbserver_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::mutable_primary_dbserver_resources() {
-  set_has_primary_dbserver_resources();
-  if (primary_dbserver_resources_ == NULL) primary_dbserver_resources_ = new ::arangodb::ResourcesCurrent;
-  return primary_dbserver_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::release_primary_dbserver_resources() {
-  clear_has_primary_dbserver_resources();
-  ::arangodb::ResourcesCurrent* temp = primary_dbserver_resources_;
-  primary_dbserver_resources_ = NULL;
-  return temp;
-}
-inline void Current::set_allocated_primary_dbserver_resources(::arangodb::ResourcesCurrent* primary_dbserver_resources) {
-  delete primary_dbserver_resources_;
-  primary_dbserver_resources_ = primary_dbserver_resources;
-  if (primary_dbserver_resources) {
-    set_has_primary_dbserver_resources();
-  } else {
-    clear_has_primary_dbserver_resources();
-  }
-}
-
-// required .arangodb.ResourcesCurrent secondary_dbserver_resources = 4;
-inline bool Current::has_secondary_dbserver_resources() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void Current::set_has_secondary_dbserver_resources() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void Current::clear_has_secondary_dbserver_resources() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void Current::clear_secondary_dbserver_resources() {
-  if (secondary_dbserver_resources_ != NULL) secondary_dbserver_resources_->::arangodb::ResourcesCurrent::Clear();
-  clear_has_secondary_dbserver_resources();
-}
-inline const ::arangodb::ResourcesCurrent& Current::secondary_dbserver_resources() const {
-  return secondary_dbserver_resources_ != NULL ? *secondary_dbserver_resources_ : *default_instance_->secondary_dbserver_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::mutable_secondary_dbserver_resources() {
-  set_has_secondary_dbserver_resources();
-  if (secondary_dbserver_resources_ == NULL) secondary_dbserver_resources_ = new ::arangodb::ResourcesCurrent;
-  return secondary_dbserver_resources_;
-}
-inline ::arangodb::ResourcesCurrent* Current::release_secondary_dbserver_resources() {
-  clear_has_secondary_dbserver_resources();
-  ::arangodb::ResourcesCurrent* temp = secondary_dbserver_resources_;
-  secondary_dbserver_resources_ = NULL;
-  return temp;
-}
-inline void Current::set_allocated_secondary_dbserver_resources(::arangodb::ResourcesCurrent* secondary_dbserver_resources) {
-  delete secondary_dbserver_resources_;
-  secondary_dbserver_resources_ = secondary_dbserver_resources;
-  if (secondary_dbserver_resources) {
-    set_has_secondary_dbserver_resources();
-  } else {
-    clear_has_secondary_dbserver_resources();
-  }
-}
-
-// required .arangodb.InstancesCurrent agents = 5;
-inline bool Current::has_agents() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
-}
-inline void Current::set_has_agents() {
-  _has_bits_[0] |= 0x00000010u;
-}
-inline void Current::clear_has_agents() {
-  _has_bits_[0] &= ~0x00000010u;
-}
 inline void Current::clear_agents() {
-  if (agents_ != NULL) agents_->::arangodb::InstancesCurrent::Clear();
+  if (agents_ != NULL) agents_->::arangodb::TasksCurrent::Clear();
   clear_has_agents();
 }
-inline const ::arangodb::InstancesCurrent& Current::agents() const {
+inline const ::arangodb::TasksCurrent& Current::agents() const {
   return agents_ != NULL ? *agents_ : *default_instance_->agents_;
 }
-inline ::arangodb::InstancesCurrent* Current::mutable_agents() {
+inline ::arangodb::TasksCurrent* Current::mutable_agents() {
   set_has_agents();
-  if (agents_ == NULL) agents_ = new ::arangodb::InstancesCurrent;
+  if (agents_ == NULL) agents_ = new ::arangodb::TasksCurrent;
   return agents_;
 }
-inline ::arangodb::InstancesCurrent* Current::release_agents() {
+inline ::arangodb::TasksCurrent* Current::release_agents() {
   clear_has_agents();
-  ::arangodb::InstancesCurrent* temp = agents_;
+  ::arangodb::TasksCurrent* temp = agents_;
   agents_ = NULL;
   return temp;
 }
-inline void Current::set_allocated_agents(::arangodb::InstancesCurrent* agents) {
+inline void Current::set_allocated_agents(::arangodb::TasksCurrent* agents) {
   delete agents_;
   agents_ = agents;
   if (agents) {
@@ -2744,35 +2352,35 @@ inline void Current::set_allocated_agents(::arangodb::InstancesCurrent* agents) 
   }
 }
 
-// required .arangodb.InstancesCurrent coordinators = 6;
+// required .arangodb.TasksCurrent coordinators = 2;
 inline bool Current::has_coordinators() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000002u) != 0;
 }
 inline void Current::set_has_coordinators() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000002u;
 }
 inline void Current::clear_has_coordinators() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void Current::clear_coordinators() {
-  if (coordinators_ != NULL) coordinators_->::arangodb::InstancesCurrent::Clear();
+  if (coordinators_ != NULL) coordinators_->::arangodb::TasksCurrent::Clear();
   clear_has_coordinators();
 }
-inline const ::arangodb::InstancesCurrent& Current::coordinators() const {
+inline const ::arangodb::TasksCurrent& Current::coordinators() const {
   return coordinators_ != NULL ? *coordinators_ : *default_instance_->coordinators_;
 }
-inline ::arangodb::InstancesCurrent* Current::mutable_coordinators() {
+inline ::arangodb::TasksCurrent* Current::mutable_coordinators() {
   set_has_coordinators();
-  if (coordinators_ == NULL) coordinators_ = new ::arangodb::InstancesCurrent;
+  if (coordinators_ == NULL) coordinators_ = new ::arangodb::TasksCurrent;
   return coordinators_;
 }
-inline ::arangodb::InstancesCurrent* Current::release_coordinators() {
+inline ::arangodb::TasksCurrent* Current::release_coordinators() {
   clear_has_coordinators();
-  ::arangodb::InstancesCurrent* temp = coordinators_;
+  ::arangodb::TasksCurrent* temp = coordinators_;
   coordinators_ = NULL;
   return temp;
 }
-inline void Current::set_allocated_coordinators(::arangodb::InstancesCurrent* coordinators) {
+inline void Current::set_allocated_coordinators(::arangodb::TasksCurrent* coordinators) {
   delete coordinators_;
   coordinators_ = coordinators;
   if (coordinators) {
@@ -2782,91 +2390,91 @@ inline void Current::set_allocated_coordinators(::arangodb::InstancesCurrent* co
   }
 }
 
-// required .arangodb.InstancesCurrent primary_dbservers = 7;
-inline bool Current::has_primary_dbservers() const {
-  return (_has_bits_[0] & 0x00000040u) != 0;
+// required .arangodb.TasksCurrent dbservers = 3;
+inline bool Current::has_dbservers() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void Current::set_has_primary_dbservers() {
-  _has_bits_[0] |= 0x00000040u;
+inline void Current::set_has_dbservers() {
+  _has_bits_[0] |= 0x00000004u;
 }
-inline void Current::clear_has_primary_dbservers() {
-  _has_bits_[0] &= ~0x00000040u;
+inline void Current::clear_has_dbservers() {
+  _has_bits_[0] &= ~0x00000004u;
 }
-inline void Current::clear_primary_dbservers() {
-  if (primary_dbservers_ != NULL) primary_dbservers_->::arangodb::InstancesCurrent::Clear();
-  clear_has_primary_dbservers();
+inline void Current::clear_dbservers() {
+  if (dbservers_ != NULL) dbservers_->::arangodb::TasksCurrent::Clear();
+  clear_has_dbservers();
 }
-inline const ::arangodb::InstancesCurrent& Current::primary_dbservers() const {
-  return primary_dbservers_ != NULL ? *primary_dbservers_ : *default_instance_->primary_dbservers_;
+inline const ::arangodb::TasksCurrent& Current::dbservers() const {
+  return dbservers_ != NULL ? *dbservers_ : *default_instance_->dbservers_;
 }
-inline ::arangodb::InstancesCurrent* Current::mutable_primary_dbservers() {
-  set_has_primary_dbservers();
-  if (primary_dbservers_ == NULL) primary_dbservers_ = new ::arangodb::InstancesCurrent;
-  return primary_dbservers_;
+inline ::arangodb::TasksCurrent* Current::mutable_dbservers() {
+  set_has_dbservers();
+  if (dbservers_ == NULL) dbservers_ = new ::arangodb::TasksCurrent;
+  return dbservers_;
 }
-inline ::arangodb::InstancesCurrent* Current::release_primary_dbservers() {
-  clear_has_primary_dbservers();
-  ::arangodb::InstancesCurrent* temp = primary_dbservers_;
-  primary_dbservers_ = NULL;
+inline ::arangodb::TasksCurrent* Current::release_dbservers() {
+  clear_has_dbservers();
+  ::arangodb::TasksCurrent* temp = dbservers_;
+  dbservers_ = NULL;
   return temp;
 }
-inline void Current::set_allocated_primary_dbservers(::arangodb::InstancesCurrent* primary_dbservers) {
-  delete primary_dbservers_;
-  primary_dbservers_ = primary_dbservers;
-  if (primary_dbservers) {
-    set_has_primary_dbservers();
+inline void Current::set_allocated_dbservers(::arangodb::TasksCurrent* dbservers) {
+  delete dbservers_;
+  dbservers_ = dbservers;
+  if (dbservers) {
+    set_has_dbservers();
   } else {
-    clear_has_primary_dbservers();
+    clear_has_dbservers();
   }
 }
 
-// required .arangodb.InstancesCurrent secondary_dbservers = 8;
-inline bool Current::has_secondary_dbservers() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
+// required .arangodb.TasksCurrent secondaries = 4;
+inline bool Current::has_secondaries() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void Current::set_has_secondary_dbservers() {
-  _has_bits_[0] |= 0x00000080u;
+inline void Current::set_has_secondaries() {
+  _has_bits_[0] |= 0x00000008u;
 }
-inline void Current::clear_has_secondary_dbservers() {
-  _has_bits_[0] &= ~0x00000080u;
+inline void Current::clear_has_secondaries() {
+  _has_bits_[0] &= ~0x00000008u;
 }
-inline void Current::clear_secondary_dbservers() {
-  if (secondary_dbservers_ != NULL) secondary_dbservers_->::arangodb::InstancesCurrent::Clear();
-  clear_has_secondary_dbservers();
+inline void Current::clear_secondaries() {
+  if (secondaries_ != NULL) secondaries_->::arangodb::TasksCurrent::Clear();
+  clear_has_secondaries();
 }
-inline const ::arangodb::InstancesCurrent& Current::secondary_dbservers() const {
-  return secondary_dbservers_ != NULL ? *secondary_dbservers_ : *default_instance_->secondary_dbservers_;
+inline const ::arangodb::TasksCurrent& Current::secondaries() const {
+  return secondaries_ != NULL ? *secondaries_ : *default_instance_->secondaries_;
 }
-inline ::arangodb::InstancesCurrent* Current::mutable_secondary_dbservers() {
-  set_has_secondary_dbservers();
-  if (secondary_dbservers_ == NULL) secondary_dbservers_ = new ::arangodb::InstancesCurrent;
-  return secondary_dbservers_;
+inline ::arangodb::TasksCurrent* Current::mutable_secondaries() {
+  set_has_secondaries();
+  if (secondaries_ == NULL) secondaries_ = new ::arangodb::TasksCurrent;
+  return secondaries_;
 }
-inline ::arangodb::InstancesCurrent* Current::release_secondary_dbservers() {
-  clear_has_secondary_dbservers();
-  ::arangodb::InstancesCurrent* temp = secondary_dbservers_;
-  secondary_dbservers_ = NULL;
+inline ::arangodb::TasksCurrent* Current::release_secondaries() {
+  clear_has_secondaries();
+  ::arangodb::TasksCurrent* temp = secondaries_;
+  secondaries_ = NULL;
   return temp;
 }
-inline void Current::set_allocated_secondary_dbservers(::arangodb::InstancesCurrent* secondary_dbservers) {
-  delete secondary_dbservers_;
-  secondary_dbservers_ = secondary_dbservers;
-  if (secondary_dbservers) {
-    set_has_secondary_dbservers();
+inline void Current::set_allocated_secondaries(::arangodb::TasksCurrent* secondaries) {
+  delete secondaries_;
+  secondaries_ = secondaries;
+  if (secondaries) {
+    set_has_secondaries();
   } else {
-    clear_has_secondary_dbservers();
+    clear_has_secondaries();
   }
 }
 
-// required bool cluster_complete = 9;
+// required bool cluster_complete = 5;
 inline bool Current::has_cluster_complete() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void Current::set_has_cluster_complete() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void Current::clear_has_cluster_complete() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void Current::clear_cluster_complete() {
   cluster_complete_ = false;
@@ -2880,15 +2488,15 @@ inline void Current::set_cluster_complete(bool value) {
   cluster_complete_ = value;
 }
 
-// required bool cluster_bootstrappedDBservers = 10;
+// required bool cluster_bootstrappedDBservers = 6;
 inline bool Current::has_cluster_bootstrappeddbservers() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000020u) != 0;
 }
 inline void Current::set_has_cluster_bootstrappeddbservers() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000020u;
 }
 inline void Current::clear_has_cluster_bootstrappeddbservers() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000020u;
 }
 inline void Current::clear_cluster_bootstrappeddbservers() {
   cluster_bootstrappeddbservers_ = false;
@@ -2902,15 +2510,15 @@ inline void Current::set_cluster_bootstrappeddbservers(bool value) {
   cluster_bootstrappeddbservers_ = value;
 }
 
-// required bool cluster_upgradedDB = 11;
+// required bool cluster_upgradedDB = 7;
 inline bool Current::has_cluster_upgradeddb() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000040u) != 0;
 }
 inline void Current::set_has_cluster_upgradeddb() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000040u;
 }
 inline void Current::clear_has_cluster_upgradeddb() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void Current::clear_cluster_upgradeddb() {
   cluster_upgradeddb_ = false;
@@ -2924,15 +2532,15 @@ inline void Current::set_cluster_upgradeddb(bool value) {
   cluster_upgradeddb_ = value;
 }
 
-// required bool cluster_bootstrappedCoordinators = 12;
+// required bool cluster_bootstrappedCoordinators = 8;
 inline bool Current::has_cluster_bootstrappedcoordinators() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void Current::set_has_cluster_bootstrappedcoordinators() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void Current::clear_has_cluster_bootstrappedcoordinators() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void Current::clear_cluster_bootstrappedcoordinators() {
   cluster_bootstrappedcoordinators_ = false;
@@ -2946,15 +2554,15 @@ inline void Current::set_cluster_bootstrappedcoordinators(bool value) {
   cluster_bootstrappedcoordinators_ = value;
 }
 
-// required bool cluster_initialized = 13;
+// required bool cluster_initialized = 9;
 inline bool Current::has_cluster_initialized() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void Current::set_has_cluster_initialized() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void Current::clear_has_cluster_initialized() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void Current::clear_cluster_initialized() {
   cluster_initialized_ = false;
@@ -3138,8 +2746,8 @@ inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::TaskPlanState>() {
   return ::arangodb::TaskPlanState_descriptor();
 }
 template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::InstanceCurrentState>() {
-  return ::arangodb::InstanceCurrentState_descriptor();
+inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::TaskCurrentState>() {
+  return ::arangodb::TaskCurrentState_descriptor();
 }
 
 }  // namespace google

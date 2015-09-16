@@ -195,13 +195,13 @@ namespace arangodb {
 /// @brief starts a new standalone arangodb
 ////////////////////////////////////////////////////////////////////////////////
 
-      void startInstance (InstanceActionState, const ResourceCurrent&, const AspectPosition&);
+      void startInstance (InstanceActionState, const TaskCurrent&, const AspectPosition&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recover task mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-      void fillKnownInstances (AspectType, const InstancesCurrent&);
+      void fillKnownInstances (AspectType, const TasksCurrent&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills all running tasks

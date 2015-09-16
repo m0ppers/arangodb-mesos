@@ -79,44 +79,44 @@ namespace arangodb {
 /// @brief makes a dynamic reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-      void reserveDynamically (const mesos::Offer&,
-                               const mesos::Resources&) const;
+      void reserveDynamically (mesos::Offer const&,
+                               mesos::Resources const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a persistent disk
 ////////////////////////////////////////////////////////////////////////////////
 
-      void makePersistent (const mesos::Offer&,
-                           const mesos::Resources&) const;
+      void makePersistent (mesos::Offer const&,
+                           mesos::Resources const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief declines an offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      void declineOffer (const mesos::OfferID&) const;
+      void declineOffer (mesos::OfferID const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an agency with a given offer
 ////////////////////////////////////////////////////////////////////////////////
 
-      mesos::TaskInfo startInstance (const std::string& taskId,
-                                     const std::string& name,
-                                     const ResourceCurrent&,
-                                     const mesos::ContainerInfo&,
-                                     const mesos::CommandInfo&) const;
+      mesos::TaskInfo startInstance (std::string const& taskId,
+                                     std::string const& name,
+                                     TaskCurrent const&,
+                                     mesos::ContainerInfo const&,
+                                     mesos::CommandInfo const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an instances
 ////////////////////////////////////////////////////////////////////////////////
 
-      void killInstance (const std::string& taskId) const;
+      void killInstance (std::string const& taskId) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief posts an request to the master
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string postRequest (const std::string& command,
-                               const std::string& body) const;
+      std::string postRequest (std::string const& command,
+                               std::string const& body) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops the driver

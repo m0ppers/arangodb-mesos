@@ -20,8 +20,6 @@ message Target {
   required uint32         number_ports = 4;
 }
 
-
-
 message Targets {
   required string mode = 1;
   required Target agents = 2;
@@ -70,13 +68,9 @@ message TaskPlan {
   optional double        started = 4;
 }
 
-
-
 message TasksPlan {
   repeated TaskPlan entries = 1;
 }
-
-
 
 message Plan {
   required TasksPlan agents = 1;
@@ -99,15 +93,6 @@ message Plan {
 // launch the task. The mesos.TaskStatus is the latest status update
 // from Mesos about the task.
 
-message ResourceCurrent {
-  optional mesos.SlaveID        slave_id = 1;
-  optional mesos.OfferID        offer_id = 2;
-  repeated mesos.Resource       resources = 3;
-  repeated uint32               ports = 4;
-  optional string               hostname = 5;
-  optional string               container_path = 6;
-}
-
 // The slave_id and offer_id and resources are set whenever an
 // offer is found suitable for usage. For persistent tasks this can
 // happen multiple times on the way from state TASK_STATE_NEW to
@@ -115,21 +100,6 @@ message ResourceCurrent {
 // TASK_STATE_NEW, then this information is cleared out. The resources
 // always reflect the resources used to order the latest step, such that
 // the timeouts can use them.
-
-
-message ResourcesCurrent {
-  repeated ResourceCurrent entries = 1;
-}
-
-
-
-enum InstanceCurrentState {
-  INSTANCE_STATE_UNUSED   = 1;
-  INSTANCE_STATE_STARTING = 2;
-  INSTANCE_STATE_RUNNING  = 3;
-  INSTANCE_STATE_STOPPED  = 4;
-}
-
 // task_info is initialized by Caretaker::setTaskId, where essentially only
 // the actual taskID is set and everything else is cleared out. task_status
 // is cleared on that occasion as well. setTaskId is called just before the
@@ -142,38 +112,40 @@ enum InstanceCurrentState {
 // calls Caretaker::setTaskStatus, which in turn sets task_status. Finally,
 // the state is set by calling Caretaker::setInstanceState.
 
-
-message InstanceCurrent {
-  required InstanceCurrentState state = 1 [default = INSTANCE_STATE_UNUSED];
-
-  optional mesos.TaskInfo       task_info = 2;
-  optional mesos.TaskStatus     task_status = 3;
+enum TaskCurrentState {
+  INSTANCE_STATE_UNUSED   = 1;
+  INSTANCE_STATE_STARTING = 2;
+  INSTANCE_STATE_RUNNING  = 3;
+  INSTANCE_STATE_STOPPED  = 4;
 }
 
-
-
-message InstancesCurrent {
-  repeated InstanceCurrent entries = 1;
+message TaskCurrent {
+  optional mesos.SlaveID        slave_id = 1;
+  optional mesos.OfferID        offer_id = 2;
+  repeated mesos.Resource       resources = 3;
+  repeated uint32               ports = 4;
+  optional string               hostname = 5;
+  optional string               container_path = 6;
+  required TaskCurrentState     state = 7 [default = INSTANCE_STATE_UNUSED];
+  optional mesos.TaskInfo       task_info = 8;
+  optional mesos.TaskStatus     task_status = 9;
 }
 
-
+message TasksCurrent {
+  repeated TaskCurrent entries = 1;
+}
 
 message Current {
-  required ResourcesCurrent agency_resources = 1;
-  required ResourcesCurrent coordinator_resources = 2;
-  required ResourcesCurrent primary_dbserver_resources = 3;
-  required ResourcesCurrent secondary_dbserver_resources = 4;
+  required TasksCurrent     agents = 1;
+  required TasksCurrent     coordinators = 2;
+  required TasksCurrent     dbservers = 3;
+  required TasksCurrent     secondaries = 4;
 
-  required InstancesCurrent agents = 5;
-  required InstancesCurrent coordinators = 6;
-  required InstancesCurrent primary_dbservers = 7;
-  required InstancesCurrent secondary_dbservers = 8;
-
-  required bool             cluster_complete = 9;
-  required bool             cluster_bootstrappedDBservers = 10;
-  required bool             cluster_upgradedDB = 11;
-  required bool             cluster_bootstrappedCoordinators = 12;
-  required bool             cluster_initialized = 13;
+  required bool             cluster_complete = 5;
+  required bool             cluster_bootstrappedDBservers = 6;
+  required bool             cluster_upgradedDB = 7;
+  required bool             cluster_bootstrappedCoordinators = 8;
+  required bool             cluster_initialized = 9;
 }
 
 // -----------------------------------------------------------------------------

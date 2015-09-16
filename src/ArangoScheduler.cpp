@@ -193,15 +193,16 @@ void ArangoScheduler::declineOffer (const mesos::OfferID& offerId) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 mesos::TaskInfo ArangoScheduler::startInstance (
-    const string& taskId,
-    const string& name,
-    const ResourceCurrent& info,
-    const mesos::ContainerInfo& container,
-    const mesos::CommandInfo& command) const {
-  const mesos::SlaveID& slaveId = info.slave_id();
-  const mesos::OfferID& offerId = info.offer_id();
-  const mesos::Resources& resources = info.resources();
-  const string& offerStr = offerId.value();
+    string const& taskId,
+    string const& name,
+    TaskCurrent const& info,
+    mesos::ContainerInfo const& container,
+    mesos::CommandInfo const& command) const {
+
+  mesos::SlaveID const& slaveId = info.slave_id();
+  mesos::OfferID const& offerId = info.offer_id();
+  mesos::Resources const& resources = info.resources();
+  string const& offerStr = offerId.value();
 
   LOG(INFO)
   << "DEBUG startInstance: "

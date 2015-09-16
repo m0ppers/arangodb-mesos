@@ -100,9 +100,9 @@ vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
 
 static bool bootstrapDBservers () {
   string hostname 
-    = Global::state().current().coordinator_resources().entries(0).hostname();
+    = Global::state().current().coordinators().entries(0).hostname();
   uint32_t port
-    = Global::state().current().coordinator_resources().entries(0).ports(0);
+    = Global::state().current().coordinators().entries(0).ports(0);
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/bootstrapDbServers";
   string body = "{\"isRelaunch\":false}";
@@ -125,9 +125,9 @@ static bool bootstrapDBservers () {
 
 static bool upgradeClusterDatabase () {
   string hostname 
-    = Global::state().current().coordinator_resources().entries(0).hostname();
+    = Global::state().current().coordinators().entries(0).hostname();
   uint32_t port
-    = Global::state().current().coordinator_resources().entries(0).ports(0);
+    = Global::state().current().coordinators().entries(0).ports(0);
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/upgradeClusterDatabase";
   string body = "{\"isRelaunch\":false}";
@@ -154,9 +154,9 @@ static bool bootstrapCoordinators () {
   bool error = false;
   for (int i = 0; i < number; i++) { 
     string hostname 
-      = Global::state().current().coordinator_resources().entries(i).hostname();
+      = Global::state().current().coordinators().entries(i).hostname();
     uint32_t port
-      = Global::state().current().coordinator_resources().entries(i).ports(0);
+      = Global::state().current().coordinators().entries(i).ports(0);
     string url = "http://" + hostname + ":" + to_string(port) +
                       "/_admin/cluster/bootstrapCoordinator";
     string body = "{\"isRelaunch\":false}";
@@ -277,8 +277,8 @@ ArangoManager::ArangoManager ()
 
   fillKnownInstances(AspectType::AGENT, current.agents());
   fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
-  fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.primary_dbservers());
-  fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondary_dbservers());
+  fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.dbservers());
+  fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondaries());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -361,13 +361,13 @@ void ArangoManager::destroy () {
 vector<string> ArangoManager::coordinatorEndpoints () {
   Current current = Global::state().current();
   //auto const& coordinators = current.coordinators();
-  auto const& coordinator_resources = current.coordinator_resources();
+  auto const& coordinators = current.coordinators();
 
   vector<string> endpoints;
 
-  for (int i = 0;  i < coordinator_resources.entries_size();  ++i) {
+  for (int i = 0;  i < coordinators.entries_size();  ++i) {
     //auto const& coordinator = coordinators.entries(i);
-    auto const& coord_res = coordinator_resources.entries(i);
+    auto const& coord_res = coordinators.entries(i);
     if (coord_res.has_hostname() && coord_res.ports_size() > 0) {
       string endpoint = "http://" + coord_res.hostname() + ":" 
                         + to_string(coord_res.ports(0));
@@ -384,12 +384,12 @@ vector<string> ArangoManager::coordinatorEndpoints () {
 
 vector<string> ArangoManager::dbserverEndpoints () {
   Current current = Global::state().current();
-  auto const& dbserver_resources = current.primary_dbserver_resources();
+  auto const& dbservers = current.dbservers();
 
   vector<string> endpoints;
 
-  for (int i = 0; i < dbserver_resources.entries_size();  ++i) {
-    auto const& dbs_res = dbserver_resources.entries(i);
+  for (int i = 0; i < dbservers.entries_size();  ++i) {
+    auto const& dbs_res = dbservers.entries(i);
     if (dbs_res.has_hostname() && dbs_res.ports_size() > 0) {
       string endpoint = "http://" + dbs_res.hostname() + ":" 
                         + to_string(dbs_res.ports(0));
@@ -538,29 +538,32 @@ bool ArangoManager::checkTimeouts () {
     = { AspectType::AGENT, AspectType::PRIMARY_DBSERVER,
         AspectType::SECONDARY_DBSERVER, AspectType::COORDINATOR };
 
+  auto plan = Global::state().plan();
+  auto current = Global::state().current();
+
   for (auto aspect : aspects) {
     TasksPlan* tasksPlan;
-    InstancesCurrent* instsCurr;
+    TasksCurrent* tasksCurr;
     switch (aspect) {
       case AspectType::AGENT:
-        tasksPlan = Global::state().plan().mutable_agents();
-        instsCurr = Global::state().current().mutable_agents();
+        tasksPlan = plan.mutable_agents();
+        tasksCurr = current.mutable_agents();
         break;
       case AspectType::PRIMARY_DBSERVER:
-        tasksPlan = Global::state().plan().mutable_dbservers();
-        instsCurr = Global::state().current().mutable_primary_dbservers();
+        tasksPlan = plan.mutable_dbservers();
+        tasksCurr = current.mutable_dbservers();
         break;
       case AspectType::SECONDARY_DBSERVER:
-        tasksPlan = Global::state().plan().mutable_secondaries();
-        instsCurr = Global::state().current().mutable_secondary_dbservers();
+        tasksPlan = plan.mutable_secondaries();
+        tasksCurr = current.mutable_secondaries();
         break;
       case AspectType::COORDINATOR:
-        tasksPlan = Global::state().plan().mutable_coordinators();
-        instsCurr = Global::state().current().mutable_coordinators();
+        tasksPlan = plan.mutable_coordinators();
+        tasksCurr = current.mutable_coordinators();
         break;
       default:  // never happens
         tasksPlan = nullptr;
-        instsCurr = nullptr;
+        tasksCurr = nullptr;
         break;
     }
     double now = chrono::duration_cast<chrono::seconds>(
@@ -568,7 +571,7 @@ bool ArangoManager::checkTimeouts () {
     double timeStamp;
     for (int i = 0; i < tasksPlan->entries_size(); i++) {
       TaskPlan* tp = tasksPlan->mutable_entries(i);
-      InstanceCurrent* ic = instsCurr->mutable_entries(i);
+      TaskCurrent* ic = tasksCurr->mutable_entries(i);
       switch (tp->state()) {
         case TASK_STATE_NEW:
           // Wait forever here, no timeout.
@@ -876,8 +879,8 @@ bool ArangoManager::makeDynamicReservation (mesos::Offer const& offer,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::startInstance (InstanceActionState aspect,
-                                   const ResourceCurrent& info,
-                                   const AspectPosition& pos) {
+                                   TaskCurrent const& info,
+                                   AspectPosition const& pos) {
   string taskId = UUID::random().toString();
 
   if (info.ports_size() != 1) {
@@ -945,10 +948,10 @@ void ArangoManager::startInstance (InstanceActionState aspect,
         command.set_value("standalone");
       }
       else {
-        auto agency_resources = state.current().agency_resources();
+        auto agents = state.current().agents();
         command.set_value("cluster");
-        string hostname = agency_resources.entries(0).hostname();
-        uint32_t port = agency_resources.entries(0).ports(0);
+        string hostname = agents.entries(0).hostname();
+        uint32_t port = agents.entries(0).ports(0);
         command.add_arguments(
             "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
         command.add_arguments(myName);
@@ -1050,12 +1053,12 @@ void ArangoManager::startInstance (InstanceActionState aspect,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::fillKnownInstances (AspectType type,
-                                        const InstancesCurrent& instances) {
+                                        const TasksCurrent& currents) {
   LOG(INFO)
   << "recovering instance type " << (int) type;
 
-  for (int i = 0;  i < instances.entries_size();  ++i) {
-    const InstanceCurrent& entry = instances.entries(i);
+  for (int i = 0;  i < currents.entries_size();  ++i) {
+    TaskCurrent const& entry = currents.entries(i);
 
     if (entry.has_task_info()) {
       string id = entry.task_info().task_id().value();

@@ -207,11 +207,8 @@ void CaretakerCluster::updatePlan () {
       task->set_state(TASK_STATE_NEW);
       task->set_is_primary(true);
 
-      ResourcesCurrent* resources = current.mutable_agency_resources();
-      resources->add_entries();
-
-      InstancesCurrent* instances = current.mutable_agents();
-      InstanceCurrent* inst = instances->add_entries();
+      TasksCurrent* agents = current.mutable_agents();
+      TaskCurrent* inst = agents->add_entries();
       inst->set_state(INSTANCE_STATE_UNUSED);
     }
   }
@@ -246,11 +243,8 @@ void CaretakerCluster::updatePlan () {
       task->set_state(TASK_STATE_NEW);
       task->set_is_primary(true);
 
-      ResourcesCurrent* resources = current.mutable_primary_dbserver_resources();
-      resources->add_entries();
-
-      InstancesCurrent* instances = current.mutable_primary_dbservers();
-      InstanceCurrent* inst = instances->add_entries();
+      TasksCurrent* dbservers = current.mutable_dbservers();
+      TaskCurrent* inst = dbservers->add_entries();
       inst->set_state(INSTANCE_STATE_UNUSED);
 
       if (Global::asyncReplication()) {
@@ -258,11 +252,8 @@ void CaretakerCluster::updatePlan () {
         task->set_state(TASK_STATE_NEW);
         task->set_is_primary(false);
 
-        resources = current.mutable_secondary_dbserver_resources();
-        resources->add_entries();
-
-        instances = current.mutable_secondary_dbservers();
-        inst = instances->add_entries();
+        TasksCurrent* secondaries = current.mutable_secondaries();
+        inst = secondaries->add_entries();
         inst->set_state(INSTANCE_STATE_UNUSED);
       }
     }
@@ -303,11 +294,8 @@ void CaretakerCluster::updatePlan () {
       task->set_state(TASK_STATE_NEW);
       task->set_is_primary(true);
 
-      ResourcesCurrent* resources = current.mutable_coordinator_resources();
-      resources->add_entries();
-
-      InstancesCurrent* instances = current.mutable_coordinators();
-      InstanceCurrent* inst = instances->add_entries();
+      TasksCurrent* coordinators = current.mutable_coordinators();
+      TaskCurrent* inst = coordinators->add_entries();
       inst->set_state(INSTANCE_STATE_UNUSED);
     }
   }
@@ -320,11 +308,11 @@ void CaretakerCluster::updatePlan () {
 /// @brief count the number of running instances of a certain kind
 ////////////////////////////////////////////////////////////////////////////////
 
-static int countRunningInstances (InstancesCurrent const& instances) {
+static int countRunningInstances (TasksCurrent const& currents) {
   int runningInstances = 0;
 
-  for (int i = 0; i < instances.entries_size(); i++) {
-    InstanceCurrent const& entry = instances.entries(i);
+  for (int i = 0; i < currents.entries_size(); i++) {
+    TaskCurrent const& entry = currents.entries(i);
 
     if (entry.state() == INSTANCE_STATE_RUNNING) {
       runningInstances += 1;
@@ -381,7 +369,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     action = checkResourceOffer("agency", true,
                                 targets.agents(),
                                 plan.mutable_agents(),
-                                current.mutable_agency_resources(),
+                                current.mutable_agents(),
                                 offer);
 
     // Save new state:
@@ -406,9 +394,9 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   if (! current.cluster_initialized()) {
     // Agency is running, make sure it is initialized:
     std::string agentHost 
-      = Global::state().current().agency_resources().entries(0).hostname();
+      = Global::state().current().agents().entries(0).hostname();
     uint32_t port 
-      = Global::state().current().agency_resources().entries(0).ports(0);
+      = Global::state().current().agents().entries(0).ports(0);
     std::string url = "http://" + agentHost + ":" + to_string(port) +
                       "/v2/keys/arango/InitDone";
     std::string body;
@@ -448,7 +436,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   
   // Now look after the DBservers:
   plannedInstances = plan.dbservers().entries_size();
-  runningInstances = countRunningInstances(current.primary_dbservers());
+  runningInstances = countRunningInstances(current.dbservers());
   LOG(INFO)
   << "planned DBServer instances: " << plannedInstances << ", "
   << "running DBServer instances: " << runningInstances;
@@ -457,7 +445,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     action = checkResourceOffer("primary", true,
                                 targets.dbservers(),
                                 plan.mutable_dbservers(),
-                                current.mutable_primary_dbserver_resources(),
+                                current.mutable_dbservers(),
                                 offer);
 
     // Save new state:
@@ -474,7 +462,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // Now the secondaries, if needed:
   if (Global::asyncReplication()) {
     plannedInstances = plan.dbservers().entries_size();
-    runningInstances = countRunningInstances(current.secondary_dbservers());
+    runningInstances = countRunningInstances(current.secondaries());
     LOG(INFO)
     << "planned secondary DBServer instances: " << plannedInstances << ", "
     << "running secondary DBServer instances: " << runningInstances;
@@ -483,7 +471,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
       action = checkResourceOffer("secondary", true,
                                   targets.secondaries(),
                                   plan.mutable_secondaries(),
-                                  current.mutable_secondary_dbserver_resources(),
+                                  current.mutable_secondaries(),
                                   offer);
 
       // Save new state:
@@ -509,7 +497,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     action = checkResourceOffer("coordinator", false,
                                 targets.coordinators(),
                                 plan.mutable_coordinators(),
-                                current.mutable_coordinator_resources(),
+                                current.mutable_coordinators(),
                                 offer);
 
     // Save new state:
@@ -542,7 +530,6 @@ InstanceAction CaretakerCluster::checkInstance () {
     AspectType::AGENT,
     InstanceActionState::START_AGENT,
     plan.mutable_agents(),
-    current.mutable_agency_resources(),
     current.mutable_agents());
 
   if (res._state != InstanceActionState::DONE) {
@@ -558,8 +545,7 @@ InstanceAction CaretakerCluster::checkInstance () {
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
     plan.mutable_dbservers(),
-    current.mutable_primary_dbserver_resources(),
-    current.mutable_primary_dbservers());
+    current.mutable_dbservers());
 
   if (res._state != InstanceActionState::DONE) {
     Global::state().setPlan(plan);
@@ -575,8 +561,7 @@ InstanceAction CaretakerCluster::checkInstance () {
       AspectType::SECONDARY_DBSERVER,
       InstanceActionState::START_SECONDARY_DBSERVER,
       plan.mutable_dbservers(),
-      current.mutable_secondary_dbserver_resources(),
-      current.mutable_secondary_dbservers());
+      current.mutable_secondaries());
 
     if (res._state != InstanceActionState::DONE) {
       Global::state().setPlan(plan);
@@ -592,7 +577,6 @@ InstanceAction CaretakerCluster::checkInstance () {
     AspectType::COORDINATOR,
     InstanceActionState::START_COORDINATOR,
     plan.mutable_coordinators(),
-    current.mutable_coordinator_resources(),
     current.mutable_coordinators());
 
   Global::state().setPlan(plan);

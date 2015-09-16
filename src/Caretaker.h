@@ -101,7 +101,7 @@ namespace arangodb {
   class InstanceAction {
     public:
       InstanceActionState _state;
-      ResourceCurrent _info;
+      TaskCurrent _info;
       AspectPosition _pos;
   };
 
@@ -200,7 +200,7 @@ namespace arangodb {
 /// @brief sets the instance state
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setInstanceState (const AspectPosition&, InstanceCurrentState);
+      void setInstanceState (const AspectPosition&, TaskCurrentState);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
@@ -216,7 +216,7 @@ OfferAction checkResourceOffer (std::string const& name,
                                 bool persistent,
                                 Target const& target,
                                 TasksPlan* plan,
-                                ResourcesCurrent* current,
+                                TasksCurrent* current,
                                 mesos::Offer const& offer);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -226,8 +226,7 @@ OfferAction checkResourceOffer (std::string const& name,
       static InstanceAction checkStartInstance (AspectType,
                                                 InstanceActionState,
                                                 TasksPlan*,
-                                                ResourcesCurrent*,
-                                                InstancesCurrent*);
+                                                TasksCurrent*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a default minimum resource set for a Targetentry

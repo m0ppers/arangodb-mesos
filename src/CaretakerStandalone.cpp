@@ -141,9 +141,7 @@ void CaretakerStandalone::updatePlan () {
     task->set_started(now);
     task->set_is_primary(true);
 
-    current.mutable_primary_dbserver_resources()->add_entries();
-
-    auto instance = current.mutable_primary_dbservers()->add_entries();
+    auto instance = current.mutable_dbservers()->add_entries();
     instance->set_state(INSTANCE_STATE_UNUSED);
   }
 
@@ -163,8 +161,7 @@ InstanceAction CaretakerStandalone::checkInstance () {
     AspectType::PRIMARY_DBSERVER,
     InstanceActionState::START_PRIMARY_DBSERVER,
     plan.mutable_dbservers(),
-    current.mutable_primary_dbserver_resources(),
-    current.mutable_primary_dbservers());
+    current.mutable_dbservers());
 
   Global::state().setPlan(plan);
   Global::state().setCurrent(current);
