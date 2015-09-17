@@ -128,6 +128,14 @@ namespace arangodb {
 
       std::vector<std::string> dbserverEndpoints ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register newly started task
+////////////////////////////////////////////////////////////////////////////////
+
+      void registerNewTask (std::string tid, TaskType taskType, int pos) {
+        _task2position[tid] = std::make_pair(taskType, pos);
+      }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -168,7 +176,7 @@ namespace arangodb {
 /// @brief checks available offers
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool checkOutstandOffers ();
+      void checkOutstandOffers ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts new instances
@@ -177,31 +185,10 @@ namespace arangodb {
       bool startNewInstances ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief makes a persistent volume
-////////////////////////////////////////////////////////////////////////////////
-
-      bool makePersistentVolume (const std::string& name,
-                                 const mesos::Offer&,
-                                 const mesos::Resources&,
-                                 const std::string& persistentId);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief makes a dynamic reservation
-////////////////////////////////////////////////////////////////////////////////
-
-      bool makeDynamicReservation (const mesos::Offer&, const mesos::Resources&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a new standalone arangodb
-////////////////////////////////////////////////////////////////////////////////
-
-      void startInstance (InstanceActionState, const TaskCurrent&, const AspectPosition&);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief recover task mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-      void fillKnownInstances (AspectType, const TasksCurrent&);
+      void fillKnownInstances (TaskType, const TasksCurrent&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills all running tasks
@@ -255,7 +242,7 @@ namespace arangodb {
 /// @brief positions of tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::unordered_map<std::string, AspectPosition> _task2position;
+      std::unordered_map<std::string, std::pair<TaskType, int>> _task2position;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief protects _taskStatusUpdates and _storedOffers

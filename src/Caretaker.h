@@ -35,74 +35,15 @@
 namespace arangodb {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             enum class AspectType
+// --SECTION--                                               enum class TaskType
 // -----------------------------------------------------------------------------
 
-  enum class AspectType {
+  enum class TaskType {
     UNKNOWN,
     AGENT,
     COORDINATOR,
     PRIMARY_DBSERVER,
     SECONDARY_DBSERVER
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class AspectPosition
-// -----------------------------------------------------------------------------
-
-  class AspectPosition {
-    public:
-      AspectPosition () : _type(AspectType::UNKNOWN), _pos(0) {}
-      AspectPosition (AspectType type, size_t pos) : _type(type), _pos(pos) {}
-
-    public:
-      AspectType _type;
-      size_t _pos;
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       enum class OfferActionState
-// -----------------------------------------------------------------------------
-
-  enum class OfferActionState {
-    IGNORE,
-    USABLE,
-    MAKE_DYNAMIC_RESERVATION,
-    MAKE_PERSISTENT_VOLUME
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class OfferAction
-// -----------------------------------------------------------------------------
-
-  struct OfferAction {
-    OfferActionState _state;
-    mesos::Resources _resources;
-    std::string _name;
-    std::string _persistentId;
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                    enum class InstanceActionState
-// -----------------------------------------------------------------------------
-
-  enum class InstanceActionState {
-    DONE,
-    START_AGENT,
-    START_COORDINATOR,
-    START_PRIMARY_DBSERVER,
-    START_SECONDARY_DBSERVER
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class InstanceAction
-// -----------------------------------------------------------------------------
-
-  class InstanceAction {
-    public:
-      InstanceActionState _state;
-      TaskCurrent _info;
-      AspectPosition _pos;
   };
 
 // -----------------------------------------------------------------------------
@@ -152,16 +93,17 @@ namespace arangodb {
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we can start an instance
-////////////////////////////////////////////////////////////////////////////////
-
-      virtual InstanceAction checkInstance () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to update the plan
 ////////////////////////////////////////////////////////////////////////////////
 
       virtual void updatePlan () = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a new arangodb task
+////////////////////////////////////////////////////////////////////////////////
+
+      void startArangoDBTask (TaskType taskType, int pos,
+                              TaskCurrent const& info);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -170,37 +112,40 @@ namespace arangodb {
     public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we can use a resource offer
+/// @brief checks if we can use a resource offer, 
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual OfferAction checkOffer (const mesos::Offer&);
+      virtual void checkOffer (mesos::Offer const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task id, clears the task info and status
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setTaskId (const AspectPosition&,
-                      const mesos::TaskID&);
+      void setTaskId (TaskType, int, mesos::TaskID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task info
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setTaskInfo (const AspectPosition&,
-                        const mesos::TaskInfo&);
+      void setTaskInfo (TaskType, int, mesos::TaskInfo const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the task plan state
+////////////////////////////////////////////////////////////////////////////////
+
+      void setTaskPlanState (TaskType, int, TaskPlanState const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task status
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setTaskStatus (const AspectPosition&,
-                          const mesos::TaskStatus&);
+      void setTaskStatus (TaskType, int, mesos::TaskStatus const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the instance state
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setInstanceState (const AspectPosition&, TaskCurrentState);
+      void setInstanceState (TaskType, int, TaskCurrentState);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
@@ -209,24 +154,21 @@ namespace arangodb {
     protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a resource offer can be used
+/// @brief checks if a resource offer can be used for a particular task
+/// type, if doDecline is true, then the offer is immediately declined
+/// if it is not useful for this task type. Returns true if the offer
+/// was put to some use (or declined) and false, if somebody else can
+/// have a go.
 ////////////////////////////////////////////////////////////////////////////////
 
-OfferAction checkResourceOffer (std::string const& name,
-                                bool persistent,
-                                Target const& target,
-                                TasksPlan* plan,
-                                TasksCurrent* current,
-                                mesos::Offer const& offer);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we can/should start a new instance
-////////////////////////////////////////////////////////////////////////////////
-
-      static InstanceAction checkStartInstance (AspectType,
-                                                InstanceActionState,
-                                                TasksPlan*,
-                                                TasksCurrent*);
+      bool checkResourceOffer (std::string const& name,
+                               bool persistent,
+                               Target const& target,
+                               TasksPlan* plan,
+                               TasksCurrent* current,
+                               mesos::Offer const& offer,
+                               bool doDecline,
+                               TaskType taskType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a default minimum resource set for a Targetentry

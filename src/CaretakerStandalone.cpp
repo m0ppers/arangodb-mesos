@@ -149,26 +149,6 @@ void CaretakerStandalone::updatePlan () {
   Global::state().setCurrent(current);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-InstanceAction CaretakerStandalone::checkInstance () {
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
-
-  auto res = checkStartInstance(
-    AspectType::PRIMARY_DBSERVER,
-    InstanceActionState::START_PRIMARY_DBSERVER,
-    plan.mutable_dbservers(),
-    current.mutable_dbservers());
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-
-  return res;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

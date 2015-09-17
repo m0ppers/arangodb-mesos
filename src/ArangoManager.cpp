@@ -52,49 +52,6 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief finds free ports from an offer
-///////////////////////////////////////////////////////////////////////////////
-
-vector<uint32_t> findFreePorts (const mesos::Offer& offer, size_t len) {
-  static const size_t MAX_ITERATIONS = 1000;
-
-  vector<uint32_t> result;
-  vector<mesos::Value::Range> resources;
-
-  for (int i = 0; i < offer.resources_size(); ++i) {
-    const auto& resource = offer.resources(i);
-
-    if (resource.name() == "ports" &&
-        resource.type() == mesos::Value::RANGES) {
-      const auto& ranges = resource.ranges();
-
-      for (int j = 0; j < ranges.range_size(); ++j) {
-        const auto& range = ranges.range(j);
-
-        resources.push_back(range);
-      }
-    }
-  }
-
-  default_random_engine generator;
-  uniform_int_distribution<int> d1(0, resources.size() - 1);
-
-  for (size_t i = 0;  i < MAX_ITERATIONS;  ++i) {
-    if (result.size() == len) {
-      return result;
-    }
-
-    const auto& resource = resources.at(d1(generator));
-
-    uniform_int_distribution<uint32_t> d2(resource.begin(), resource.end());
-
-    result.push_back(d2(generator));
-  }
-
-  return result;
-}
-
-///////////////////////////////////////////////////////////////////////////////
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -207,47 +164,6 @@ static void initializeCluster() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief do IP address lookup
-////////////////////////////////////////////////////////////////////////////////
-
-static string getIPAddress (string hostname) {
-  struct addrinfo hints;
-  struct addrinfo* ai;
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_STREAM;
-  hints.ai_protocol = 0;
-  hints.ai_flags = AI_ADDRCONFIG;
-  int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
-
-  if (res != 0) {
-    LOG(WARNING) << "Alarm: res=" << res;
-    return hostname;
-  }
-
-  struct addrinfo* b = ai;
-  std::string result = hostname;
-
-  while (b != nullptr) {
-    auto q = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
-    char buffer[INET_ADDRSTRLEN+5];
-    char const* p = inet_ntop(AF_INET, &q->sin_addr, buffer, sizeof(buffer));
-
-    if (p != nullptr) {
-      if (p[0] != '1' || p[1] != '2' || p[2] != '7') {
-        result = p;
-      }
-    }
-    else {
-      LOG(WARNING) << "error in inet_ntop";
-    }
-
-    b = b->ai_next;
-  }
-
-  return result;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ArangoManager
 // -----------------------------------------------------------------------------
@@ -275,10 +191,10 @@ ArangoManager::ArangoManager ()
 
   Current current = Global::state().current();
 
-  fillKnownInstances(AspectType::AGENT, current.agents());
-  fillKnownInstances(AspectType::COORDINATOR, current.coordinators());
-  fillKnownInstances(AspectType::PRIMARY_DBSERVER, current.dbservers());
-  fillKnownInstances(AspectType::SECONDARY_DBSERVER, current.secondaries());
+  fillKnownInstances(TaskType::AGENT, current.agents());
+  fillKnownInstances(TaskType::COORDINATOR, current.coordinators());
+  fillKnownInstances(TaskType::PRIMARY_DBSERVER, current.dbservers());
+  fillKnownInstances(TaskType::SECONDARY_DBSERVER, current.secondaries());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -430,13 +346,10 @@ void ArangoManager::dispatch () {
     applyStatusUpdates();
 
     // check all outstanding offers
-    bool sleep1 = checkOutstandOffers();
+    checkOutstandOffers();
 
     // apply any timeouts
-    bool sleep2 = checkTimeouts();
-
-    // check if we can start new instances
-    bool sleep3 = startNewInstances();
+    bool sleep = checkTimeouts();
 
     // initialise cluster when it is up:
     auto cur = Global::state().current();
@@ -449,7 +362,7 @@ void ArangoManager::dispatch () {
     }
 
     // wait for a little while, if we are idle
-    if (sleep1 && sleep2 && sleep3) {
+    if (sleep) {
       this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
     }
   }
@@ -534,30 +447,30 @@ static double const TryingToResurrectTimeout = 900;  // Patience before we
 // command line option.
 
 bool ArangoManager::checkTimeouts () {
-  std::vector<AspectType> aspects 
-    = { AspectType::AGENT, AspectType::PRIMARY_DBSERVER,
-        AspectType::SECONDARY_DBSERVER, AspectType::COORDINATOR };
+  std::vector<TaskType> types 
+    = { TaskType::AGENT, TaskType::PRIMARY_DBSERVER,
+        TaskType::SECONDARY_DBSERVER, TaskType::COORDINATOR };
 
   auto plan = Global::state().plan();
   auto current = Global::state().current();
 
-  for (auto aspect : aspects) {
+  for (auto taskType : types) {
     TasksPlan* tasksPlan;
     TasksCurrent* tasksCurr;
-    switch (aspect) {
-      case AspectType::AGENT:
+    switch (taskType) {
+      case TaskType::AGENT:
         tasksPlan = plan.mutable_agents();
         tasksCurr = current.mutable_agents();
         break;
-      case AspectType::PRIMARY_DBSERVER:
+      case TaskType::PRIMARY_DBSERVER:
         tasksPlan = plan.mutable_dbservers();
         tasksCurr = current.mutable_dbservers();
         break;
-      case AspectType::SECONDARY_DBSERVER:
+      case TaskType::SECONDARY_DBSERVER:
         tasksPlan = plan.mutable_secondaries();
         tasksCurr = current.mutable_secondaries();
         break;
-      case AspectType::COORDINATOR:
+      case TaskType::COORDINATOR:
         tasksPlan = plan.mutable_coordinators();
         tasksCurr = current.mutable_coordinators();
         break;
@@ -649,16 +562,17 @@ void ArangoManager::applyStatusUpdates () {
 
     _reconcilationTasks.erase(taskIdStr);
 
-    const AspectPosition& pos = _task2position[taskIdStr];
+    std::pair<TaskType, int>& pos = _task2position[taskIdStr];
 
-    caretaker.setTaskStatus(pos, status);
+    caretaker.setTaskStatus(pos.first, pos.second, status);
 
     switch (status.state()) {
       case mesos::TASK_STAGING:
         break;
 
       case mesos::TASK_RUNNING:
-        caretaker.setInstanceState(pos, INSTANCE_STATE_RUNNING);
+        caretaker.setTaskPlanState(pos.first, pos.second, TASK_STATE_RUNNING);
+        caretaker.setInstanceState(pos.first, pos.second, INSTANCE_STATE_RUNNING);
         break;
 
       case mesos::TASK_STARTING:
@@ -670,7 +584,7 @@ void ArangoManager::applyStatusUpdates () {
       case mesos::TASK_KILLED:   // TERMINAL. The task was killed by the executor.
       case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
       case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-        caretaker.setInstanceState(pos, INSTANCE_STATE_STOPPED);
+        caretaker.setInstanceState(pos.first, pos.second, INSTANCE_STATE_STOPPED);
         break;
     }
   }
@@ -682,7 +596,7 @@ void ArangoManager::applyStatusUpdates () {
 /// @brief checks available offers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ArangoManager::checkOutstandOffers () {
+void ArangoManager::checkOutstandOffers () {
   Caretaker& caretaker = Global::caretaker();
 
   // ...........................................................................
@@ -695,366 +609,23 @@ bool ArangoManager::checkOutstandOffers () {
   // check all stored offers
   // ...........................................................................
 
-  unordered_map<string, mesos::Offer> next;
-  vector<pair<mesos::Offer, mesos::Resources>> dynamic;
-  vector<pair<mesos::Offer, OfferAction>> persistent;
-  vector<mesos::Offer> declined;
-
   {
     lock_guard<mutex> lock(_lock);
 
     for (auto&& id_offer : _storedOffers) {
-      OfferAction action = caretaker.checkOffer(id_offer.second);
-
-      switch (action._state) {
-        case OfferActionState::IGNORE:
-          declined.push_back(id_offer.second);
-          break;
-
-        case OfferActionState::USABLE:
-          break;
-
-        case OfferActionState::MAKE_DYNAMIC_RESERVATION:
-          dynamic.push_back(make_pair(id_offer.second, action._resources));
-          break;
-
-        case OfferActionState::MAKE_PERSISTENT_VOLUME:
-          persistent.push_back(make_pair(id_offer.second, action));
-          break;
-      }
+      caretaker.checkOffer(id_offer.second);
     }
 
-    _storedOffers.swap(next);
+    _storedOffers.clear();
   }
-
-  // ...........................................................................
-  // decline unusable offers
-  // ...........................................................................
-
-  for (auto&& offer : declined) {
-    Global::scheduler().declineOffer(offer.id());
-  }
-
-  // ...........................................................................
-  // try to make the dynamic reservations
-  // ...........................................................................
-
-  for (auto&& offer_res : dynamic) {
-    makeDynamicReservation(offer_res.first, offer_res.second);
-  }
-
-  // ...........................................................................
-  // try to make a persistent volumes
-  // ...........................................................................
-
-  for (auto&& offer_res : persistent) {
-    makePersistentVolume(offer_res.second._name,
-                         offer_res.first,
-                         offer_res.second._resources,
-                         offer_res.second._persistentId);
-  }
-
-  return persistent.empty() && dynamic.empty();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts new instances
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManager::startNewInstances () {
-  vector<InstanceAction> start;
-
-  {
-    Caretaker& caretaker = Global::caretaker();
-    InstanceAction action;
-
-    do {
-      action = caretaker.checkInstance();
-
-      switch (action._state) {
-        case::InstanceActionState::DONE:
-          break;
-
-        case::InstanceActionState::START_AGENT:
-        case::InstanceActionState::START_COORDINATOR:
-        case::InstanceActionState::START_PRIMARY_DBSERVER:
-        case::InstanceActionState::START_SECONDARY_DBSERVER:
-          start.push_back(action);
-          break;
-      }
-    }
-    while (action._state != InstanceActionState::DONE);
-  }
-
-  for (auto&& action : start) {
-    startInstance(action._state, action._info, action._pos);
-  }
-
-  return start.empty();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief makes a persistent volume
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManager::makePersistentVolume (const string& name,
-                                          const mesos::Offer& offer,
-                                          const mesos::Resources& resources,
-                                          const string& persistentId) {
-  const string& offerId = offer.id().value();
-
-  if (resources.empty()) {
-    LOG(WARNING)
-    << "cannot make persistent volume from empty resource "
-    << "(offered resource was " << offer.resources() << ")";
-
-    return false;
-  }
-
-  mesos::Resource disk = *resources.begin();
-  mesos::Resource::DiskInfo diskInfo;
-
-  diskInfo.mutable_persistence()->set_id(persistentId);
-
-  mesos::Volume volume;
-
-  volume.set_container_path(name);
-  volume.set_mode(mesos::Volume::RW);
-
-  diskInfo.mutable_volume()->CopyFrom(volume);
-  disk.mutable_disk()->CopyFrom(diskInfo);
-
-  mesos::Resources persistent;
-  persistent += disk;
-
-  LOG(INFO)
-  << "DEBUG makePersistentVolume(" << name << "): "
-  << "trying to make " << offerId
-  << " persistent for " << persistent;
-
-  mesos::Resources offered = offer.resources();
-
-  if (offered.contains(persistent)) {
-    addOffer(offer);
-    return true;
-  }
-  else {
-    Global::scheduler().makePersistent(offer, persistent);
-    return false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief makes a dynamic reservation
-////////////////////////////////////////////////////////////////////////////////
-
-bool ArangoManager::makeDynamicReservation (mesos::Offer const& offer,
-                                            mesos::Resources const& resources) {
-  const string& offerId = offer.id().value();
-  mesos::Resources res = resources.flatten(Global::role(), Global::principal());
-
-  LOG(INFO)
-  << "DEBUG makeDynamicReservation: "
-  << "trying to reserve " << offerId
-  << " with " << res;
-
-  mesos::Resources offered = offer.resources();
-  mesos::Resources diff = res - offered;
-
-  if (diff.empty()) {
-    LOG(INFO)
-    << "DEBUG offer is already reserved";
-
-    addOffer(offer);
-    return true;
-  }
-  else {
-    Global::scheduler().reserveDynamically(offer, diff);
-    return false;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts a new standalone arangodb
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoManager::startInstance (InstanceActionState aspect,
-                                   TaskCurrent const& info,
-                                   AspectPosition const& pos) {
-  string taskId = UUID::random().toString();
-
-  if (info.ports_size() != 1) {
-    LOG(WARNING)
-    << "expected one port, got " << info.ports_size();
-    return;
-  }
-
-  // use docker to run the task
-  mesos::ContainerInfo container;
-  container.set_type(mesos::ContainerInfo::DOCKER);
-
-  // our own name:
-  string type;
-
-  switch (aspect) {
-    case InstanceActionState::START_AGENT:
-      type = "Agent";
-      break;
-
-    case InstanceActionState::START_PRIMARY_DBSERVER:
-      type = "DBServer";
-      break;
-
-    case InstanceActionState::START_COORDINATOR:
-      type = "Coordinator";
-      break;
-
-    case InstanceActionState::START_SECONDARY_DBSERVER:
-      type = "Secondary";
-      break;
-
-    case InstanceActionState::DONE:
-      assert(false);
-      break;
-  }
-
-  string myInternalName = type + to_string(pos._pos + 1);
-  string myName = "ArangoDB_" + myInternalName;
-
-  // command to execute
-  mesos::CommandInfo command;
-  mesos::Environment environment;
-  auto& state = Global::state();
-
-  switch (aspect) {
-    case InstanceActionState::START_AGENT: {
-      auto targets = state.targets();
-      command.set_value("agency");
-      auto p = environment.add_variables();
-      p->set_name("numberOfDBServers");
-      p->set_value(to_string(targets.dbservers().instances()));
-      p = environment.add_variables();
-      p->set_name("numberOfCoordinators");
-      p->set_value(to_string(targets.coordinators().instances()));
-      p = environment.add_variables();
-      p->set_name("asyncReplication");
-      p->set_value(Global::asyncReplication() ? string("true") : string("false"));
-      break;
-    }
-
-    case InstanceActionState::START_PRIMARY_DBSERVER:
-    case InstanceActionState::START_COORDINATOR:
-    case InstanceActionState::START_SECONDARY_DBSERVER: {
-      if (Global::mode() == OperationMode::STANDALONE) {
-        command.set_value("standalone");
-      }
-      else {
-        auto agents = state.current().agents();
-        command.set_value("cluster");
-        string hostname = agents.entries(0).hostname();
-        uint32_t port = agents.entries(0).ports(0);
-        command.add_arguments(
-            "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
-        command.add_arguments(myInternalName);
-      }
-      break;
-    }
-
-    case InstanceActionState::DONE: {
-      assert(false);
-      break;
-    }
-  }
-
-  command.set_shell(false);
-
-  // Find out the IP address:
-
-  auto p = environment.add_variables();
-  p->set_name("HOST");
-  p->set_value(getIPAddress(info.hostname()));
-  p = environment.add_variables();
-  p->set_name("PORT0");
-  p->set_value(std::to_string(info.ports(0)));
-  command.mutable_environment()->CopyFrom(environment);
-
-  // docker info
-  mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
-  docker->set_image("arangodb/arangodb-mesos:devel");
-  docker->set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
-
-  // port mapping
-  mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker->add_port_mappings();
-  mapping->set_host_port(info.ports(0));
-
-  switch (aspect) {
-    case InstanceActionState::START_AGENT:
-      mapping->set_container_port(4001);
-      break;
-
-    case InstanceActionState::START_PRIMARY_DBSERVER:
-      mapping->set_container_port(8529);
-      break;
-
-    case InstanceActionState::START_COORDINATOR:
-      mapping->set_container_port(8529);
-      break;
-
-    case InstanceActionState::START_SECONDARY_DBSERVER:
-      mapping->set_container_port(8529);
-      break;
-
-    case InstanceActionState::DONE:
-      assert(false);
-      break;
-  }
-
-  mapping->set_protocol("tcp");
-
-  // volume
-  mesos::Volume* volume = container.add_volumes();
-  volume->set_container_path("/data");
-  mesos::Resources res = info.resources();
-  res = arangodb::filterIsDisk(res);
-  mesos::Resource& disk = *(res.begin());
-  if (disk.has_disk() && disk.disk().has_volume()) {
-    volume->set_host_path("../../../../../../../../" +
-                          info.container_path());
-  }
-  else {
-    string path = "arangodb_" + Global::frameworkName() + "_" 
-                  + state.frameworkId() + "_" + myName;
-    volume->set_host_path(Global::volumePath() + "/" + path);
-  }
-  volume->set_mode(mesos::Volume::RW);
-
-  // sets the task_id (in case we crash) before we start
-  Caretaker& caretaker = Global::caretaker();
-
-  mesos::TaskID tid;
-  tid.set_value(taskId);
-
-  caretaker.setTaskId(pos, tid);
-
-  // and start
-  mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
-    taskId,
-    myName,
-    info,
-    container,
-    command);
-
-  _task2position[taskId] = pos;
-
-  caretaker.setTaskInfo(pos, taskInfo);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recover task mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManager::fillKnownInstances (AspectType type,
-                                        const TasksCurrent& currents) {
+void ArangoManager::fillKnownInstances (TaskType type,
+                                        TasksCurrent const& currents) {
   LOG(INFO)
   << "recovering instance type " << (int) type;
 
@@ -1067,7 +638,7 @@ void ArangoManager::fillKnownInstances (AspectType type,
       LOG(INFO)
       << "for task id " << id << ": " << i;
 
-      _task2position[id] = { type, (size_t) i };
+      _task2position[id] = std::make_pair(type, i);
     }
   }
 }
@@ -1077,8 +648,8 @@ void ArangoManager::fillKnownInstances (AspectType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::killAllInstances () {
-  for (const auto& task : _task2position) {
-    const auto& id = task.first;
+  for (auto const& task : _task2position) {
+    auto const& id = task.first;
 
     Global::scheduler().killInstance(id);
   }

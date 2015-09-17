@@ -29,6 +29,7 @@
 
 #include "ArangoState.h"
 #include "Global.h"
+#include "ArangoScheduler.h"
 
 #include "mesos/resources.hpp"
 #include "arangodb.pb.h"
@@ -326,7 +327,7 @@ static int countRunningInstances (TasksCurrent const& currents) {
 /// @brief check an incoming offer against a certain kind of server
 ////////////////////////////////////////////////////////////////////////////////
 
-OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
+void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // We proceed as follows:
   //   If not all agencies are up and running, then we check whether
   //   this offer is good for an agency.
@@ -342,7 +343,7 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  OfferAction action;
+  bool offerUsed = false;
 
 #if 0
   // Further debugging output:
@@ -366,11 +367,12 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   << "running agent instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new agent:
-    action = checkResourceOffer("agency", true,
-                                targets.agents(),
-                                plan.mutable_agents(),
-                                current.mutable_agents(),
-                                offer);
+    offerUsed = checkResourceOffer("agency", true,
+                                   targets.agents(),
+                                   plan.mutable_agents(),
+                                   current.mutable_agents(),
+                                   offer, ! current.cluster_initialized(),
+                                   TaskType::AGENT);
 
     // Save new state:
     Global::state().setPlan(plan);
@@ -382,13 +384,13 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     << "PLAN:"   << Global::state().jsonPlan() << "\n"
     << "CURRENT:"<< Global::state().jsonCurrent() << "\n";
 
-    if (! current.cluster_initialized() ||
-        action._state != OfferActionState::IGNORE) {
-      return action;
+    if (offerUsed) {
+      return;
     }
 
     // Otherwise, fall through to give other task types a chance to look
-    // at the offer.
+    // at the offer. This only happens when the cluster is already
+    // initialized.
   }
 
   if (! current.cluster_initialized()) {
@@ -428,7 +430,8 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
       // Ignore the offer, since the agency is not yet ready:
       LOG(INFO)
       << "agency is not yet properly initialized, decline offer.";
-      return { OfferActionState::IGNORE };
+      Global::scheduler().declineOffer(offer.id());
+      return;
     }
     LOG(INFO)
     << "agency is up and running.";
@@ -442,21 +445,22 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   << "running DBServer instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
-    action = checkResourceOffer("primary", true,
-                                targets.dbservers(),
-                                plan.mutable_dbservers(),
-                                current.mutable_dbservers(),
-                                offer);
+    offerUsed = checkResourceOffer("primary", true,
+                                   targets.dbservers(),
+                                   plan.mutable_dbservers(),
+                                   current.mutable_dbservers(),
+                                   offer, ! current.cluster_initialized(),
+                                   TaskType::PRIMARY_DBSERVER);
 
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
-    if (! current.cluster_initialized() ||
-        action._state != OfferActionState::IGNORE) {
-      return action;
+    if (offerUsed) {
+      return;
     }
     // Otherwise, fall through to give other task types a chance to look
-    // at the offer.
+    // at the offer. This only happens when the cluster is already
+    // initialized.
   }
 
   // Now the secondaries, if needed:
@@ -468,21 +472,22 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     << "running secondary DBServer instances: " << runningInstances;
     if (runningInstances < plannedInstances) {
       // Try to use the offer for a new DBserver:
-      action = checkResourceOffer("secondary", true,
-                                  targets.secondaries(),
-                                  plan.mutable_secondaries(),
-                                  current.mutable_secondaries(),
-                                  offer);
+      offerUsed = checkResourceOffer("secondary", true,
+                                     targets.secondaries(),
+                                     plan.mutable_secondaries(),
+                                     current.mutable_secondaries(),
+                                     offer, ! current.cluster_initialized(),
+                                     TaskType::SECONDARY_DBSERVER);
 
       // Save new state:
       Global::state().setPlan(plan);
       Global::state().setCurrent(current);
-      if (! current.cluster_initialized() ||
-          action._state != OfferActionState::IGNORE) {
-        return action;
+      if (offerUsed) {
+        return;
       }
       // Otherwise, fall through to give other task types a chance to look
-      // at the offer.
+      // at the offer. This only happens when the cluster is already
+      // initialized.
     }
   }
 
@@ -494,16 +499,16 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   << "running coordinator instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
-    action = checkResourceOffer("coordinator", false,
-                                targets.coordinators(),
-                                plan.mutable_coordinators(),
-                                current.mutable_coordinators(),
-                                offer);
+    checkResourceOffer("coordinator", false,
+                       targets.coordinators(),
+                       plan.mutable_coordinators(),
+                       current.mutable_coordinators(),
+                       offer, true, TaskType::COORDINATOR);
 
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
-    return action;
+    return;
   }
 
   LOG(INFO) << "Cluster is complete.";
@@ -513,76 +518,8 @@ OfferAction CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     Global::state().setCurrent(current);
   }
 
-  // All is good, ignore offer:
-  return { OfferActionState::IGNORE };
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-InstanceAction CaretakerCluster::checkInstance () {
-  Targets targets = Global::state().targets();
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
-
-  InstanceAction res = checkStartInstance(
-    AspectType::AGENT,
-    InstanceActionState::START_AGENT,
-    plan.mutable_agents(),
-    current.mutable_agents());
-
-  if (res._state != InstanceActionState::DONE) {
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-
-    return res;
-  }
-
-  // OK, agents are fine, move on to DBservers:
-
-  res = checkStartInstance(
-    AspectType::PRIMARY_DBSERVER,
-    InstanceActionState::START_PRIMARY_DBSERVER,
-    plan.mutable_dbservers(),
-    current.mutable_dbservers());
-
-  if (res._state != InstanceActionState::DONE) {
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-
-    return res;
-  }
-
-  // OK, DBServers are fine, move on to secondaries:
-
-  if (Global::asyncReplication()) {
-    res = checkStartInstance(
-      AspectType::SECONDARY_DBSERVER,
-      InstanceActionState::START_SECONDARY_DBSERVER,
-      plan.mutable_dbservers(),
-      current.mutable_secondaries());
-
-    if (res._state != InstanceActionState::DONE) {
-      Global::state().setPlan(plan);
-      Global::state().setCurrent(current);
-
-      return res;
-    }
-  }
-
-  // Finally, the coordinators:
-
-  res = checkStartInstance(
-    AspectType::COORDINATOR,
-    InstanceActionState::START_COORDINATOR,
-    plan.mutable_coordinators(),
-    current.mutable_coordinators());
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-
-  return res;
+  // All is good, decline offer:
+  Global::scheduler().declineOffer(offer.id());
 }
 
 // -----------------------------------------------------------------------------

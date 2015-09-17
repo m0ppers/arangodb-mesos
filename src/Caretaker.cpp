@@ -30,6 +30,8 @@
 #include "ArangoState.h"
 #include "Global.h"
 #include "utils.h"
+#include "ArangoScheduler.h"
+#include "ArangoManager.h"
 
 #include <random>
 
@@ -321,7 +323,7 @@ static mesos::Resources resourcesForRequestReservation (
   mesos::Resources roleSpecificPart 
       = arangodb::intersectResources(offered, minimum);
   mesos::Resources defaultPart = minimum - roleSpecificPart;
-  defaultPart.flatten();
+  defaultPart.flatten(Global::role(), Global::principal());
 
   // TODO(fc) check if we could use additional resources
 
@@ -422,58 +424,314 @@ static mesos::Resources suitablePersistent (string const& name,
   return toUse;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper to get rid of an offer
+////////////////////////////////////////////////////////////////////////////////
+
+static bool notInterested (mesos::Offer const& offer, bool doDecline) {
+  if (doDecline) {
+    Global::scheduler().declineOffer(offer.id());
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do IP address lookup
+////////////////////////////////////////////////////////////////////////////////
+
+static string getIPAddress (string hostname) {
+  struct addrinfo hints;
+  struct addrinfo* ai;
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_protocol = 0;
+  hints.ai_flags = AI_ADDRCONFIG;
+  int res = getaddrinfo(hostname.c_str(), nullptr, &hints, &ai);
+
+  if (res != 0) {
+    LOG(WARNING) << "Alarm: res=" << res;
+    return hostname;
+  }
+
+  struct addrinfo* b = ai;
+  std::string result = hostname;
+
+  while (b != nullptr) {
+    auto q = reinterpret_cast<struct sockaddr_in*>(ai->ai_addr);
+    char buffer[INET_ADDRSTRLEN+5];
+    char const* p = inet_ntop(AF_INET, &q->sin_addr, buffer, sizeof(buffer));
+
+    if (p != nullptr) {
+      if (p[0] != '1' || p[1] != '2' || p[2] != '7') {
+        result = p;
+      }
+    }
+    else {
+      LOG(WARNING) << "error in inet_ntop";
+    }
+
+    b = b->ai_next;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a new arangodb task
+////////////////////////////////////////////////////////////////////////////////
+
+static void startArangoDBTask (TaskType taskType, int pos,
+                               TaskCurrent const& info) {
+
+  string taskId = UUID::random().toString();
+
+  if (info.ports_size() != 1) {
+    LOG(WARNING)
+    << "expected one port, got " << info.ports_size();
+    return;
+  }
+
+  // use docker to run the task
+  mesos::ContainerInfo container;
+  container.set_type(mesos::ContainerInfo::DOCKER);
+
+  // our own name:
+  string type;
+
+  switch (taskType) {
+    case TaskType::AGENT:
+      type = "Agent";
+      break;
+
+    case TaskType::PRIMARY_DBSERVER:
+      type = "DBServer";
+      break;
+
+    case TaskType::COORDINATOR:
+      type = "Coordinator";
+      break;
+
+    case TaskType::SECONDARY_DBSERVER:
+      type = "Secondary";
+      break;
+
+    case TaskType::UNKNOWN:
+      assert(false);
+      break;
+  }
+
+  string myInternalName = type + to_string(pos + 1);
+  string myName = "ArangoDB_" + myInternalName;
+
+  // command to execute
+  mesos::CommandInfo command;
+  mesos::Environment environment;
+  auto& state = Global::state();
+
+  switch (taskType) {
+    case TaskType::AGENT: {
+      auto targets = state.targets();
+      command.set_value("agency");
+      auto p = environment.add_variables();
+      p->set_name("numberOfDBServers");
+      p->set_value(to_string(targets.dbservers().instances()));
+      p = environment.add_variables();
+      p->set_name("numberOfCoordinators");
+      p->set_value(to_string(targets.coordinators().instances()));
+      p = environment.add_variables();
+      p->set_name("asyncReplication");
+      p->set_value(Global::asyncReplication() ? string("true") : string("false"));
+      break;
+    }
+
+    case TaskType::PRIMARY_DBSERVER:
+    case TaskType::COORDINATOR:
+    case TaskType::SECONDARY_DBSERVER: {
+      if (Global::mode() == OperationMode::STANDALONE) {
+        command.set_value("standalone");
+      }
+      else {
+        auto agents = state.current().agents();
+        command.set_value("cluster");
+        string hostname = agents.entries(0).hostname();
+        uint32_t port = agents.entries(0).ports(0);
+        command.add_arguments(
+            "tcp://" + getIPAddress(hostname) + ":" + to_string(port));
+        command.add_arguments(myInternalName);
+      }
+      break;
+    }
+
+    case TaskType::UNKNOWN: {
+      assert(false);
+      break;
+    }
+  }
+
+  command.set_shell(false);
+
+  // Find out the IP address:
+
+  auto p = environment.add_variables();
+  p->set_name("HOST");
+  p->set_value(getIPAddress(info.hostname()));
+  p = environment.add_variables();
+  p->set_name("PORT0");
+  p->set_value(std::to_string(info.ports(0)));
+  command.mutable_environment()->CopyFrom(environment);
+
+  // docker info
+  mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
+  docker->set_image("arangodb/arangodb-mesos:devel");
+  docker->set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
+
+  // port mapping
+  mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker->add_port_mappings();
+  mapping->set_host_port(info.ports(0));
+
+  switch (taskType) {
+    case TaskType::AGENT:
+      mapping->set_container_port(4001);
+      break;
+
+    case TaskType::PRIMARY_DBSERVER:
+      mapping->set_container_port(8529);
+      break;
+
+    case TaskType::COORDINATOR:
+      mapping->set_container_port(8529);
+      break;
+
+    case TaskType::SECONDARY_DBSERVER:
+      mapping->set_container_port(8529);
+      break;
+
+    case TaskType::UNKNOWN:
+      assert(false);
+      break;
+  }
+
+  mapping->set_protocol("tcp");
+
+  // volume
+  mesos::Volume* volume = container.add_volumes();
+  volume->set_container_path("/data");
+  mesos::Resources res = info.resources();
+  res = arangodb::filterIsDisk(res);
+  mesos::Resource& disk = *(res.begin());
+  if (disk.has_disk() && disk.disk().has_volume()) {
+    volume->set_host_path("../../../../../../../../" +
+                          info.container_path());
+  }
+  else {
+    string path = "arangodb_" + Global::frameworkName() + "_" 
+                  + state.frameworkId() + "_" + myName;
+    volume->set_host_path(Global::volumePath() + "/" + path);
+  }
+  volume->set_mode(mesos::Volume::RW);
+
+  mesos::TaskID tid;
+  tid.set_value(taskId);
+
+  Global::caretaker().setTaskId(taskType, pos, tid);
+
+  // and start
+  mesos::TaskInfo taskInfo = Global::scheduler().startInstance(
+    taskId,
+    myName,
+    info,
+    container,
+    command);
+
+  Global::manager().registerNewTask(taskId, taskType, pos);
+
+  Global::caretaker().setTaskInfo(taskType, pos, taskInfo);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to make offer persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestPersistent (string const& upper,
-                                      mesos::Offer const& offer,
-                                      Target const& target,
-                                      TaskPlan* task,
-                                      TaskCurrent* resCur) {
-  mesos::Resources volume;
+static bool requestPersistent (string const& upper,
+                               mesos::Offer const& offer,
+                               Target const& target,
+                               TaskPlan* task,
+                               TaskCurrent* taskCur,
+                               bool doDecline,
+                               TaskType taskType,
+                               int pos) {
+  mesos::Resources resources;
 
-  if (isSuitableReservedOffer(offer, target, volume)) {
-    double now = chrono::duration_cast<chrono::seconds>(
-      chrono::steady_clock::now().time_since_epoch()).count();
-
-    string persistentId = upper + "_" + UUID::random().toString();
-
-    task->set_state(TASK_STATE_TRYING_TO_PERSIST);
-    task->set_started(now);
-    task->set_persistence_id(persistentId);
-
-    resCur->mutable_offer_id()->CopyFrom(offer.id());
-
-    volume = volume.flatten(Global::role(), Global::principal());
-    resCur->mutable_resources()->CopyFrom(volume);
-
-    return { OfferActionState::MAKE_PERSISTENT_VOLUME, volume, 
-             upper, persistentId };
+  if (! isSuitableReservedOffer(offer, target, resources)) {
+    return notInterested(offer, doDecline);
   }
 
-  return { OfferActionState::IGNORE };
+  double now = chrono::duration_cast<chrono::seconds>(
+    chrono::steady_clock::now().time_since_epoch()).count();
+
+  string persistentId = upper + "_" + UUID::random().toString();
+
+  task->set_state(TASK_STATE_TRYING_TO_PERSIST);
+  task->set_started(now);
+  task->set_persistence_id(persistentId);
+
+  taskCur->mutable_offer_id()->CopyFrom(offer.id());
+
+  // resources is a single disk resource with our role and principal
+  mesos::Resource disk = *resources.begin();
+  mesos::Resource::DiskInfo diskInfo;
+  diskInfo.mutable_persistence()->set_id(persistentId);
+
+  mesos::Volume volume;
+  volume.set_container_path("data");
+  volume.set_mode(mesos::Volume::RW);
+
+  diskInfo.mutable_volume()->CopyFrom(volume);
+  disk.mutable_disk()->CopyFrom(diskInfo);
+
+  mesos::Resources persistent;
+  persistent += disk;
+
+  LOG(INFO)
+  << "DEBUG makePersistentVolume(" << upper << "): "
+  << "trying to make " << offer.id().value()
+  << " persistent for " << persistent;
+
+  // Store for later:
+  taskCur->mutable_resources()->CopyFrom(persistent);
+
+  Global::scheduler().makePersistent(offer, persistent);
+
+  return true;  // Offer was used
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to make a reservation
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestReservation (std::string const& upper,
-                                       mesos::Offer const& offer,
-                                       Target const& target,
-                                       TaskPlan* task,
-                                       TaskCurrent* taskCur) {
+static bool requestReservation (std::string const& upper,
+                                mesos::Offer const& offer,
+                                Target const& target,
+                                TaskPlan* task,
+                                TaskCurrent* taskCur,
+                                bool doDecline,
+                                TaskType taskType,
+                                int pos) {
   mesos::Resources resources
         = resourcesForRequestReservation(offer, target);
 
   if (resources.empty()) {
     // We have everything needed reserved for our role, so we can
     // directly move on to the persistent volume:
-    return requestPersistent(upper, offer, target, task, taskCur);
+    return requestPersistent(upper, offer, target, task, taskCur, doDecline,
+                             taskType, pos);
   }
 
+  // First update our own state with the intention of making 
+  // a dynamic reservation:
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
 
@@ -487,18 +745,28 @@ static OfferAction requestReservation (std::string const& upper,
 
   taskCur->clear_ports();
 
-  return { OfferActionState::MAKE_DYNAMIC_RESERVATION, resources };
+  // Now use the scheduler to actually try to make the dynamic reservation:
+  LOG(INFO)
+  << "DEBUG makeDynamicReservation: "
+  << "trying to reserve " << offer.id().value()
+  << " with " << resources;
+
+  Global::scheduler().reserveDynamically(offer, resources);
+  return true;  // offer was used
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to start with persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestStartPersistent (string const& upper,
-                                           mesos::Offer const& offer,
-                                           Target const& target,
-                                           TaskPlan* task,
-                                           TaskCurrent* taskCur) {
+static bool requestStartPersistent (string const& upper,
+                                    mesos::Offer const& offer,
+                                    Target const& target,
+                                    TaskPlan* task,
+                                    TaskCurrent* taskCur,
+                                    bool doDecline,
+                                    TaskType taskType,
+                                    int pos) {
   string persistenceId = task->persistence_id();
   string containerPath;
 
@@ -534,20 +802,24 @@ static OfferAction requestStartPersistent (string const& upper,
     LOG(INFO) << "Trying to start with resources:\n"
               << resources;
 
-    return { OfferActionState::USABLE };
+    startArangoDBTask(taskType, pos, *taskCur);
+
+    return true;  // offer was used
   }
 
-  return { OfferActionState::IGNORE };
+  return notInterested(offer, doDecline);
 }                                  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to start without persistent volume
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestStartEphemeral (mesos::Offer const& offer,
-                                          Target const& target,
-                                          TaskPlan* task,
-                                          TaskCurrent* taskCur) {
+static bool requestStartEphemeral (mesos::Offer const& offer,
+                                   Target const& target,
+                                   TaskPlan* task,
+                                   TaskCurrent* taskCur,
+                                   TaskType taskType,
+                                   int pos) {
 
   mesos::Resources resources 
       = resourcesForStartEphemeral(offer, target);
@@ -577,21 +849,26 @@ static OfferAction requestStartEphemeral (mesos::Offer const& offer,
     }
   }
 
-  return { OfferActionState::USABLE };
+  startArangoDBTask(taskType, pos, *taskCur);
+
+  return true;   // offer was used
 }                                  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to restart
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestRestartPersistent (string const& upper,
-                                             mesos::Offer const& offer,
-                                             Target const& target,
-                                             TaskPlan* task,
-                                             TaskCurrent* taskCur) {
+static bool requestRestartPersistent (string const& upper,
+                                      mesos::Offer const& offer,
+                                      Target const& target,
+                                      TaskPlan* task,
+                                      TaskCurrent* taskCur,
+                                      bool doDecline,
+                                      TaskType taskType,
+                                      int pos) {
 
   if (! isSuitableOffer(target, offer, false)) {
-    return { OfferActionState::IGNORE };
+    return notInterested(offer, doDecline);
   }
 
   string persistenceId = task->persistence_id();
@@ -612,21 +889,25 @@ static OfferAction requestRestartPersistent (string const& upper,
     taskCur->mutable_resources()->CopyFrom(resources);
     taskCur->set_container_path(containerPath);
 
-    return { OfferActionState::USABLE };
+    startArangoDBTask(taskType, pos, *taskCur);
+
+    return true;  // offer was used
   }
 
-  return { OfferActionState::IGNORE };
+  return notInterested(offer, doDecline);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request to restart
 ////////////////////////////////////////////////////////////////////////////////
 
-static OfferAction requestRestartEphemeral (string const& upper,
-                                            mesos::Offer const& offer,
-                                            Target const& target,
-                                            TaskPlan* task,
-                                            TaskCurrent* taskCur) {
+static bool requestRestartEphemeral (string const& upper,
+                                     mesos::Offer const& offer,
+                                     Target const& target,
+                                     TaskPlan* task,
+                                     TaskCurrent* taskCur,
+                                     TaskType taskType,
+                                     int pos) {
 
   mesos::Resources resources 
       = resourcesForStartEphemeral(offer, target);
@@ -656,7 +937,9 @@ static OfferAction requestRestartEphemeral (string const& upper,
     }
   }
 
-  return { OfferActionState::USABLE };
+  startArangoDBTask(taskType, pos, *taskCur);
+
+  return true;   // offer was used
 }
 
 // -----------------------------------------------------------------------------
@@ -686,15 +969,18 @@ Caretaker::~Caretaker () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if an offer fits
+/// @brief checks if an offer fits, returns true if the offer was put to some
+/// use (or declined) and false, if somebody else can have a go.
 ////////////////////////////////////////////////////////////////////////////////
 
-OfferAction Caretaker::checkResourceOffer (const string& name,
-                                           bool persistent,
-                                           Target const& target,
-                                           TasksPlan* tasks,
-                                           TasksCurrent* current,
-                                           mesos::Offer const& offer) {
+bool Caretaker::checkResourceOffer (const string& name,
+                                    bool persistent,
+                                    Target const& target,
+                                    TasksPlan* tasks,
+                                    TasksCurrent* current,
+                                    mesos::Offer const& offer,
+                                    bool doDecline,
+                                    TaskType taskType) {
   string upper = name;
   for (auto& c : upper) { 
     c = toupper(c);
@@ -708,14 +994,14 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   // ...........................................................................
 
   if (! isSuitableOffer(target, offer, false)) {
-    return { OfferActionState::IGNORE };
+    return notInterested(offer, doDecline);
   }
 
   int p = tasks->entries_size();
 
   if (p == 0) {
     LOG(INFO) << "nothing planned for " << name;
-    return { OfferActionState::IGNORE };
+    return notInterested(offer, doDecline);
   }
 
   // ...........................................................................
@@ -741,22 +1027,26 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
     if (taskCur->slave_id().value() == offerSlaveId) {
       switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE:
-          return requestPersistent(upper, offer, target, task, taskCur);
+          return requestPersistent(upper, offer, target, task, taskCur, 
+                                   doDecline, taskType, i);
 
         case TASK_STATE_TRYING_TO_PERSIST:
-          return requestStartPersistent(upper, offer, target, task, taskCur);
+          return requestStartPersistent(upper, offer, target, task, taskCur, 
+                                        doDecline, taskType, i);
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
-          if (upper == "COORDINATOR") {
-            return requestRestartEphemeral(upper, offer, target, task, taskCur);
+          if (taskType == TaskType::COORDINATOR) {
+            return requestRestartEphemeral(upper, offer, target, task, taskCur,
+                                           taskType, i);
           }
           else {
-            return requestRestartPersistent(upper, offer, target, task, taskCur);
+            return requestRestartPersistent(upper, offer, target, task, 
+                                            taskCur, doDecline, taskType, i);
           }
 
         default:
-          return { OfferActionState::IGNORE };
+          return notInterested(offer, doDecline);
       }
     }
   }
@@ -767,7 +1057,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
 
   if (required == -1) {
     LOG(INFO) << "nothing required";
-    return { OfferActionState::IGNORE };
+    return notInterested(offer, doDecline);
   }
 
   // ...........................................................................
@@ -783,7 +1073,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
         offer.slave_id().value() == primaryResEntry.slave_id().value()) {
       // we decline this offer, there will be another one
       LOG(INFO) << "secondary not on same slave as its primary";
-      return { OfferActionState::IGNORE };
+      return notInterested(offer, doDecline);
     }
   }
 
@@ -810,7 +1100,7 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
     if (found == -1) {
       // we decline this offer, there will be another one
       LOG(INFO) << "secondary not alone on a slave";
-      return { OfferActionState::IGNORE };
+      return notInterested(offer, doDecline);
     }
   }
 
@@ -822,14 +1112,16 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
   TaskCurrent* taskCur = current->mutable_entries(required);
 
   if (! persistent) {
-    return requestStartEphemeral(offer, target, task, taskCur);
+    return requestStartEphemeral(offer, target, task, taskCur, 
+                                 taskType, required);
   }
 
   // ...........................................................................
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
-  return requestReservation(upper, offer, target, task, taskCur);
+  return requestReservation(upper, offer, target, task, taskCur, doDecline,
+                            taskType, required);
 }
 
 // -----------------------------------------------------------------------------
@@ -840,32 +1132,28 @@ OfferAction Caretaker::checkResourceOffer (const string& name,
 /// @brief checks if we can use a resource offer
 ////////////////////////////////////////////////////////////////////////////////
 
-OfferAction Caretaker::checkOffer (const mesos::Offer& offer) {
+void Caretaker::checkOffer (const mesos::Offer& offer) {
   Targets targets = Global::state().targets();
   Plan plan = Global::state().plan();
   Current current = Global::state().current();
 
-  OfferAction action;
-  action = checkResourceOffer("primary", true,
-                              targets.dbservers(),
-                              plan.mutable_dbservers(),
-                              current.mutable_dbservers(),
-                              offer);
+  checkResourceOffer("primary", true,
+                     targets.dbservers(),
+                     plan.mutable_dbservers(),
+                     current.mutable_dbservers(),
+                     offer, true, TaskType::PRIMARY_DBSERVER);
 
   Global::state().setPlan(plan);
   Global::state().setCurrent(current);
-
-  return action;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task id, clears the task info and status
 ////////////////////////////////////////////////////////////////////////////////
 
-void Caretaker::setTaskId (const AspectPosition& pos,
-                           const mesos::TaskID& taskId) {
+void Caretaker::setTaskId (TaskType taskType, int p,
+                           mesos::TaskID const& taskId) {
   Current current = Global::state().current();
-  int p = pos._pos;
 
   mesos::SlaveID slaveId;
   slaveId.set_value("");
@@ -877,34 +1165,34 @@ void Caretaker::setTaskId (const AspectPosition& pos,
 
   TaskCurrent* taskCur = nullptr;
 
-  switch (pos._type) {
-    case AspectType::AGENT:
+  switch (taskType) {
+    case TaskType::AGENT:
       taskCur = current.mutable_agents()->mutable_entries(p);
       taskCur->mutable_task_info()->CopyFrom(info);
       taskCur->clear_task_status();
       break;
 
-    case AspectType::PRIMARY_DBSERVER:
+    case TaskType::PRIMARY_DBSERVER:
       taskCur = current.mutable_dbservers()->mutable_entries(p);
       taskCur->mutable_task_info()->CopyFrom(info);
       taskCur->clear_task_status();
       break;
 
-    case AspectType::SECONDARY_DBSERVER:
+    case TaskType::SECONDARY_DBSERVER:
       taskCur = current.mutable_secondaries()->mutable_entries(p);
       taskCur->mutable_task_info()->CopyFrom(info);
       taskCur->clear_task_status();
       break;
 
-    case AspectType::COORDINATOR:
+    case TaskType::COORDINATOR:
       taskCur = current.mutable_coordinators()->mutable_entries(p);
       taskCur->mutable_task_info()->CopyFrom(info);
       taskCur->clear_task_status();
       break;
 
-    case AspectType::UNKNOWN:
+    case TaskType::UNKNOWN:
       LOG(INFO)
-      << "unknown task type " << (int) pos._type
+      << "unknown task type " << (int) taskType
       << " for " << taskId.value();
       break;
   }
@@ -916,43 +1204,42 @@ void Caretaker::setTaskId (const AspectPosition& pos,
 /// @brief sets the task info
 ////////////////////////////////////////////////////////////////////////////////
 
-void Caretaker::setTaskInfo (const AspectPosition& pos,
-                             const mesos::TaskInfo& taskInfo) {
+void Caretaker::setTaskInfo (TaskType taskType, int p,
+                             mesos::TaskInfo const& taskInfo) {
   Current current = Global::state().current();
-  int p = pos._pos;
 
-  switch (pos._type) {
-    case AspectType::AGENT:
+  switch (taskType) {
+    case TaskType::AGENT:
       current.mutable_agents()
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
       break;
 
-    case AspectType::PRIMARY_DBSERVER:
+    case TaskType::PRIMARY_DBSERVER:
       current.mutable_dbservers()
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
       break;
 
-    case AspectType::SECONDARY_DBSERVER:
+    case TaskType::SECONDARY_DBSERVER:
       current.mutable_secondaries()
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
       break;
 
-    case AspectType::COORDINATOR:
+    case TaskType::COORDINATOR:
       current.mutable_coordinators()
         ->mutable_entries(p)
         ->mutable_task_info()
         ->CopyFrom(taskInfo);
       break;
 
-    case AspectType::UNKNOWN:
+    case TaskType::UNKNOWN:
       LOG(INFO)
-      << "unknown task type " << (int) pos._type
+      << "unknown task type " << (int) taskType
       << " for " << taskInfo.task_id().value();
       break;
   }
@@ -961,46 +1248,87 @@ void Caretaker::setTaskInfo (const AspectPosition& pos,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the task plan state
+////////////////////////////////////////////////////////////////////////////////
+
+void Caretaker::setTaskPlanState (TaskType taskType, int p,
+                                  TaskPlanState const taskPlanState) {
+  Plan plan = Global::state().plan();
+
+  switch (taskType) {
+    case TaskType::AGENT:
+      plan.mutable_agents()
+        ->mutable_entries(p)
+        ->set_state(taskPlanState);
+      break;
+
+    case TaskType::PRIMARY_DBSERVER:
+      plan.mutable_dbservers()
+        ->mutable_entries(p)
+        ->set_state(taskPlanState);
+      break;
+
+    case TaskType::SECONDARY_DBSERVER:
+      plan.mutable_secondaries()
+        ->mutable_entries(p)
+        ->set_state(taskPlanState);
+      break;
+
+    case TaskType::COORDINATOR:
+      plan.mutable_coordinators()
+        ->mutable_entries(p)
+        ->set_state(taskPlanState);
+      break;
+
+    case TaskType::UNKNOWN:
+      LOG(INFO)
+      << "unknown task type " << (int) taskType;
+      break;
+  }
+
+  Global::state().setPlan(plan);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task status
 ////////////////////////////////////////////////////////////////////////////////
 
-void Caretaker::setTaskStatus (const AspectPosition& pos,
-                               const mesos::TaskStatus& taskStatus) {
+void Caretaker::setTaskStatus (TaskType taskType, int p,
+                               mesos::TaskStatus const& taskStatus) {
   Current current = Global::state().current();
-  int p = pos._pos;
 
-  switch (pos._type) {
-    case AspectType::AGENT:
+  switch (taskType) {
+    case TaskType::AGENT:
       current.mutable_agents()
         ->mutable_entries(p)
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
       break;
 
-    case AspectType::PRIMARY_DBSERVER:
+    case TaskType::PRIMARY_DBSERVER:
       current.mutable_dbservers()
         ->mutable_entries(p)
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
       break;
 
-    case AspectType::SECONDARY_DBSERVER:
+    case TaskType::SECONDARY_DBSERVER:
       current.mutable_secondaries()
         ->mutable_entries(p)
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
       break;
 
-    case AspectType::COORDINATOR:
+    case TaskType::COORDINATOR:
       current.mutable_coordinators()
         ->mutable_entries(p)
         ->mutable_task_status()
         ->CopyFrom(taskStatus);
       break;
 
-    case AspectType::UNKNOWN:
+    case TaskType::UNKNOWN:
       LOG(INFO)
-      << "unknown task type " << (int) pos._type
+      << "unknown task type " << (int) taskType
       << " for " << taskStatus.task_id().value();
       break;
   }
@@ -1012,7 +1340,7 @@ void Caretaker::setTaskStatus (const AspectPosition& pos,
 /// @brief sets the instance state
 ////////////////////////////////////////////////////////////////////////////////
 
-void Caretaker::setInstanceState (const AspectPosition& pos,
+void Caretaker::setInstanceState (TaskType taskType, int p,
                                   TaskCurrentState state) {
   double now = chrono::duration_cast<chrono::seconds>(
     chrono::steady_clock::now().time_since_epoch()).count();
@@ -1022,32 +1350,31 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
 
   TasksCurrent* currents = nullptr;
   TasksPlan* tasks = nullptr;
-  int p = pos._pos;
 
-  switch (pos._type) {
-    case AspectType::AGENT:
+  switch (taskType) {
+    case TaskType::AGENT:
       currents = current.mutable_agents();
       tasks = plan.mutable_agents();
       break;
 
-    case AspectType::PRIMARY_DBSERVER:
+    case TaskType::PRIMARY_DBSERVER:
       currents = current.mutable_dbservers();
       tasks = plan.mutable_dbservers();
       break;
 
-    case AspectType::SECONDARY_DBSERVER:
+    case TaskType::SECONDARY_DBSERVER:
       currents = current.mutable_secondaries();
       tasks = plan.mutable_secondaries();
       break;
 
-    case AspectType::COORDINATOR:
+    case TaskType::COORDINATOR:
       currents = current.mutable_coordinators();
       tasks = plan.mutable_coordinators();
       break;
 
     default:
       LOG(INFO)
-      << "unknown task type " << (int) pos._type;
+      << "unknown task type " << (int) taskType;
       return;
   }
 
@@ -1080,51 +1407,6 @@ void Caretaker::setInstanceState (const AspectPosition& pos,
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we can/should start a new instance
-////////////////////////////////////////////////////////////////////////////////
-
-InstanceAction Caretaker::checkStartInstance (AspectType aspect,
-                                              InstanceActionState startState,
-                                              TasksPlan* tasks,
-                                              TasksCurrent* currents) {
-  double now = chrono::duration_cast<chrono::seconds>(
-    chrono::steady_clock::now().time_since_epoch()).count();
-
-  for (int i = 0;  i < tasks->entries_size();  ++i) {
-    TaskPlan* task = tasks->mutable_entries(i);
-    auto state = task->state();
-
-    if (state == TASK_STATE_TRYING_TO_START || state == TASK_STATE_TRYING_TO_RESTART) {
-      TaskCurrent* instance = currents->mutable_entries(i);
-
-      switch (instance->state()) {
-        case INSTANCE_STATE_UNUSED:
-        case INSTANCE_STATE_STOPPED:
-          break;
-
-        case INSTANCE_STATE_STARTING:
-        case INSTANCE_STATE_RUNNING:
-          // TODO: this should not happen! What now?
-          break;
-      }
-
-      task->set_state(TASK_STATE_RUNNING);
-      task->set_started(now);
-
-      instance->set_state(INSTANCE_STATE_STARTING);
-
-      mesos::OfferID offerId = instance->offer_id();
-      mesos::SlaveID slaveId = instance->slave_id();
-      mesos::Resources resources = instance->resources();
-
-      return { startState, *instance, { aspect, (size_t) i } };
-    }
-  }
-
-  return { InstanceActionState::DONE };
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a default minimum resource set for a target
