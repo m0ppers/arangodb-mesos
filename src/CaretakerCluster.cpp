@@ -378,12 +378,6 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
 
-    LOG(INFO) 
-    << "checkOffer, here is the state:\n"
-    << "TARGETS:" << Global::state().jsonTargets() << "\n"
-    << "PLAN:"   << Global::state().jsonPlan() << "\n"
-    << "CURRENT:"<< Global::state().jsonCurrent() << "\n";
-
     if (offerUsed) {
       return;
     }

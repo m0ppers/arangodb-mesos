@@ -287,7 +287,7 @@ static mesos::Resources resourcesForStartEphemeral (mesos::Offer const& offer,
   mesos::Resources roleSpecificPart 
       = arangodb::intersectResources(offered, minimum);
   mesos::Resources defaultPart = minimum - roleSpecificPart;
-  defaultPart.flatten();
+  defaultPart = defaultPart.flatten();
   mesos::Resources toUse = roleSpecificPart + defaultPart;
 #endif
   Option<mesos::Resources> toUseOpt = offered.find(minimum);
@@ -323,7 +323,7 @@ static mesos::Resources resourcesForRequestReservation (
   mesos::Resources roleSpecificPart 
       = arangodb::intersectResources(offered, minimum);
   mesos::Resources defaultPart = minimum - roleSpecificPart;
-  defaultPart.flatten(Global::role(), Global::principal());
+  defaultPart = defaultPart.flatten(Global::role(), Global::principal());
 
   // TODO(fc) check if we could use additional resources
 

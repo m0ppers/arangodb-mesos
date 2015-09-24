@@ -554,10 +554,10 @@ int main (int argc, char** argv) {
   delete driver;
   delete manager;
 
-  sleep(120);   // Wait some more time before terminating the process to
-                // allow the user to use 
-                //   dcos package uninstall arangodb
-                // to remove the Marathon job
+  sleep(30);   // Wait some more time before terminating the process to
+               // allow the user to use 
+               //   dcos package uninstall arangodb
+               // to remove the Marathon job
   http.stop();
 
   return status;
