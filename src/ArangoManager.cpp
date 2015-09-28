@@ -544,7 +544,7 @@ bool ArangoManager::checkTimeouts () {
       }
     }
   }
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
