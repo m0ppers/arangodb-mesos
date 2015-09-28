@@ -219,12 +219,15 @@ ArangoManager::~ArangoManager () {
 void ArangoManager::addOffer (const mesos::Offer& offer) {
   lock_guard<mutex> lock(_lock);
 
+#if 0
+  // This is already logged in the scheduler in more concise format.
   {
     string json;
     pbjson::pb2json(&offer, json);
     LOG(INFO)
     << "OFFER received: " << json;
   }
+#endif
 
   _storedOffers[offer.id().value()] = offer;
 }
@@ -261,6 +264,8 @@ void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
 void ArangoManager::destroy () {
   LOG(INFO) << "destroy() called, killing off everything...";
   killAllInstances();
+
+  sleep(60);
 
   Global::state().destroy();
 
@@ -541,6 +546,9 @@ bool ArangoManager::checkTimeouts () {
           // task. We free all resources and go back to TASK_STATE_NEW
           // ...
           break;
+        case TASK_STATE_DEAD:
+          // This task is no longer used. Do nothing.
+          break;
       }
     }
   }
@@ -584,6 +592,7 @@ void ArangoManager::applyStatusUpdates () {
       case mesos::TASK_KILLED:   // TERMINAL. The task was killed by the executor.
       case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
       case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
+        caretaker.setTaskPlanState(pos.first, pos.second, TASK_STATE_KILLED);
         caretaker.setInstanceState(pos.first, pos.second, INSTANCE_STATE_STOPPED);
         break;
     }

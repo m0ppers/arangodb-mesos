@@ -1387,15 +1387,17 @@ void Caretaker::setInstanceState (TaskType taskType, int p,
       break;
 
     case INSTANCE_STATE_RUNNING:
+      LOG(INFO) << "blabla";
       // TODO: check old state?
-      tasks->mutable_entries(p)->set_state(TASK_STATE_RUNNING);
-      tasks->mutable_entries(p)->set_started(now);
+      //tasks->mutable_entries(p)->set_state(TASK_STATE_RUNNING);
+      //tasks->mutable_entries(p)->set_started(now);
       break;
 
     case INSTANCE_STATE_STOPPED:
+      LOG(INFO) << "blabla2";
       // TODO: check old state?
-      tasks->mutable_entries(p)->set_state(TASK_STATE_KILLED);
-      tasks->mutable_entries(p)->set_started(now);
+      //tasks->mutable_entries(p)->set_state(TASK_STATE_KILLED);
+      //tasks->mutable_entries(p)->set_started(now);
       break;
   }
 

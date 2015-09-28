@@ -52,6 +52,7 @@ enum TaskPlanState {
   TASK_STATE_RUNNING           = 6;
   TASK_STATE_KILLED            = 7;
   TASK_STATE_FAILED_OVER       = 8;
+  TASK_STATE_DEAD              = 9;
 }
 
 // The persistence_id and the started timestamp are set whenever the

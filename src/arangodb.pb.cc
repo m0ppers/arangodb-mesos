@@ -332,17 +332,17 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "ate\022(\n\014framework_id\030\001 \001(\0132\022.mesos.Framew"
     "orkID\022\"\n\007targets\030\002 \002(\0132\021.arangodb.Target"
     "s\022\034\n\004plan\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007curre"
-    "nt\030\004 \002(\0132\021.arangodb.Current*\364\001\n\rTaskPlan"
+    "nt\030\004 \002(\0132\021.arangodb.Current*\211\002\n\rTaskPlan"
     "State\022\022\n\016TASK_STATE_NEW\020\001\022 \n\034TASK_STATE_"
     "TRYING_TO_RESERVE\020\002\022 \n\034TASK_STATE_TRYING"
     "_TO_PERSIST\020\003\022\036\n\032TASK_STATE_TRYING_TO_ST"
     "ART\020\004\022 \n\034TASK_STATE_TRYING_TO_RESTART\020\005\022"
     "\026\n\022TASK_STATE_RUNNING\020\006\022\025\n\021TASK_STATE_KI"
-    "LLED\020\007\022\032\n\026TASK_STATE_FAILED_OVER\020\010*\202\001\n\020T"
-    "askCurrentState\022\031\n\025INSTANCE_STATE_UNUSED"
-    "\020\001\022\033\n\027INSTANCE_STATE_STARTING\020\002\022\032\n\026INSTA"
-    "NCE_STATE_RUNNING\020\003\022\032\n\026INSTANCE_STATE_ST"
-    "OPPED\020\004", 2007);
+    "LLED\020\007\022\032\n\026TASK_STATE_FAILED_OVER\020\010\022\023\n\017TA"
+    "SK_STATE_DEAD\020\t*\202\001\n\020TaskCurrentState\022\031\n\025"
+    "INSTANCE_STATE_UNUSED\020\001\022\033\n\027INSTANCE_STAT"
+    "E_STARTING\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003"
+    "\022\032\n\026INSTANCE_STATE_STOPPED\020\004", 2028);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   Target::default_instance_ = new Target();
@@ -386,6 +386,7 @@ bool TaskPlanState_IsValid(int value) {
     case 6:
     case 7:
     case 8:
+    case 9:
       return true;
     default:
       return false;
