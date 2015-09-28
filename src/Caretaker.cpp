@@ -623,8 +623,7 @@ static void startArangoDBTask (TaskType taskType, int pos,
   res = arangodb::filterIsDisk(res);
   mesos::Resource& disk = *(res.begin());
   if (disk.has_disk() && disk.disk().has_volume()) {
-    volume->set_host_path("../../../../../../../../" +
-                          info.container_path());
+    volume->set_host_path(info.container_path());
   }
   else {
     string path = "arangodb_" + Global::frameworkName() + "_" 
@@ -686,7 +685,7 @@ static bool requestPersistent (string const& upper,
   diskInfo.mutable_persistence()->set_id(persistentId);
 
   mesos::Volume volume;
-  volume.set_container_path("data");
+  volume.set_container_path("dataxyz");
   volume.set_mode(mesos::Volume::RW);
 
   diskInfo.mutable_volume()->CopyFrom(volume);
