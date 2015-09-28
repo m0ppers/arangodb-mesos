@@ -71,27 +71,6 @@ inline bool TaskPlanState_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<TaskPlanState>(
     TaskPlanState_descriptor(), name, value);
 }
-enum TaskCurrentState {
-  INSTANCE_STATE_UNUSED = 1,
-  INSTANCE_STATE_STARTING = 2,
-  INSTANCE_STATE_RUNNING = 3,
-  INSTANCE_STATE_STOPPED = 4
-};
-bool TaskCurrentState_IsValid(int value);
-const TaskCurrentState TaskCurrentState_MIN = INSTANCE_STATE_UNUSED;
-const TaskCurrentState TaskCurrentState_MAX = INSTANCE_STATE_STOPPED;
-const int TaskCurrentState_ARRAYSIZE = TaskCurrentState_MAX + 1;
-
-const ::google::protobuf::EnumDescriptor* TaskCurrentState_descriptor();
-inline const ::std::string& TaskCurrentState_Name(TaskCurrentState value) {
-  return ::google::protobuf::internal::NameOfEnum(
-    TaskCurrentState_descriptor(), value);
-}
-inline bool TaskCurrentState_Parse(
-    const ::std::string& name, TaskCurrentState* value) {
-  return ::google::protobuf::internal::ParseNamedEnum<TaskCurrentState>(
-    TaskCurrentState_descriptor(), name, value);
-}
 // ===================================================================
 
 class Target : public ::google::protobuf::Message {
@@ -418,17 +397,10 @@ class TaskPlan : public ::google::protobuf::Message {
   inline ::arangodb::TaskPlanState state() const;
   inline void set_state(::arangodb::TaskPlanState value);
 
-  // required bool is_primary = 2;
-  inline bool has_is_primary() const;
-  inline void clear_is_primary();
-  static const int kIsPrimaryFieldNumber = 2;
-  inline bool is_primary() const;
-  inline void set_is_primary(bool value);
-
-  // optional string persistence_id = 3;
+  // optional string persistence_id = 2;
   inline bool has_persistence_id() const;
   inline void clear_persistence_id();
-  static const int kPersistenceIdFieldNumber = 3;
+  static const int kPersistenceIdFieldNumber = 2;
   inline const ::std::string& persistence_id() const;
   inline void set_persistence_id(const ::std::string& value);
   inline void set_persistence_id(const char* value);
@@ -437,33 +409,30 @@ class TaskPlan : public ::google::protobuf::Message {
   inline ::std::string* release_persistence_id();
   inline void set_allocated_persistence_id(::std::string* persistence_id);
 
-  // optional double started = 4;
-  inline bool has_started() const;
-  inline void clear_started();
-  static const int kStartedFieldNumber = 4;
-  inline double started() const;
-  inline void set_started(double value);
+  // optional double timestamp = 3;
+  inline bool has_timestamp() const;
+  inline void clear_timestamp();
+  static const int kTimestampFieldNumber = 3;
+  inline double timestamp() const;
+  inline void set_timestamp(double value);
 
   // @@protoc_insertion_point(class_scope:arangodb.TaskPlan)
  private:
   inline void set_has_state();
   inline void clear_has_state();
-  inline void set_has_is_primary();
-  inline void clear_has_is_primary();
   inline void set_has_persistence_id();
   inline void clear_has_persistence_id();
-  inline void set_has_started();
-  inline void clear_has_started();
+  inline void set_has_timestamp();
+  inline void clear_has_timestamp();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  int state_;
-  bool is_primary_;
   ::std::string* persistence_id_;
-  double started_;
+  double timestamp_;
+  int state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -799,26 +768,19 @@ class TaskCurrent : public ::google::protobuf::Message {
   inline ::std::string* release_container_path();
   inline void set_allocated_container_path(::std::string* container_path);
 
-  // required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
-  inline bool has_state() const;
-  inline void clear_state();
-  static const int kStateFieldNumber = 7;
-  inline ::arangodb::TaskCurrentState state() const;
-  inline void set_state(::arangodb::TaskCurrentState value);
-
-  // optional .mesos.TaskInfo task_info = 8;
+  // optional .mesos.TaskInfo task_info = 7;
   inline bool has_task_info() const;
   inline void clear_task_info();
-  static const int kTaskInfoFieldNumber = 8;
+  static const int kTaskInfoFieldNumber = 7;
   inline const ::mesos::TaskInfo& task_info() const;
   inline ::mesos::TaskInfo* mutable_task_info();
   inline ::mesos::TaskInfo* release_task_info();
   inline void set_allocated_task_info(::mesos::TaskInfo* task_info);
 
-  // optional .mesos.TaskStatus task_status = 9;
+  // optional .mesos.TaskStatus task_status = 8;
   inline bool has_task_status() const;
   inline void clear_task_status();
-  static const int kTaskStatusFieldNumber = 9;
+  static const int kTaskStatusFieldNumber = 8;
   inline const ::mesos::TaskStatus& task_status() const;
   inline ::mesos::TaskStatus* mutable_task_status();
   inline ::mesos::TaskStatus* release_task_status();
@@ -834,8 +796,6 @@ class TaskCurrent : public ::google::protobuf::Message {
   inline void clear_has_hostname();
   inline void set_has_container_path();
   inline void clear_has_container_path();
-  inline void set_has_state();
-  inline void clear_has_state();
   inline void set_has_task_info();
   inline void clear_has_task_info();
   inline void set_has_task_status();
@@ -851,10 +811,9 @@ class TaskCurrent : public ::google::protobuf::Message {
   ::std::string* container_path_;
   ::mesos::TaskInfo* task_info_;
   ::mesos::TaskStatus* task_status_;
-  int state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -1614,37 +1573,15 @@ inline void TaskPlan::set_state(::arangodb::TaskPlanState value) {
   state_ = value;
 }
 
-// required bool is_primary = 2;
-inline bool TaskPlan::has_is_primary() const {
+// optional string persistence_id = 2;
+inline bool TaskPlan::has_persistence_id() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void TaskPlan::set_has_is_primary() {
+inline void TaskPlan::set_has_persistence_id() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void TaskPlan::clear_has_is_primary() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void TaskPlan::clear_is_primary() {
-  is_primary_ = false;
-  clear_has_is_primary();
-}
-inline bool TaskPlan::is_primary() const {
-  return is_primary_;
-}
-inline void TaskPlan::set_is_primary(bool value) {
-  set_has_is_primary();
-  is_primary_ = value;
-}
-
-// optional string persistence_id = 3;
-inline bool TaskPlan::has_persistence_id() const {
-  return (_has_bits_[0] & 0x00000004u) != 0;
-}
-inline void TaskPlan::set_has_persistence_id() {
-  _has_bits_[0] |= 0x00000004u;
-}
 inline void TaskPlan::clear_has_persistence_id() {
-  _has_bits_[0] &= ~0x00000004u;
+  _has_bits_[0] &= ~0x00000002u;
 }
 inline void TaskPlan::clear_persistence_id() {
   if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
@@ -1706,26 +1643,26 @@ inline void TaskPlan::set_allocated_persistence_id(::std::string* persistence_id
   }
 }
 
-// optional double started = 4;
-inline bool TaskPlan::has_started() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
+// optional double timestamp = 3;
+inline bool TaskPlan::has_timestamp() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
 }
-inline void TaskPlan::set_has_started() {
-  _has_bits_[0] |= 0x00000008u;
+inline void TaskPlan::set_has_timestamp() {
+  _has_bits_[0] |= 0x00000004u;
 }
-inline void TaskPlan::clear_has_started() {
-  _has_bits_[0] &= ~0x00000008u;
+inline void TaskPlan::clear_has_timestamp() {
+  _has_bits_[0] &= ~0x00000004u;
 }
-inline void TaskPlan::clear_started() {
-  started_ = 0;
-  clear_has_started();
+inline void TaskPlan::clear_timestamp() {
+  timestamp_ = 0;
+  clear_has_timestamp();
 }
-inline double TaskPlan::started() const {
-  return started_;
+inline double TaskPlan::timestamp() const {
+  return timestamp_;
 }
-inline void TaskPlan::set_started(double value) {
-  set_has_started();
-  started_ = value;
+inline void TaskPlan::set_timestamp(double value) {
+  set_has_timestamp();
+  timestamp_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -2183,38 +2120,15 @@ inline void TaskCurrent::set_allocated_container_path(::std::string* container_p
   }
 }
 
-// required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
-inline bool TaskCurrent::has_state() const {
+// optional .mesos.TaskInfo task_info = 7;
+inline bool TaskCurrent::has_task_info() const {
   return (_has_bits_[0] & 0x00000040u) != 0;
 }
-inline void TaskCurrent::set_has_state() {
+inline void TaskCurrent::set_has_task_info() {
   _has_bits_[0] |= 0x00000040u;
 }
-inline void TaskCurrent::clear_has_state() {
-  _has_bits_[0] &= ~0x00000040u;
-}
-inline void TaskCurrent::clear_state() {
-  state_ = 1;
-  clear_has_state();
-}
-inline ::arangodb::TaskCurrentState TaskCurrent::state() const {
-  return static_cast< ::arangodb::TaskCurrentState >(state_);
-}
-inline void TaskCurrent::set_state(::arangodb::TaskCurrentState value) {
-  assert(::arangodb::TaskCurrentState_IsValid(value));
-  set_has_state();
-  state_ = value;
-}
-
-// optional .mesos.TaskInfo task_info = 8;
-inline bool TaskCurrent::has_task_info() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void TaskCurrent::set_has_task_info() {
-  _has_bits_[0] |= 0x00000080u;
-}
 inline void TaskCurrent::clear_has_task_info() {
-  _has_bits_[0] &= ~0x00000080u;
+  _has_bits_[0] &= ~0x00000040u;
 }
 inline void TaskCurrent::clear_task_info() {
   if (task_info_ != NULL) task_info_->::mesos::TaskInfo::Clear();
@@ -2244,15 +2158,15 @@ inline void TaskCurrent::set_allocated_task_info(::mesos::TaskInfo* task_info) {
   }
 }
 
-// optional .mesos.TaskStatus task_status = 9;
+// optional .mesos.TaskStatus task_status = 8;
 inline bool TaskCurrent::has_task_status() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void TaskCurrent::set_has_task_status() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void TaskCurrent::clear_has_task_status() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void TaskCurrent::clear_task_status() {
   if (task_status_ != NULL) task_status_->::mesos::TaskStatus::Clear();
@@ -2745,10 +2659,6 @@ namespace protobuf {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::TaskPlanState>() {
   return ::arangodb::TaskPlanState_descriptor();
-}
-template <>
-inline const EnumDescriptor* GetEnumDescriptor< ::arangodb::TaskCurrentState>() {
-  return ::arangodb::TaskCurrentState_descriptor();
 }
 
 }  // namespace google

@@ -141,12 +141,6 @@ namespace arangodb {
 
       void setTaskStatus (TaskType, int, mesos::TaskStatus const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the instance state
-////////////////////////////////////////////////////////////////////////////////
-
-      void setInstanceState (TaskType, int, TaskCurrentState);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
 // -----------------------------------------------------------------------------

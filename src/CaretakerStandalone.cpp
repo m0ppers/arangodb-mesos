@@ -138,11 +138,9 @@ void CaretakerStandalone::updatePlan () {
 
     TaskPlan* task = dbservers->add_entries();
     task->set_state(TASK_STATE_NEW);
-    task->set_started(now);
-    task->set_is_primary(true);
+    task->set_timestamp(now);
 
-    auto instance = current.mutable_dbservers()->add_entries();
-    instance->set_state(INSTANCE_STATE_UNUSED);
+    current.mutable_dbservers()->add_entries();
   }
 
   Global::state().setPlan(plan);

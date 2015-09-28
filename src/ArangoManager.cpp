@@ -497,7 +497,7 @@ bool ArangoManager::checkTimeouts () {
         case TASK_STATE_TRYING_TO_RESERVE:
           // After a timeout, go back to state TASK_STATE_NEW, because
           // there was no satisfactory answer to our reservation request:
-          timeStamp = tp->started();
+          timeStamp = tp->timestamp();
           if (timeStamp - now > TryingToReserveTimeout) {
             LOG(INFO) << "Timeout " << TryingToReserveTimeout << "s reached "
                       << " for task " << ic->task_info().name();
@@ -510,7 +510,7 @@ bool ArangoManager::checkTimeouts () {
         case TASK_STATE_TRYING_TO_PERSIST:
           // After a timeout, go back to state TASK_STATE_NEW, because
           // there was no satisfactory answer to our persistence request:
-          timeStamp = tp->started();
+          timeStamp = tp->timestamp();
           if (timeStamp - now > TryingToPersistTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
                       << " for task " << ic->task_info().name();
@@ -580,7 +580,6 @@ void ArangoManager::applyStatusUpdates () {
 
       case mesos::TASK_RUNNING:
         caretaker.setTaskPlanState(pos.first, pos.second, TASK_STATE_RUNNING);
-        caretaker.setInstanceState(pos.first, pos.second, INSTANCE_STATE_RUNNING);
         break;
 
       case mesos::TASK_STARTING:
@@ -593,7 +592,6 @@ void ArangoManager::applyStatusUpdates () {
       case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
       case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
         caretaker.setTaskPlanState(pos.first, pos.second, TASK_STATE_KILLED);
-        caretaker.setInstanceState(pos.first, pos.second, INSTANCE_STATE_STOPPED);
         break;
     }
   }

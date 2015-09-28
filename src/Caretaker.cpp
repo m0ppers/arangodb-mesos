@@ -674,7 +674,7 @@ static bool requestPersistent (string const& upper,
   string persistentId = upper + "_" + UUID::random().toString();
 
   task->set_state(TASK_STATE_TRYING_TO_PERSIST);
-  task->set_started(now);
+  task->set_timestamp(now);
   task->set_persistence_id(persistentId);
 
   taskCur->mutable_offer_id()->CopyFrom(offer.id());
@@ -735,7 +735,7 @@ static bool requestReservation (std::string const& upper,
     chrono::steady_clock::now().time_since_epoch()).count();
 
   task->set_state(TASK_STATE_TRYING_TO_RESERVE);
-  task->set_started(now);
+  task->set_timestamp(now);
 
   taskCur->mutable_slave_id()->CopyFrom(offer.slave_id());
   taskCur->mutable_offer_id()->CopyFrom(offer.id());
@@ -778,7 +778,7 @@ static bool requestStartPersistent (string const& upper,
 
     task->set_state(TASK_STATE_TRYING_TO_START);
     task->set_persistence_id(persistenceId);
-    task->set_started(now);
+    task->set_timestamp(now);
 
     taskCur->mutable_offer_id()->CopyFrom(offer.id());
     taskCur->mutable_resources()->CopyFrom(resources);
@@ -827,7 +827,7 @@ static bool requestStartEphemeral (mesos::Offer const& offer,
     chrono::steady_clock::now().time_since_epoch()).count();
 
   task->set_state(TASK_STATE_TRYING_TO_START);
-  task->set_started(now);
+  task->set_timestamp(now);
 
   taskCur->mutable_slave_id()->CopyFrom(offer.slave_id());
   taskCur->mutable_offer_id()->CopyFrom(offer.id());
@@ -882,7 +882,7 @@ static bool requestRestartPersistent (string const& upper,
 
     task->set_state(TASK_STATE_TRYING_TO_RESTART);
     task->set_persistence_id(persistenceId);
-    task->set_started(now);
+    task->set_timestamp(now);
 
     taskCur->mutable_offer_id()->CopyFrom(offer.id());
     taskCur->mutable_resources()->CopyFrom(resources);
@@ -915,7 +915,7 @@ static bool requestRestartEphemeral (string const& upper,
     chrono::steady_clock::now().time_since_epoch()).count();
 
   task->set_state(TASK_STATE_TRYING_TO_RESTART);
-  task->set_started(now);
+  task->set_timestamp(now);
 
   taskCur->mutable_slave_id()->CopyFrom(offer.slave_id());
   taskCur->mutable_offer_id()->CopyFrom(offer.id());
@@ -1332,76 +1332,6 @@ void Caretaker::setTaskStatus (TaskType taskType, int p,
       break;
   }
 
-  Global::state().setCurrent(current);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the instance state
-////////////////////////////////////////////////////////////////////////////////
-
-void Caretaker::setInstanceState (TaskType taskType, int p,
-                                  TaskCurrentState state) {
-  double now = chrono::duration_cast<chrono::seconds>(
-    chrono::steady_clock::now().time_since_epoch()).count();
-
-  Current current = Global::state().current();
-  Plan plan = Global::state().plan();
-
-  TasksCurrent* currents = nullptr;
-  TasksPlan* tasks = nullptr;
-
-  switch (taskType) {
-    case TaskType::AGENT:
-      currents = current.mutable_agents();
-      tasks = plan.mutable_agents();
-      break;
-
-    case TaskType::PRIMARY_DBSERVER:
-      currents = current.mutable_dbservers();
-      tasks = plan.mutable_dbservers();
-      break;
-
-    case TaskType::SECONDARY_DBSERVER:
-      currents = current.mutable_secondaries();
-      tasks = plan.mutable_secondaries();
-      break;
-
-    case TaskType::COORDINATOR:
-      currents = current.mutable_coordinators();
-      tasks = plan.mutable_coordinators();
-      break;
-
-    default:
-      LOG(INFO)
-      << "unknown task type " << (int) taskType;
-      return;
-  }
-
-  currents->mutable_entries(p)->set_state(state);
-
-  switch (state) {
-    case INSTANCE_STATE_UNUSED:
-    case INSTANCE_STATE_STARTING:
-      LOG(INFO)
-      << "unexpected state " << (int) state;
-      break;
-
-    case INSTANCE_STATE_RUNNING:
-      LOG(INFO) << "blabla";
-      // TODO: check old state?
-      //tasks->mutable_entries(p)->set_state(TASK_STATE_RUNNING);
-      //tasks->mutable_entries(p)->set_started(now);
-      break;
-
-    case INSTANCE_STATE_STOPPED:
-      LOG(INFO) << "blabla2";
-      // TODO: check old state?
-      //tasks->mutable_entries(p)->set_state(TASK_STATE_KILLED);
-      //tasks->mutable_entries(p)->set_started(now);
-      break;
-  }
-
-  Global::state().setPlan(plan);
   Global::state().setCurrent(current);
 }
 

@@ -48,7 +48,6 @@ const ::google::protobuf::Descriptor* State_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   State_reflection_ = NULL;
 const ::google::protobuf::EnumDescriptor* TaskPlanState_descriptor_ = NULL;
-const ::google::protobuf::EnumDescriptor* TaskCurrentState_descriptor_ = NULL;
 
 }  // namespace
 
@@ -98,11 +97,10 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Targets));
   TaskPlan_descriptor_ = file->message_type(2);
-  static const int TaskPlan_offsets_[4] = {
+  static const int TaskPlan_offsets_[3] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, state_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, is_primary_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, persistence_id_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, started_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, timestamp_),
   };
   TaskPlan_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -149,14 +147,13 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Plan));
   TaskCurrent_descriptor_ = file->message_type(5);
-  static const int TaskCurrent_offsets_[9] = {
+  static const int TaskCurrent_offsets_[8] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, slave_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, offer_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, resources_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, ports_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, hostname_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, container_path_),
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, state_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, task_info_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskCurrent, task_status_),
   };
@@ -228,7 +225,6 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(State));
   TaskPlanState_descriptor_ = file->enum_type(0);
-  TaskCurrentState_descriptor_ = file->enum_type(1);
 }
 
 namespace {
@@ -301,48 +297,43 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "b.Target\022&\n\014coordinators\030\003 \002(\0132\020.arangod"
     "b.Target\022#\n\tdbservers\030\004 \002(\0132\020.arangodb.T"
     "arget\022%\n\013secondaries\030\005 \002(\0132\020.arangodb.Ta"
-    "rget\022 \n\030asynchronous_replication\030\006 \001(\010\"\177"
+    "rget\022 \n\030asynchronous_replication\030\006 \001(\010\"m"
     "\n\010TaskPlan\0226\n\005state\030\001 \002(\0162\027.arangodb.Tas"
-    "kPlanState:\016TASK_STATE_NEW\022\022\n\nis_primary"
-    "\030\002 \002(\010\022\026\n\016persistence_id\030\003 \001(\t\022\017\n\007starte"
-    "d\030\004 \001(\001\"0\n\tTasksPlan\022#\n\007entries\030\001 \003(\0132\022."
-    "arangodb.TaskPlan\"\250\001\n\004Plan\022#\n\006agents\030\001 \002"
-    "(\0132\023.arangodb.TasksPlan\022)\n\014coordinators\030"
-    "\002 \002(\0132\023.arangodb.TasksPlan\022&\n\tdbservers\030"
-    "\003 \002(\0132\023.arangodb.TasksPlan\022(\n\013secondarie"
-    "s\030\004 \002(\0132\023.arangodb.TasksPlan\"\274\002\n\013TaskCur"
-    "rent\022 \n\010slave_id\030\001 \001(\0132\016.mesos.SlaveID\022 "
-    "\n\010offer_id\030\002 \001(\0132\016.mesos.OfferID\022\"\n\treso"
-    "urces\030\003 \003(\0132\017.mesos.Resource\022\r\n\005ports\030\004 "
-    "\003(\r\022\020\n\010hostname\030\005 \001(\t\022\026\n\016container_path\030"
-    "\006 \001(\t\022@\n\005state\030\007 \002(\0162\032.arangodb.TaskCurr"
-    "entState:\025INSTANCE_STATE_UNUSED\022\"\n\ttask_"
-    "info\030\010 \001(\0132\017.mesos.TaskInfo\022&\n\013task_stat"
-    "us\030\t \001(\0132\021.mesos.TaskStatus\"6\n\014TasksCurr"
-    "ent\022&\n\007entries\030\001 \003(\0132\025.arangodb.TaskCurr"
-    "ent\"\333\002\n\007Current\022&\n\006agents\030\001 \002(\0132\026.arango"
-    "db.TasksCurrent\022,\n\014coordinators\030\002 \002(\0132\026."
-    "arangodb.TasksCurrent\022)\n\tdbservers\030\003 \002(\013"
-    "2\026.arangodb.TasksCurrent\022+\n\013secondaries\030"
-    "\004 \002(\0132\026.arangodb.TasksCurrent\022\030\n\020cluster"
-    "_complete\030\005 \002(\010\022%\n\035cluster_bootstrappedD"
-    "Bservers\030\006 \002(\010\022\032\n\022cluster_upgradedDB\030\007 \002"
-    "(\010\022(\n cluster_bootstrappedCoordinators\030\010"
-    " \002(\010\022\033\n\023cluster_initialized\030\t \002(\010\"\227\001\n\005St"
-    "ate\022(\n\014framework_id\030\001 \001(\0132\022.mesos.Framew"
-    "orkID\022\"\n\007targets\030\002 \002(\0132\021.arangodb.Target"
-    "s\022\034\n\004plan\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007curre"
-    "nt\030\004 \002(\0132\021.arangodb.Current*\211\002\n\rTaskPlan"
-    "State\022\022\n\016TASK_STATE_NEW\020\001\022 \n\034TASK_STATE_"
-    "TRYING_TO_RESERVE\020\002\022 \n\034TASK_STATE_TRYING"
-    "_TO_PERSIST\020\003\022\036\n\032TASK_STATE_TRYING_TO_ST"
-    "ART\020\004\022 \n\034TASK_STATE_TRYING_TO_RESTART\020\005\022"
-    "\026\n\022TASK_STATE_RUNNING\020\006\022\025\n\021TASK_STATE_KI"
-    "LLED\020\007\022\032\n\026TASK_STATE_FAILED_OVER\020\010\022\023\n\017TA"
-    "SK_STATE_DEAD\020\t*\202\001\n\020TaskCurrentState\022\031\n\025"
-    "INSTANCE_STATE_UNUSED\020\001\022\033\n\027INSTANCE_STAT"
-    "E_STARTING\020\002\022\032\n\026INSTANCE_STATE_RUNNING\020\003"
-    "\022\032\n\026INSTANCE_STATE_STOPPED\020\004", 2028);
+    "kPlanState:\016TASK_STATE_NEW\022\026\n\016persistenc"
+    "e_id\030\002 \001(\t\022\021\n\ttimestamp\030\003 \001(\001\"0\n\tTasksPl"
+    "an\022#\n\007entries\030\001 \003(\0132\022.arangodb.TaskPlan\""
+    "\250\001\n\004Plan\022#\n\006agents\030\001 \002(\0132\023.arangodb.Task"
+    "sPlan\022)\n\014coordinators\030\002 \002(\0132\023.arangodb.T"
+    "asksPlan\022&\n\tdbservers\030\003 \002(\0132\023.arangodb.T"
+    "asksPlan\022(\n\013secondaries\030\004 \002(\0132\023.arangodb"
+    ".TasksPlan\"\372\001\n\013TaskCurrent\022 \n\010slave_id\030\001"
+    " \001(\0132\016.mesos.SlaveID\022 \n\010offer_id\030\002 \001(\0132\016"
+    ".mesos.OfferID\022\"\n\tresources\030\003 \003(\0132\017.meso"
+    "s.Resource\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 "
+    "\001(\t\022\026\n\016container_path\030\006 \001(\t\022\"\n\ttask_info"
+    "\030\007 \001(\0132\017.mesos.TaskInfo\022&\n\013task_status\030\010"
+    " \001(\0132\021.mesos.TaskStatus\"6\n\014TasksCurrent\022"
+    "&\n\007entries\030\001 \003(\0132\025.arangodb.TaskCurrent\""
+    "\333\002\n\007Current\022&\n\006agents\030\001 \002(\0132\026.arangodb.T"
+    "asksCurrent\022,\n\014coordinators\030\002 \002(\0132\026.aran"
+    "godb.TasksCurrent\022)\n\tdbservers\030\003 \002(\0132\026.a"
+    "rangodb.TasksCurrent\022+\n\013secondaries\030\004 \002("
+    "\0132\026.arangodb.TasksCurrent\022\030\n\020cluster_com"
+    "plete\030\005 \002(\010\022%\n\035cluster_bootstrappedDBser"
+    "vers\030\006 \002(\010\022\032\n\022cluster_upgradedDB\030\007 \002(\010\022("
+    "\n cluster_bootstrappedCoordinators\030\010 \002(\010"
+    "\022\033\n\023cluster_initialized\030\t \002(\010\"\227\001\n\005State\022"
+    "(\n\014framework_id\030\001 \001(\0132\022.mesos.FrameworkI"
+    "D\022\"\n\007targets\030\002 \002(\0132\021.arangodb.Targets\022\034\n"
+    "\004plan\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007current\030\004"
+    " \002(\0132\021.arangodb.Current*\211\002\n\rTaskPlanStat"
+    "e\022\022\n\016TASK_STATE_NEW\020\001\022 \n\034TASK_STATE_TRYI"
+    "NG_TO_RESERVE\020\002\022 \n\034TASK_STATE_TRYING_TO_"
+    "PERSIST\020\003\022\036\n\032TASK_STATE_TRYING_TO_START\020"
+    "\004\022 \n\034TASK_STATE_TRYING_TO_RESTART\020\005\022\026\n\022T"
+    "ASK_STATE_RUNNING\020\006\022\025\n\021TASK_STATE_KILLED"
+    "\020\007\022\032\n\026TASK_STATE_FAILED_OVER\020\010\022\023\n\017TASK_S"
+    "TATE_DEAD\020\t", 1811);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   Target::default_instance_ = new Target();
@@ -387,22 +378,6 @@ bool TaskPlanState_IsValid(int value) {
     case 7:
     case 8:
     case 9:
-      return true;
-    default:
-      return false;
-  }
-}
-
-const ::google::protobuf::EnumDescriptor* TaskCurrentState_descriptor() {
-  protobuf_AssignDescriptorsOnce();
-  return TaskCurrentState_descriptor_;
-}
-bool TaskCurrentState_IsValid(int value) {
-  switch(value) {
-    case 1:
-    case 2:
-    case 3:
-    case 4:
       return true;
     default:
       return false;
@@ -1205,9 +1180,8 @@ void Targets::Swap(Targets* other) {
 
 #ifndef _MSC_VER
 const int TaskPlan::kStateFieldNumber;
-const int TaskPlan::kIsPrimaryFieldNumber;
 const int TaskPlan::kPersistenceIdFieldNumber;
-const int TaskPlan::kStartedFieldNumber;
+const int TaskPlan::kTimestampFieldNumber;
 #endif  // !_MSC_VER
 
 TaskPlan::TaskPlan()
@@ -1227,9 +1201,8 @@ TaskPlan::TaskPlan(const TaskPlan& from)
 void TaskPlan::SharedCtor() {
   _cached_size_ = 0;
   state_ = 1;
-  is_primary_ = false;
   persistence_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  started_ = 0;
+  timestamp_ = 0;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1269,13 +1242,12 @@ TaskPlan* TaskPlan::New() const {
 void TaskPlan::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
     state_ = 1;
-    is_primary_ = false;
     if (has_persistence_id()) {
       if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
         persistence_id_->clear();
       }
     }
-    started_ = 0;
+    timestamp_ = 0;
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -1303,28 +1275,12 @@ bool TaskPlan::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(16)) goto parse_is_primary;
+        if (input->ExpectTag(18)) goto parse_persistence_id;
         break;
       }
 
-      // required bool is_primary = 2;
+      // optional string persistence_id = 2;
       case 2: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_is_primary:
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
-                 input, &is_primary_)));
-          set_has_is_primary();
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(26)) goto parse_persistence_id;
-        break;
-      }
-
-      // optional string persistence_id = 3;
-      case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_persistence_id:
@@ -1336,19 +1292,19 @@ bool TaskPlan::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(33)) goto parse_started;
+        if (input->ExpectTag(25)) goto parse_timestamp;
         break;
       }
 
-      // optional double started = 4;
-      case 4: {
+      // optional double timestamp = 3;
+      case 3: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_FIXED64) {
-         parse_started:
+         parse_timestamp:
           DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
                    double, ::google::protobuf::internal::WireFormatLite::TYPE_DOUBLE>(
-                 input, &started_)));
-          set_has_started();
+                 input, &timestamp_)));
+          set_has_timestamp();
         } else {
           goto handle_uninterpreted;
         }
@@ -1380,23 +1336,18 @@ void TaskPlan::SerializeWithCachedSizes(
       1, this->state(), output);
   }
 
-  // required bool is_primary = 2;
-  if (has_is_primary()) {
-    ::google::protobuf::internal::WireFormatLite::WriteBool(2, this->is_primary(), output);
-  }
-
-  // optional string persistence_id = 3;
+  // optional string persistence_id = 2;
   if (has_persistence_id()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->persistence_id().data(), this->persistence_id().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     ::google::protobuf::internal::WireFormatLite::WriteString(
-      3, this->persistence_id(), output);
+      2, this->persistence_id(), output);
   }
 
-  // optional double started = 4;
-  if (has_started()) {
-    ::google::protobuf::internal::WireFormatLite::WriteDouble(4, this->started(), output);
+  // optional double timestamp = 3;
+  if (has_timestamp()) {
+    ::google::protobuf::internal::WireFormatLite::WriteDouble(3, this->timestamp(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -1413,24 +1364,19 @@ void TaskPlan::SerializeWithCachedSizes(
       1, this->state(), target);
   }
 
-  // required bool is_primary = 2;
-  if (has_is_primary()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(2, this->is_primary(), target);
-  }
-
-  // optional string persistence_id = 3;
+  // optional string persistence_id = 2;
   if (has_persistence_id()) {
     ::google::protobuf::internal::WireFormat::VerifyUTF8String(
       this->persistence_id().data(), this->persistence_id().length(),
       ::google::protobuf::internal::WireFormat::SERIALIZE);
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->persistence_id(), target);
+        2, this->persistence_id(), target);
   }
 
-  // optional double started = 4;
-  if (has_started()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(4, this->started(), target);
+  // optional double timestamp = 3;
+  if (has_timestamp()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(3, this->timestamp(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -1450,20 +1396,15 @@ int TaskPlan::ByteSize() const {
         ::google::protobuf::internal::WireFormatLite::EnumSize(this->state());
     }
 
-    // required bool is_primary = 2;
-    if (has_is_primary()) {
-      total_size += 1 + 1;
-    }
-
-    // optional string persistence_id = 3;
+    // optional string persistence_id = 2;
     if (has_persistence_id()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::StringSize(
           this->persistence_id());
     }
 
-    // optional double started = 4;
-    if (has_started()) {
+    // optional double timestamp = 3;
+    if (has_timestamp()) {
       total_size += 1 + 8;
     }
 
@@ -1497,14 +1438,11 @@ void TaskPlan::MergeFrom(const TaskPlan& from) {
     if (from.has_state()) {
       set_state(from.state());
     }
-    if (from.has_is_primary()) {
-      set_is_primary(from.is_primary());
-    }
     if (from.has_persistence_id()) {
       set_persistence_id(from.persistence_id());
     }
-    if (from.has_started()) {
-      set_started(from.started());
+    if (from.has_timestamp()) {
+      set_timestamp(from.timestamp());
     }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
@@ -1523,7 +1461,7 @@ void TaskPlan::CopyFrom(const TaskPlan& from) {
 }
 
 bool TaskPlan::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000003) != 0x00000003) return false;
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
 
   return true;
 }
@@ -1531,9 +1469,8 @@ bool TaskPlan::IsInitialized() const {
 void TaskPlan::Swap(TaskPlan* other) {
   if (other != this) {
     std::swap(state_, other->state_);
-    std::swap(is_primary_, other->is_primary_);
     std::swap(persistence_id_, other->persistence_id_);
-    std::swap(started_, other->started_);
+    std::swap(timestamp_, other->timestamp_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);
@@ -2125,7 +2062,6 @@ const int TaskCurrent::kResourcesFieldNumber;
 const int TaskCurrent::kPortsFieldNumber;
 const int TaskCurrent::kHostnameFieldNumber;
 const int TaskCurrent::kContainerPathFieldNumber;
-const int TaskCurrent::kStateFieldNumber;
 const int TaskCurrent::kTaskInfoFieldNumber;
 const int TaskCurrent::kTaskStatusFieldNumber;
 #endif  // !_MSC_VER
@@ -2154,7 +2090,6 @@ void TaskCurrent::SharedCtor() {
   offer_id_ = NULL;
   hostname_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   container_path_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  state_ = 1;
   task_info_ = NULL;
   task_status_ = NULL;
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
@@ -2218,12 +2153,9 @@ void TaskCurrent::Clear() {
         container_path_->clear();
       }
     }
-    state_ = 1;
     if (has_task_info()) {
       if (task_info_ != NULL) task_info_->::mesos::TaskInfo::Clear();
     }
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (has_task_status()) {
       if (task_status_ != NULL) task_status_->::mesos::TaskStatus::Clear();
     }
@@ -2334,33 +2266,12 @@ bool TaskCurrent::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(56)) goto parse_state;
+        if (input->ExpectTag(58)) goto parse_task_info;
         break;
       }
 
-      // required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
+      // optional .mesos.TaskInfo task_info = 7;
       case 7: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
-         parse_state:
-          int value;
-          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
-                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
-                 input, &value)));
-          if (::arangodb::TaskCurrentState_IsValid(value)) {
-            set_state(static_cast< ::arangodb::TaskCurrentState >(value));
-          } else {
-            mutable_unknown_fields()->AddVarint(7, value);
-          }
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(66)) goto parse_task_info;
-        break;
-      }
-
-      // optional .mesos.TaskInfo task_info = 8;
-      case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_task_info:
@@ -2369,12 +2280,12 @@ bool TaskCurrent::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(74)) goto parse_task_status;
+        if (input->ExpectTag(66)) goto parse_task_status;
         break;
       }
 
-      // optional .mesos.TaskStatus task_status = 9;
-      case 9: {
+      // optional .mesos.TaskStatus task_status = 8;
+      case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_task_status:
@@ -2447,22 +2358,16 @@ void TaskCurrent::SerializeWithCachedSizes(
       6, this->container_path(), output);
   }
 
-  // required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
-  if (has_state()) {
-    ::google::protobuf::internal::WireFormatLite::WriteEnum(
-      7, this->state(), output);
-  }
-
-  // optional .mesos.TaskInfo task_info = 8;
+  // optional .mesos.TaskInfo task_info = 7;
   if (has_task_info()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      8, this->task_info(), output);
+      7, this->task_info(), output);
   }
 
-  // optional .mesos.TaskStatus task_status = 9;
+  // optional .mesos.TaskStatus task_status = 8;
   if (has_task_status()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      9, this->task_status(), output);
+      8, this->task_status(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -2520,24 +2425,18 @@ void TaskCurrent::SerializeWithCachedSizes(
         6, this->container_path(), target);
   }
 
-  // required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
-  if (has_state()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
-      7, this->state(), target);
-  }
-
-  // optional .mesos.TaskInfo task_info = 8;
+  // optional .mesos.TaskInfo task_info = 7;
   if (has_task_info()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        8, this->task_info(), target);
+        7, this->task_info(), target);
   }
 
-  // optional .mesos.TaskStatus task_status = 9;
+  // optional .mesos.TaskStatus task_status = 8;
   if (has_task_status()) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        9, this->task_status(), target);
+        8, this->task_status(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -2579,22 +2478,14 @@ int TaskCurrent::ByteSize() const {
           this->container_path());
     }
 
-    // required .arangodb.TaskCurrentState state = 7 [default = INSTANCE_STATE_UNUSED];
-    if (has_state()) {
-      total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::EnumSize(this->state());
-    }
-
-    // optional .mesos.TaskInfo task_info = 8;
+    // optional .mesos.TaskInfo task_info = 7;
     if (has_task_info()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
           this->task_info());
     }
 
-  }
-  if (_has_bits_[8 / 32] & (0xffu << (8 % 32))) {
-    // optional .mesos.TaskStatus task_status = 9;
+    // optional .mesos.TaskStatus task_status = 8;
     if (has_task_status()) {
       total_size += 1 +
         ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -2660,14 +2551,9 @@ void TaskCurrent::MergeFrom(const TaskCurrent& from) {
     if (from.has_container_path()) {
       set_container_path(from.container_path());
     }
-    if (from.has_state()) {
-      set_state(from.state());
-    }
     if (from.has_task_info()) {
       mutable_task_info()->::mesos::TaskInfo::MergeFrom(from.task_info());
     }
-  }
-  if (from._has_bits_[8 / 32] & (0xffu << (8 % 32))) {
     if (from.has_task_status()) {
       mutable_task_status()->::mesos::TaskStatus::MergeFrom(from.task_status());
     }
@@ -2688,7 +2574,6 @@ void TaskCurrent::CopyFrom(const TaskCurrent& from) {
 }
 
 bool TaskCurrent::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000040) != 0x00000040) return false;
 
   if (has_slave_id()) {
     if (!this->slave_id().IsInitialized()) return false;
@@ -2716,7 +2601,6 @@ void TaskCurrent::Swap(TaskCurrent* other) {
     ports_.Swap(&other->ports_);
     std::swap(hostname_, other->hostname_);
     std::swap(container_path_, other->container_path_);
-    std::swap(state_, other->state_);
     std::swap(task_info_, other->task_info_);
     std::swap(task_status_, other->task_status_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);

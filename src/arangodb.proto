@@ -44,29 +44,30 @@ message Targets {
 // which is stored in the current part of the state (see below).
 
 enum TaskPlanState {
-  TASK_STATE_NEW               = 1;
-  TASK_STATE_TRYING_TO_RESERVE = 2;
-  TASK_STATE_TRYING_TO_PERSIST = 3;
-  TASK_STATE_TRYING_TO_START   = 4;
-  TASK_STATE_TRYING_TO_RESTART = 5;
-  TASK_STATE_RUNNING           = 6;
-  TASK_STATE_KILLED            = 7;
-  TASK_STATE_FAILED_OVER       = 8;
-  TASK_STATE_DEAD              = 9;
+  TASK_STATE_NEW               = 1;    // wants to be scheduled
+  TASK_STATE_TRYING_TO_RESERVE = 2;    // reservation ordered, now waiting
+  TASK_STATE_TRYING_TO_PERSIST = 3;    // persistent volume ordered, waiting
+  TASK_STATE_TRYING_TO_START   = 4;    // task scheduled, waiting for startup
+  TASK_STATE_TRYING_TO_RESTART = 5;    // task rescheduled, waiting for startup
+  TASK_STATE_RUNNING           = 6;    // task running
+  TASK_STATE_KILLED            = 7;    // task killed, waiting for offer 
+                                       // to restart
+  TASK_STATE_FAILED_OVER       = 8;    // task killed, timeout, replaced 
+                                       // by other, still a chance to come back
+  TASK_STATE_DEAD              = 9;    // task dead, slot no longer used
 }
 
 // The persistence_id and the started timestamp are set whenever the
 // state chances due to some reaction on an offer. The persistence_id is
 // unset, if the entry refers to an ephemeral task (i.e. a coordinator).
 // When the state goes back to TASK_STATE_NEW on a timeout, the 
-// persistence_id and start timestamp are cleared.
+// persistence_id and timestamp are cleared.
 
 message TaskPlan {
   required TaskPlanState state = 1 [default = TASK_STATE_NEW];
 
-  required bool          is_primary = 2;
-  optional string        persistence_id = 3;
-  optional double        started = 4;
+  optional string        persistence_id = 2;
+  optional double        timestamp = 3;
 }
 
 message TasksPlan {
@@ -113,13 +114,6 @@ message Plan {
 // calls Caretaker::setTaskStatus, which in turn sets task_status. Finally,
 // the state is set by calling Caretaker::setInstanceState.
 
-enum TaskCurrentState {
-  INSTANCE_STATE_UNUSED   = 1;
-  INSTANCE_STATE_STARTING = 2;
-  INSTANCE_STATE_RUNNING  = 3;
-  INSTANCE_STATE_STOPPED  = 4;
-}
-
 message TaskCurrent {
   optional mesos.SlaveID        slave_id = 1;
   optional mesos.OfferID        offer_id = 2;
@@ -127,9 +121,8 @@ message TaskCurrent {
   repeated uint32               ports = 4;
   optional string               hostname = 5;
   optional string               container_path = 6;
-  required TaskCurrentState     state = 7 [default = INSTANCE_STATE_UNUSED];
-  optional mesos.TaskInfo       task_info = 8;
-  optional mesos.TaskStatus     task_status = 9;
+  optional mesos.TaskInfo       task_info = 7;
+  optional mesos.TaskStatus     task_status = 8;
 }
 
 message TasksCurrent {

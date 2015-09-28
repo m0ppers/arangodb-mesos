@@ -49,19 +49,25 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 void fillTaskStatus (vector<mesos::TaskStatus>& result,
-                     const TasksCurrent& currents) {
+                     TasksPlan const& plans,
+                     TasksCurrent const& currents) {
 
   // we have to check the TaskInfo (not TaskStatus!)
   for (int i = 0;  i < currents.entries_size();  ++i) {
+    TaskPlan const& planEntry = plans.entries(i);
     TaskCurrent const& entry = currents.entries(i);
 
-    switch (entry.state()) {
-      case INSTANCE_STATE_UNUSED:
-        break;
-
-      case INSTANCE_STATE_STARTING:
-      case INSTANCE_STATE_RUNNING:
-      case INSTANCE_STATE_STOPPED:
+    switch (planEntry.state()) {
+      case TASK_STATE_NEW:
+      case TASK_STATE_TRYING_TO_RESERVE:
+      case TASK_STATE_TRYING_TO_PERSIST:
+      case TASK_STATE_TRYING_TO_START:
+      case TASK_STATE_TRYING_TO_RESTART:
+      case TASK_STATE_RUNNING:
+      case TASK_STATE_KILLED:
+      case TASK_STATE_FAILED_OVER:
+      case TASK_STATE_DEAD:
+        // At this stage we do not distinguish the state, is this sensible?
         if (entry.has_task_info()) {
           auto const& info = entry.task_info();
 
@@ -381,10 +387,14 @@ vector<mesos::TaskStatus> ArangoState::knownTaskStatus () {
 
   vector<mesos::TaskStatus> result;
 
-  fillTaskStatus(result, _state.current().agents());
-  fillTaskStatus(result, _state.current().coordinators());
-  fillTaskStatus(result, _state.current().dbservers());
-  fillTaskStatus(result, _state.current().secondaries());
+  fillTaskStatus(result, _state.plan().agents(),
+                         _state.current().agents());
+  fillTaskStatus(result, _state.plan().coordinators(), 
+                         _state.current().coordinators());
+  fillTaskStatus(result, _state.plan().dbservers(),
+                         _state.current().dbservers());
+  fillTaskStatus(result, _state.plan().secondaries(),
+                         _state.current().secondaries());
 
   return result;
 }

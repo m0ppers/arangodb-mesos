@@ -206,11 +206,9 @@ void CaretakerCluster::updatePlan () {
     for (int i = p;  i < t;  ++i) {
       TaskPlan* task = tasks->add_entries();
       task->set_state(TASK_STATE_NEW);
-      task->set_is_primary(true);
 
       TasksCurrent* agents = current.mutable_agents();
-      TaskCurrent* inst = agents->add_entries();
-      inst->set_state(INSTANCE_STATE_UNUSED);
+      agents->add_entries();
     }
   }
   
@@ -242,20 +240,16 @@ void CaretakerCluster::updatePlan () {
     for (int i = p;  i < t;  ++i) {
       TaskPlan* task = tasks->add_entries();
       task->set_state(TASK_STATE_NEW);
-      task->set_is_primary(true);
 
       TasksCurrent* dbservers = current.mutable_dbservers();
-      TaskCurrent* inst = dbservers->add_entries();
-      inst->set_state(INSTANCE_STATE_UNUSED);
+      dbservers->add_entries();
 
       if (Global::asyncReplication()) {
         task = tasks2->add_entries();
         task->set_state(TASK_STATE_NEW);
-        task->set_is_primary(false);
 
         TasksCurrent* secondaries = current.mutable_secondaries();
-        inst = secondaries->add_entries();
-        inst->set_state(INSTANCE_STATE_UNUSED);
+        secondaries->add_entries();
       }
     }
   }
@@ -293,11 +287,9 @@ void CaretakerCluster::updatePlan () {
     for (int i = p;  i < t;  ++i) {
       TaskPlan* task = tasks->add_entries();
       task->set_state(TASK_STATE_NEW);
-      task->set_is_primary(true);
 
       TasksCurrent* coordinators = current.mutable_coordinators();
-      TaskCurrent* inst = coordinators->add_entries();
-      inst->set_state(INSTANCE_STATE_UNUSED);
+      coordinators->add_entries();
     }
   }
 
@@ -306,16 +298,36 @@ void CaretakerCluster::updatePlan () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief count the number of planned instances of a certain kind
+////////////////////////////////////////////////////////////////////////////////
+
+static int countPlannedInstances (TasksPlan const& plans) {
+  int plannedInstances = 0;
+
+  for (int i = 0; i < plans.entries_size(); i++) {
+    TaskPlan const& entry = plans.entries(i);
+
+    if (entry.state() != TASK_STATE_DEAD) {
+      plannedInstances += 1;
+    }
+  }
+
+  return plannedInstances;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of running instances of a certain kind
 ////////////////////////////////////////////////////////////////////////////////
 
-static int countRunningInstances (TasksCurrent const& currents) {
+static int countRunningInstances (TasksPlan const& plans) {
   int runningInstances = 0;
 
-  for (int i = 0; i < currents.entries_size(); i++) {
-    TaskCurrent const& entry = currents.entries(i);
+  for (int i = 0; i < plans.entries_size(); i++) {
+    TaskPlan const& entry = plans.entries(i);
 
-    if (entry.state() == INSTANCE_STATE_RUNNING) {
+    if (entry.state() == TASK_STATE_RUNNING ||
+        entry.state() == TASK_STATE_TRYING_TO_START ||
+        entry.state() == TASK_STATE_TRYING_TO_RESTART) {
       runningInstances += 1;
     }
   }
@@ -360,8 +372,8 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   << "And here the offer:\n" << offerString << "\n";
 #endif
 
-  int plannedInstances = plan.agents().entries_size();
-  int runningInstances = countRunningInstances(current.agents());
+  int plannedInstances = countPlannedInstances(plan.agents());
+  int runningInstances = countRunningInstances(plan.agents());
   LOG(INFO)
   << "planned agent instances: " << plannedInstances << ", "
   << "running agent instances: " << runningInstances;
@@ -432,8 +444,8 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
   
   // Now look after the DBservers:
-  plannedInstances = plan.dbservers().entries_size();
-  runningInstances = countRunningInstances(current.dbservers());
+  plannedInstances = countPlannedInstances(plan.dbservers());
+  runningInstances = countRunningInstances(plan.dbservers());
   LOG(INFO)
   << "planned DBServer instances: " << plannedInstances << ", "
   << "running DBServer instances: " << runningInstances;
@@ -459,8 +471,8 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   // Now the secondaries, if needed:
   if (Global::asyncReplication()) {
-    plannedInstances = plan.dbservers().entries_size();
-    runningInstances = countRunningInstances(current.secondaries());
+    plannedInstances = countPlannedInstances(plan.secondaries());
+    runningInstances = countRunningInstances(plan.secondaries());
     LOG(INFO)
     << "planned secondary DBServer instances: " << plannedInstances << ", "
     << "running secondary DBServer instances: " << runningInstances;
@@ -486,8 +498,8 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   // Finally, look after the coordinators:
-  plannedInstances = plan.coordinators().entries_size();
-  runningInstances = countRunningInstances(current.coordinators());
+  plannedInstances = countPlannedInstances(plan.coordinators());
+  runningInstances = countRunningInstances(plan.coordinators());
   LOG(INFO)
   << "planned coordinator instances: " << plannedInstances << ", "
   << "running coordinator instances: " << runningInstances;
