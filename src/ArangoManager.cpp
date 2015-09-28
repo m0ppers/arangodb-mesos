@@ -263,10 +263,32 @@ void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
 
 void ArangoManager::destroy () {
   LOG(INFO) << "destroy() called, killing off everything...";
+  // First set the state of all instances to TASK_STATE_DEAD:
+  Plan plan = Global::state().plan();
+  auto markAllDead = [] (TasksPlan* entries) -> void {
+    for (int i = 0; i < entries->entries_size(); i++) {
+      TaskPlan* entry = entries->mutable_entries(i);
+      entry->set_state(TASK_STATE_DEAD);
+    }
+  };
+
+  markAllDead(plan.mutable_agents());
+  markAllDead(plan.mutable_dbservers());
+  markAllDead(plan.mutable_secondaries());
+  markAllDead(plan.mutable_coordinators());
+  Global::state().setPlan(plan);
+
+  LOG(INFO) << "The new state with DEAD tasks:\nPLAN:"
+            << Global::state().jsonPlan();
+
   killAllInstances();
 
+  // During the following time we will get KILL messages, this will keep
+  // the status and as a consequences we will destroy all persistent volumes,
+  // unreserve all reserved resources and decline the offers:
   sleep(60);
 
+  // Now everything should be down, so terminate for good:
   Global::state().destroy();
 
   Global::scheduler().stop();
@@ -443,8 +465,8 @@ void ArangoManager::reconcileTasks () {
 
 static double const TryingToReserveTimeout = 30;  // seconds
 static double const TryingToPersistTimeout = 30;
-static double const TryingToStartTimeout   = 120; // docker pull might take
-static double const TryingToRestartTimeout = 120;
+static double const TryingToStartTimeout   = 300; // docker pull might take
+static double const TryingToRestartTimeout = 300;
 static double const TryingToResurrectTimeout = 900;  // Patience before we
                                                      // give up on a persistent
                                                      // task.
@@ -500,11 +522,12 @@ bool ArangoManager::checkTimeouts () {
           timeStamp = tp->timestamp();
           if (timeStamp - now > TryingToReserveTimeout) {
             LOG(INFO) << "Timeout " << TryingToReserveTimeout << "s reached "
-                      << " for task " << ic->task_info().name();
-            LOG(INFO) << "Calling UNRESERVE for offer ";
-            // FIXME: call UNRESERVE, unfortunately, we do no longer know
-            // what we reserved. :-(
+                      << " for task " << ic->task_info().name()
+                      << " in state TASK_STATE_TRYING_TO_RESERVE.";
+            LOG(INFO) << "Going back to state TASK_STATE_NEW.";
             tp->set_state(TASK_STATE_NEW);
+            tp->clear_persistence_id();
+            tp->set_timestamp(now);
           }
           break;
         case TASK_STATE_TRYING_TO_PERSIST:
@@ -513,18 +536,27 @@ bool ArangoManager::checkTimeouts () {
           timeStamp = tp->timestamp();
           if (timeStamp - now > TryingToPersistTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
-                      << " for task " << ic->task_info().name();
-            LOG(INFO) << "Calling UNRESERVE for offer ";
-            // FIXME: call UNRESERVE, unfortunately, we do no longer know
-            // what we did reserved. :-(
+                      << " for task " << ic->task_info().name()
+                      << " in state TASK_STATE_TRYING_TO_PERSIST.";
+            LOG(INFO) << "Going back to state TASK_STATE_NEW.";
             tp->set_state(TASK_STATE_NEW);
+            tp->clear_persistence_id();
+            tp->set_timestamp(now);
           }
-          // ...
           break;
         case TASK_STATE_TRYING_TO_START:
           // After a timeout, go back to state TASK_STATE_NEW, because
           // there was no satisfactory answer to our start request:
-          // ...
+          timeStamp = tp->timestamp();
+          if (timeStamp - now > TryingToStartTimeout) {
+            LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
+                      << " for task " << ic->task_info().name()
+                      << " in state TASK_STATE_TRYING_TO_START.";
+            LOG(INFO) << "Going back to state TASK_STATE_NEW.";
+            tp->set_state(TASK_STATE_NEW);
+            tp->clear_persistence_id();
+            tp->set_timestamp(now);
+          }
           break;
         case TASK_STATE_RUNNING:
           // Run forever here, no timeout.
@@ -532,13 +564,38 @@ bool ArangoManager::checkTimeouts () {
         case TASK_STATE_KILLED:
           // After some time being killed, we have to take action and
           // engage in some automatic failover procedure:
-          // ...
+          // if failover timeout reached:
+          //   if coordinator:
+          //     go back to TASK_STATE_NEW to start another one
+          //   else if agent:
+          //     ignore timeout, keep trying, otherwise we are lost
+          //   else if secondary:
+          //     find corresponding primary (partner)
+          //     make new secondary, change primary's secondary entry in
+          //     our state and in the registry, declare old secondary dead
+          //   else if primary:
+          //     find corresponding secondary
+          //     if not running, keep trying
+          //     else:
+          //       interchange plan and current infos, update task2position
+          //       map, promote secondary to primary in state and agency,
+          //       make old primary the secondary of the old secondary,
+          //       set state of old primary to TASK_STATE_FAILED_OVER
           break;
         case TASK_STATE_TRYING_TO_RESTART:
           // We got the offer for a restart, but the restart is not happening.
           // We need to go back to state TASK_STATE_KILLED to wait for another
           // offer.
-          // ...
+          timeStamp = tp->timestamp();
+          if (timeStamp - now > TryingToStartTimeout) {
+            LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
+                      << " for task " << ic->task_info().name()
+                      << " in state TASK_STATE_TRYING_TO_RESTART.";
+            LOG(INFO) << "Going back to state TASK_STATE_KILL.";
+            tp->set_state(TASK_STATE_KILLED);
+            // Do not change the time stamp here, because we want to
+            // notice alternating between KILLED and TRYING_TO_RESTART!
+          }
           break;
         case TASK_STATE_FAILED_OVER:
           // This task has been replaced by its failover partner, now we

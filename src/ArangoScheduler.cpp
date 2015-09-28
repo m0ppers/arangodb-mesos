@@ -165,6 +165,19 @@ void ArangoScheduler::reserveDynamically (const mesos::Offer& offer,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief cancels a dynamic reservation
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::unreserveDynamically (const mesos::Offer& offer,
+                                            const mesos::Resources& resources) const {
+  mesos::Offer::Operation unreserve;
+  unreserve.set_type(mesos::Offer::Operation::UNRESERVE);
+  unreserve.mutable_unreserve()->mutable_resources()->CopyFrom(resources);
+
+  _driver->acceptOffers({offer.id()}, {unreserve});
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a persistent disk
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -175,6 +188,19 @@ void ArangoScheduler::makePersistent (const mesos::Offer& offer,
   reserve.mutable_create()->mutable_volumes()->CopyFrom(resources);
 
   _driver->acceptOffers({offer.id()}, {reserve});
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys persistent disks
+////////////////////////////////////////////////////////////////////////////////
+
+void ArangoScheduler::destroyPersistent (const mesos::Offer& offer,
+                                         const mesos::Resources& resources) const {
+  mesos::Offer::Operation destroy;
+  destroy.set_type(mesos::Offer::Operation::DESTROY);
+  destroy.mutable_destroy()->mutable_volumes()->CopyFrom(resources);
+
+  _driver->acceptOffers({offer.id()}, {destroy});
 }
 
 ////////////////////////////////////////////////////////////////////////////////

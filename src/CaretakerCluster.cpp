@@ -504,7 +504,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   << "planned coordinator instances: " << plannedInstances << ", "
   << "running coordinator instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
-    // Try to use the offer for a new DBserver:
+    // Try to use the offer for a new coordinator:
     checkResourceOffer("coordinator", false,
                        targets.coordinators(),
                        plan.mutable_coordinators(),
@@ -517,14 +517,52 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     return;
   }
 
-  LOG(INFO) << "Cluster is complete.";
   if (! current.cluster_complete()) {
+    LOG(INFO) << "Cluster is complete.";
     LOG(INFO) << "Initiating cluster initialisation procedure...";
     current.set_cluster_complete(true);
     Global::state().setCurrent(current);
   }
 
-  // All is good, decline offer:
+  // Nobody wanted this offer, see whether there is a persistent disk
+  // in there and destroy it:
+  mesos::Resources offered = offer.resources();
+  mesos::Resources offeredDisk = filterIsDisk(offered);
+  mesos::Resources toDestroy;
+  for (auto& res : offeredDisk) {
+    if (res.role() == Global::role() &&
+        res.has_disk() &&
+        res.disk().has_persistence() &&
+        res.has_reservation() &&
+        res.reservation().principal() == Global::principal().principal()) {
+      toDestroy += res;
+    }
+  }
+  if (! toDestroy.empty()) {
+    LOG(INFO) << "Found a persistent disk(s) that nobody wants, "
+              << "will destroy:" << toDestroy;
+    Global::scheduler().destroyPersistent(offer, toDestroy);
+    return;
+  }
+
+  // If there was no persistent disk, maybe there is a dynamic reservation,
+  // if so, unreserve it:
+  mesos::Resources toUnreserve;
+  for (auto& res : offered) {
+    if (res.role() == Global::role() &&
+        res.has_reservation() &&
+        res.reservation().principal() == Global::principal().principal()) {
+      toUnreserve += res;
+    }
+  }
+  if (! toUnreserve.empty()) {
+    LOG(INFO) << "Found dynamically reserved resources that nobody wants, "
+              << "will unreserve:" << toUnreserve;
+    Global::scheduler().unreserveDynamically(offer, toUnreserve);
+    return;
+  }
+
+  // All is good, simply decline offer:
   Global::scheduler().declineOffer(offer.id());
 }
 

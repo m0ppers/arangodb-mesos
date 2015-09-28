@@ -1044,6 +1044,30 @@ bool Caretaker::checkResourceOffer (const string& name,
                                             taskCur, doDecline, taskType, i);
           }
 
+        case TASK_STATE_RUNNING:
+          // This is a corner case: There is a resource offer for "our" slave
+          // we are running, so presumably we are not interested. However,
+          // there is a change (is there?) that we are actually dead but have
+          // not yet received this information. In that case, the offer might
+          // contain "our" resources and thus the resources must not fall
+          // through and be destroyed. Therefore, we check whether our
+          // reserved disk is in there and if so, we decline the offer
+          // and pretend that we have used it.
+          if (! doDecline && taskType != TaskType::COORDINATOR) {
+            std::string containerPath;
+            mesos::Resources resources = suitablePersistent(
+                upper, offer, target, task->persistence_id(), containerPath);
+            if (! resources.empty()) {
+              // OK, it seems that our resources have been offered to us,
+              // this only leaves the conclusion that we are in fact dead.
+              // Decline the offer for now, it will come back later.
+              LOG(INFO) << "Have been offered our own resources, conclusion: "
+                        << "WE ARE IN FACT DEAD. Declining offer for now.";
+              return notInterested(offer, true);
+            }
+          }
+
+          return notInterested(offer, doDecline);
         default:
           return notInterested(offer, doDecline);
       }
@@ -1253,39 +1277,37 @@ void Caretaker::setTaskInfo (TaskType taskType, int p,
 void Caretaker::setTaskPlanState (TaskType taskType, int p,
                                   TaskPlanState const taskPlanState) {
   Plan plan = Global::state().plan();
+  TaskPlan* tp = nullptr;
 
   switch (taskType) {
     case TaskType::AGENT:
-      plan.mutable_agents()
-        ->mutable_entries(p)
-        ->set_state(taskPlanState);
+      tp = plan.mutable_agents()->mutable_entries(p);
       break;
 
     case TaskType::PRIMARY_DBSERVER:
-      plan.mutable_dbservers()
-        ->mutable_entries(p)
-        ->set_state(taskPlanState);
+      tp = plan.mutable_dbservers()->mutable_entries(p);
       break;
 
     case TaskType::SECONDARY_DBSERVER:
-      plan.mutable_secondaries()
-        ->mutable_entries(p)
-        ->set_state(taskPlanState);
+      tp = plan.mutable_secondaries()->mutable_entries(p);
       break;
 
     case TaskType::COORDINATOR:
-      plan.mutable_coordinators()
-        ->mutable_entries(p)
-        ->set_state(taskPlanState);
+      tp = plan.mutable_coordinators()->mutable_entries(p);
       break;
 
     case TaskType::UNKNOWN:
       LOG(INFO)
       << "unknown task type " << (int) taskType;
-      break;
+      return;
   }
 
-  Global::state().setPlan(plan);
+  // Do not overwrite a TASK_STATE_DEAD, because we do not want zombies:
+  if (tp->state() != TASK_STATE_DEAD) {
+    tp->set_state(taskPlanState);
+    Global::state().setPlan(plan);
+  }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
