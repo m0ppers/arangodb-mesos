@@ -146,6 +146,7 @@ static void initializeCluster() {
     }
     cur.set_cluster_bootstrappeddbservers(true);
     Global::state().setCurrent(cur);
+    Global::state().save();
   }
   if (! cur.cluster_upgradeddb()) {
     if (! upgradeClusterDatabase()) {
@@ -153,12 +154,14 @@ static void initializeCluster() {
     }
     cur.set_cluster_upgradeddb(true);
     Global::state().setCurrent(cur);
+    Global::state().save();
   }
   if (! cur.cluster_bootstrappedcoordinators()) {
     if (bootstrapCoordinators()) {
       cur.set_cluster_bootstrappedcoordinators(true);
       cur.set_cluster_initialized(true);
       Global::state().setCurrent(cur);
+      Global::state().save();
       LOG(INFO) << "cluster is ready";
     }
   }
@@ -263,25 +266,48 @@ void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
 
 void ArangoManager::destroy () {
   LOG(INFO) << "destroy() called, killing off everything...";
-  // First set the state of all instances to TASK_STATE_DEAD:
+
+  // First set the target state to 0 instances:
+  Targets target = Global::state().targets();
+  target.mutable_agents()->set_instances(0);
+  target.mutable_coordinators()->set_instances(0);
+  target.mutable_dbservers()->set_instances(0);
+  target.mutable_secondaries()->set_instances(0);
+
+  LOG(INFO) << "The old state with DEAD tasks:CURRENT:\n"
+            << Global::state().jsonCurrent();
+
+  // Now set the state of all instances to TASK_STATE_DEAD:
+  std::vector<std::string> ids;
   Plan plan = Global::state().plan();
-  auto markAllDead = [] (TasksPlan* entries) -> void {
+  Current current = Global::state().current();
+  auto markAllDead = [&] (TasksPlan* entries, TasksCurrent const& currs) 
+                     -> void {
     for (int i = 0; i < entries->entries_size(); i++) {
       TaskPlan* entry = entries->mutable_entries(i);
-      entry->set_state(TASK_STATE_DEAD);
+      if (entry->state() != TASK_STATE_DEAD) {
+        LOG(INFO) << "Planning to kill instance with id '"
+                  << currs.entries(i).task_info().task_id().value()
+                  << "'";
+        ids.push_back(currs.entries(i).task_info().task_id().value());
+        entry->set_state(TASK_STATE_DEAD);
+      }
     }
   };
 
-  markAllDead(plan.mutable_agents());
-  markAllDead(plan.mutable_dbservers());
-  markAllDead(plan.mutable_secondaries());
-  markAllDead(plan.mutable_coordinators());
+  markAllDead(plan.mutable_agents(), current.agents());
+  markAllDead(plan.mutable_dbservers(), current.dbservers());
+  markAllDead(plan.mutable_secondaries(), current.secondaries());
+  markAllDead(plan.mutable_coordinators(), current.coordinators());
+
+  Global::state().setTargets(target);
   Global::state().setPlan(plan);
+  Global::state().save();
 
   LOG(INFO) << "The new state with DEAD tasks:\nPLAN:"
             << Global::state().jsonPlan();
 
-  killAllInstances();
+  killAllInstances(ids);
 
   // During the following time we will get KILL messages, this will keep
   // the status and as a consequences we will destroy all persistent volumes,
@@ -467,6 +493,7 @@ static double const TryingToReserveTimeout = 30;  // seconds
 static double const TryingToPersistTimeout = 30;
 static double const TryingToStartTimeout   = 300; // docker pull might take
 static double const TryingToRestartTimeout = 300;
+static double const FailoverTimeout        = 60;
 static double const TryingToResurrectTimeout = 900;  // Patience before we
                                                      // give up on a persistent
                                                      // task.
@@ -585,6 +612,29 @@ bool ArangoManager::checkTimeouts () {
           //       map, promote secondary to primary in state and agency,
           //       make old primary the secondary of the old secondary,
           //       set state of old primary to TASK_STATE_FAILED_OVER
+          timeStamp = tp->timestamp();
+          if (now - timeStamp > FailoverTimeout) {
+            LOG(INFO) << "Timeout " << FailoverTimeout << "s reached "
+                      << " for task " << ic->task_info().name()
+                      << " in state TASK_STATE_KILLED.";
+            if (taskType == TaskType::AGENT) {
+              LOG(INFO) << "Task is an agent, simply reset the timestamp and "
+                        << "wait forever.";
+              tp->set_timestamp(now);
+              activity = true;
+            }
+            else if (taskType == TaskType::COORDINATOR) {
+              LOG(INFO) << "Going back to state TASK_STATE_NEW.";
+              tp->set_state(TASK_STATE_NEW);
+              tp->clear_persistence_id();
+              tp->set_timestamp(now);
+              activity = true;
+            }
+            else if (taskType == TaskType::SECONDARY_DBSERVER) {
+              std::string primaryName = tp->sync_partner();
+
+            }
+          }
           break;
         case TASK_STATE_TRYING_TO_RESTART:
           // We got the offer for a restart, but the restart is not happening.
@@ -617,6 +667,7 @@ bool ArangoManager::checkTimeouts () {
   if (activity) {
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
+    Global::state().save();
   }
   return true;
 }
@@ -720,10 +771,8 @@ void ArangoManager::fillKnownInstances (TaskType type,
 /// @brief kills all running tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoManager::killAllInstances () {
-  for (auto const& task : _task2position) {
-    auto const& id = task.first;
-
+void ArangoManager::killAllInstances (std::vector<std::string>& ids) {
+  for (auto const& id : ids) {
     Global::scheduler().killInstance(id);
   }
 }

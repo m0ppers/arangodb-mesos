@@ -274,7 +274,6 @@ void ArangoState::setFrameworkId (const mesos::FrameworkID& id) {
   lock_guard<mutex> lock(_lock);
 
   _state.mutable_framework_id()->CopyFrom(id);
-  save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,7 +294,6 @@ void ArangoState::setTargets (const Targets& targets) {
   lock_guard<mutex> lock(_lock);
 
   _state.mutable_targets()->CopyFrom(targets);
-  save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -329,7 +327,6 @@ void ArangoState::setPlan (const Plan& plan) {
   lock_guard<mutex> lock(_lock);
 
   _state.mutable_plan()->CopyFrom(plan);
-  save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +359,6 @@ void ArangoState::setCurrent (const Current& current) {
   lock_guard<mutex> lock(_lock);
 
   _state.mutable_current()->CopyFrom(current);
-  save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -484,6 +484,7 @@ static string getIPAddress (string hostname) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void startArangoDBTask (TaskType taskType, int pos,
+                               TaskPlan const& task,
                                TaskCurrent const& info) {
 
   string taskId = UUID::random().toString();
@@ -498,32 +499,7 @@ static void startArangoDBTask (TaskType taskType, int pos,
   mesos::ContainerInfo container;
   container.set_type(mesos::ContainerInfo::DOCKER);
 
-  // our own name:
-  string type;
-
-  switch (taskType) {
-    case TaskType::AGENT:
-      type = "Agent";
-      break;
-
-    case TaskType::PRIMARY_DBSERVER:
-      type = "DBServer";
-      break;
-
-    case TaskType::COORDINATOR:
-      type = "Coordinator";
-      break;
-
-    case TaskType::SECONDARY_DBSERVER:
-      type = "Secondary";
-      break;
-
-    case TaskType::UNKNOWN:
-      assert(false);
-      break;
-  }
-
-  string myInternalName = type + to_string(pos + 1);
+  string myInternalName = task.name();
   string myName = "ArangoDB_" + myInternalName;
 
   // command to execute
@@ -647,6 +623,7 @@ static void startArangoDBTask (TaskType taskType, int pos,
 
   Global::manager().registerNewTask(taskId, taskType, pos);
 
+  LOG(INFO) << "TaskInfo after startup: " << taskInfo;
   Global::caretaker().setTaskInfo(taskType, pos, taskInfo);
 }
 
@@ -695,7 +672,7 @@ static bool requestPersistent (string const& upper,
   persistent += disk;
 
   LOG(INFO)
-  << "DEBUG makePersistentVolume(" << upper << "): "
+  << "DEBUG requestPersistent(" << upper << "): "
   << "trying to make " << offer.id().value()
   << " persistent for " << persistent;
 
@@ -801,7 +778,7 @@ static bool requestStartPersistent (string const& upper,
     LOG(INFO) << "Trying to start with resources:\n"
               << resources;
 
-    startArangoDBTask(taskType, pos, *taskCur);
+    startArangoDBTask(taskType, pos, *task, *taskCur);
 
     return true;  // offer was used
   }
@@ -848,7 +825,7 @@ static bool requestStartEphemeral (mesos::Offer const& offer,
     }
   }
 
-  startArangoDBTask(taskType, pos, *taskCur);
+  startArangoDBTask(taskType, pos, *task, *taskCur);
 
   return true;   // offer was used
 }                                  
@@ -888,7 +865,7 @@ static bool requestRestartPersistent (string const& upper,
     taskCur->mutable_resources()->CopyFrom(resources);
     taskCur->set_container_path(containerPath);
 
-    startArangoDBTask(taskType, pos, *taskCur);
+    startArangoDBTask(taskType, pos, *task, *taskCur);
 
     return true;  // offer was used
   }
@@ -936,7 +913,7 @@ static bool requestRestartEphemeral (string const& upper,
     }
   }
 
-  startArangoDBTask(taskType, pos, *taskCur);
+  startArangoDBTask(taskType, pos, *task, *taskCur);
 
   return true;   // offer was used
 }
@@ -1168,6 +1145,7 @@ void Caretaker::checkOffer (const mesos::Offer& offer) {
 
   Global::state().setPlan(plan);
   Global::state().setCurrent(current);
+  Global::state().save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1221,6 +1199,7 @@ void Caretaker::setTaskId (TaskType taskType, int p,
   }
 
   Global::state().setCurrent(current);
+  Global::state().save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1268,6 +1247,7 @@ void Caretaker::setTaskInfo (TaskType taskType, int p,
   }
 
   Global::state().setCurrent(current);
+  Global::state().save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1306,6 +1286,7 @@ void Caretaker::setTaskPlanState (TaskType taskType, int p,
   if (tp->state() != TASK_STATE_DEAD) {
     tp->set_state(taskPlanState);
     Global::state().setPlan(plan);
+    Global::state().save();
   }
 
 }
@@ -1355,6 +1336,7 @@ void Caretaker::setTaskStatus (TaskType taskType, int p,
   }
 
   Global::state().setCurrent(current);
+  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------

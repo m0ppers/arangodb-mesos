@@ -97,10 +97,12 @@ void protobuf_AssignDesc_arangodb_2eproto() {
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(Targets));
   TaskPlan_descriptor_ = file->message_type(2);
-  static const int TaskPlan_offsets_[3] = {
+  static const int TaskPlan_offsets_[5] = {
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, state_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, persistence_id_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, timestamp_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, name_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(TaskPlan, sync_partner_),
   };
   TaskPlan_reflection_ =
     new ::google::protobuf::internal::GeneratedMessageReflection(
@@ -297,43 +299,44 @@ void protobuf_AddDesc_arangodb_2eproto() {
     "b.Target\022&\n\014coordinators\030\003 \002(\0132\020.arangod"
     "b.Target\022#\n\tdbservers\030\004 \002(\0132\020.arangodb.T"
     "arget\022%\n\013secondaries\030\005 \002(\0132\020.arangodb.Ta"
-    "rget\022 \n\030asynchronous_replication\030\006 \001(\010\"m"
-    "\n\010TaskPlan\0226\n\005state\030\001 \002(\0162\027.arangodb.Tas"
-    "kPlanState:\016TASK_STATE_NEW\022\026\n\016persistenc"
-    "e_id\030\002 \001(\t\022\021\n\ttimestamp\030\003 \001(\001\"0\n\tTasksPl"
-    "an\022#\n\007entries\030\001 \003(\0132\022.arangodb.TaskPlan\""
-    "\250\001\n\004Plan\022#\n\006agents\030\001 \002(\0132\023.arangodb.Task"
-    "sPlan\022)\n\014coordinators\030\002 \002(\0132\023.arangodb.T"
-    "asksPlan\022&\n\tdbservers\030\003 \002(\0132\023.arangodb.T"
-    "asksPlan\022(\n\013secondaries\030\004 \002(\0132\023.arangodb"
-    ".TasksPlan\"\372\001\n\013TaskCurrent\022 \n\010slave_id\030\001"
-    " \001(\0132\016.mesos.SlaveID\022 \n\010offer_id\030\002 \001(\0132\016"
-    ".mesos.OfferID\022\"\n\tresources\030\003 \003(\0132\017.meso"
-    "s.Resource\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 "
-    "\001(\t\022\026\n\016container_path\030\006 \001(\t\022\"\n\ttask_info"
-    "\030\007 \001(\0132\017.mesos.TaskInfo\022&\n\013task_status\030\010"
-    " \001(\0132\021.mesos.TaskStatus\"6\n\014TasksCurrent\022"
-    "&\n\007entries\030\001 \003(\0132\025.arangodb.TaskCurrent\""
-    "\333\002\n\007Current\022&\n\006agents\030\001 \002(\0132\026.arangodb.T"
-    "asksCurrent\022,\n\014coordinators\030\002 \002(\0132\026.aran"
-    "godb.TasksCurrent\022)\n\tdbservers\030\003 \002(\0132\026.a"
-    "rangodb.TasksCurrent\022+\n\013secondaries\030\004 \002("
-    "\0132\026.arangodb.TasksCurrent\022\030\n\020cluster_com"
-    "plete\030\005 \002(\010\022%\n\035cluster_bootstrappedDBser"
-    "vers\030\006 \002(\010\022\032\n\022cluster_upgradedDB\030\007 \002(\010\022("
-    "\n cluster_bootstrappedCoordinators\030\010 \002(\010"
-    "\022\033\n\023cluster_initialized\030\t \002(\010\"\227\001\n\005State\022"
-    "(\n\014framework_id\030\001 \001(\0132\022.mesos.FrameworkI"
-    "D\022\"\n\007targets\030\002 \002(\0132\021.arangodb.Targets\022\034\n"
-    "\004plan\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007current\030\004"
-    " \002(\0132\021.arangodb.Current*\211\002\n\rTaskPlanStat"
-    "e\022\022\n\016TASK_STATE_NEW\020\001\022 \n\034TASK_STATE_TRYI"
-    "NG_TO_RESERVE\020\002\022 \n\034TASK_STATE_TRYING_TO_"
-    "PERSIST\020\003\022\036\n\032TASK_STATE_TRYING_TO_START\020"
-    "\004\022 \n\034TASK_STATE_TRYING_TO_RESTART\020\005\022\026\n\022T"
-    "ASK_STATE_RUNNING\020\006\022\025\n\021TASK_STATE_KILLED"
-    "\020\007\022\032\n\026TASK_STATE_FAILED_OVER\020\010\022\023\n\017TASK_S"
-    "TATE_DEAD\020\t", 1811);
+    "rget\022 \n\030asynchronous_replication\030\006 \001(\010\"\221"
+    "\001\n\010TaskPlan\0226\n\005state\030\001 \002(\0162\027.arangodb.Ta"
+    "skPlanState:\016TASK_STATE_NEW\022\026\n\016persisten"
+    "ce_id\030\002 \001(\t\022\021\n\ttimestamp\030\003 \001(\001\022\014\n\004name\030\004"
+    " \002(\t\022\024\n\014sync_partner\030\005 \001(\t\"0\n\tTasksPlan\022"
+    "#\n\007entries\030\001 \003(\0132\022.arangodb.TaskPlan\"\250\001\n"
+    "\004Plan\022#\n\006agents\030\001 \002(\0132\023.arangodb.TasksPl"
+    "an\022)\n\014coordinators\030\002 \002(\0132\023.arangodb.Task"
+    "sPlan\022&\n\tdbservers\030\003 \002(\0132\023.arangodb.Task"
+    "sPlan\022(\n\013secondaries\030\004 \002(\0132\023.arangodb.Ta"
+    "sksPlan\"\372\001\n\013TaskCurrent\022 \n\010slave_id\030\001 \001("
+    "\0132\016.mesos.SlaveID\022 \n\010offer_id\030\002 \001(\0132\016.me"
+    "sos.OfferID\022\"\n\tresources\030\003 \003(\0132\017.mesos.R"
+    "esource\022\r\n\005ports\030\004 \003(\r\022\020\n\010hostname\030\005 \001(\t"
+    "\022\026\n\016container_path\030\006 \001(\t\022\"\n\ttask_info\030\007 "
+    "\001(\0132\017.mesos.TaskInfo\022&\n\013task_status\030\010 \001("
+    "\0132\021.mesos.TaskStatus\"6\n\014TasksCurrent\022&\n\007"
+    "entries\030\001 \003(\0132\025.arangodb.TaskCurrent\"\333\002\n"
+    "\007Current\022&\n\006agents\030\001 \002(\0132\026.arangodb.Task"
+    "sCurrent\022,\n\014coordinators\030\002 \002(\0132\026.arangod"
+    "b.TasksCurrent\022)\n\tdbservers\030\003 \002(\0132\026.aran"
+    "godb.TasksCurrent\022+\n\013secondaries\030\004 \002(\0132\026"
+    ".arangodb.TasksCurrent\022\030\n\020cluster_comple"
+    "te\030\005 \002(\010\022%\n\035cluster_bootstrappedDBserver"
+    "s\030\006 \002(\010\022\032\n\022cluster_upgradedDB\030\007 \002(\010\022(\n c"
+    "luster_bootstrappedCoordinators\030\010 \002(\010\022\033\n"
+    "\023cluster_initialized\030\t \002(\010\"\227\001\n\005State\022(\n\014"
+    "framework_id\030\001 \001(\0132\022.mesos.FrameworkID\022\""
+    "\n\007targets\030\002 \002(\0132\021.arangodb.Targets\022\034\n\004pl"
+    "an\030\003 \002(\0132\016.arangodb.Plan\022\"\n\007current\030\004 \002("
+    "\0132\021.arangodb.Current*\211\002\n\rTaskPlanState\022\022"
+    "\n\016TASK_STATE_NEW\020\001\022 \n\034TASK_STATE_TRYING_"
+    "TO_RESERVE\020\002\022 \n\034TASK_STATE_TRYING_TO_PER"
+    "SIST\020\003\022\036\n\032TASK_STATE_TRYING_TO_START\020\004\022 "
+    "\n\034TASK_STATE_TRYING_TO_RESTART\020\005\022\026\n\022TASK"
+    "_STATE_RUNNING\020\006\022\025\n\021TASK_STATE_KILLED\020\007\022"
+    "\032\n\026TASK_STATE_FAILED_OVER\020\010\022\023\n\017TASK_STAT"
+    "E_DEAD\020\t", 1848);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "arangodb.proto", &protobuf_RegisterTypes);
   Target::default_instance_ = new Target();
@@ -1182,6 +1185,8 @@ void Targets::Swap(Targets* other) {
 const int TaskPlan::kStateFieldNumber;
 const int TaskPlan::kPersistenceIdFieldNumber;
 const int TaskPlan::kTimestampFieldNumber;
+const int TaskPlan::kNameFieldNumber;
+const int TaskPlan::kSyncPartnerFieldNumber;
 #endif  // !_MSC_VER
 
 TaskPlan::TaskPlan()
@@ -1203,6 +1208,8 @@ void TaskPlan::SharedCtor() {
   state_ = 1;
   persistence_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   timestamp_ = 0;
+  name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  sync_partner_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
 
@@ -1213,6 +1220,12 @@ TaskPlan::~TaskPlan() {
 void TaskPlan::SharedDtor() {
   if (persistence_id_ != &::google::protobuf::internal::kEmptyString) {
     delete persistence_id_;
+  }
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (sync_partner_ != &::google::protobuf::internal::kEmptyString) {
+    delete sync_partner_;
   }
   if (this != default_instance_) {
   }
@@ -1248,6 +1261,16 @@ void TaskPlan::Clear() {
       }
     }
     timestamp_ = 0;
+    if (has_name()) {
+      if (name_ != &::google::protobuf::internal::kEmptyString) {
+        name_->clear();
+      }
+    }
+    if (has_sync_partner()) {
+      if (sync_partner_ != &::google::protobuf::internal::kEmptyString) {
+        sync_partner_->clear();
+      }
+    }
   }
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
   mutable_unknown_fields()->Clear();
@@ -1308,6 +1331,40 @@ bool TaskPlan::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(34)) goto parse_name;
+        break;
+      }
+
+      // required string name = 4;
+      case 4: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_name:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_name()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->name().data(), this->name().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(42)) goto parse_sync_partner;
+        break;
+      }
+
+      // optional string sync_partner = 5;
+      case 5: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_sync_partner:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_sync_partner()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->sync_partner().data(), this->sync_partner().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -1350,6 +1407,24 @@ void TaskPlan::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteDouble(3, this->timestamp(), output);
   }
 
+  // required string name = 4;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      4, this->name(), output);
+  }
+
+  // optional string sync_partner = 5;
+  if (has_sync_partner()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->sync_partner().data(), this->sync_partner().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      5, this->sync_partner(), output);
+  }
+
   if (!unknown_fields().empty()) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         unknown_fields(), output);
@@ -1379,6 +1454,26 @@ void TaskPlan::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteDoubleToArray(3, this->timestamp(), target);
   }
 
+  // required string name = 4;
+  if (has_name()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->name().data(), this->name().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        4, this->name(), target);
+  }
+
+  // optional string sync_partner = 5;
+  if (has_sync_partner()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->sync_partner().data(), this->sync_partner().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        5, this->sync_partner(), target);
+  }
+
   if (!unknown_fields().empty()) {
     target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
         unknown_fields(), target);
@@ -1406,6 +1501,20 @@ int TaskPlan::ByteSize() const {
     // optional double timestamp = 3;
     if (has_timestamp()) {
       total_size += 1 + 8;
+    }
+
+    // required string name = 4;
+    if (has_name()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->name());
+    }
+
+    // optional string sync_partner = 5;
+    if (has_sync_partner()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->sync_partner());
     }
 
   }
@@ -1444,6 +1553,12 @@ void TaskPlan::MergeFrom(const TaskPlan& from) {
     if (from.has_timestamp()) {
       set_timestamp(from.timestamp());
     }
+    if (from.has_name()) {
+      set_name(from.name());
+    }
+    if (from.has_sync_partner()) {
+      set_sync_partner(from.sync_partner());
+    }
   }
   mutable_unknown_fields()->MergeFrom(from.unknown_fields());
 }
@@ -1461,7 +1576,7 @@ void TaskPlan::CopyFrom(const TaskPlan& from) {
 }
 
 bool TaskPlan::IsInitialized() const {
-  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+  if ((_has_bits_[0] & 0x00000009) != 0x00000009) return false;
 
   return true;
 }
@@ -1471,6 +1586,8 @@ void TaskPlan::Swap(TaskPlan* other) {
     std::swap(state_, other->state_);
     std::swap(persistence_id_, other->persistence_id_);
     std::swap(timestamp_, other->timestamp_);
+    std::swap(name_, other->name_);
+    std::swap(sync_partner_, other->sync_partner_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
     std::swap(_cached_size_, other->_cached_size_);

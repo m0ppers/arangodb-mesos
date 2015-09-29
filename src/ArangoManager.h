@@ -194,7 +194,7 @@ namespace arangodb {
 /// @brief kills all running tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-      void killAllInstances ();
+      void killAllInstances (std::vector<std::string>&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -416,6 +416,30 @@ class TaskPlan : public ::google::protobuf::Message {
   inline double timestamp() const;
   inline void set_timestamp(double value);
 
+  // required string name = 4;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 4;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string sync_partner = 5;
+  inline bool has_sync_partner() const;
+  inline void clear_sync_partner();
+  static const int kSyncPartnerFieldNumber = 5;
+  inline const ::std::string& sync_partner() const;
+  inline void set_sync_partner(const ::std::string& value);
+  inline void set_sync_partner(const char* value);
+  inline void set_sync_partner(const char* value, size_t size);
+  inline ::std::string* mutable_sync_partner();
+  inline ::std::string* release_sync_partner();
+  inline void set_allocated_sync_partner(::std::string* sync_partner);
+
   // @@protoc_insertion_point(class_scope:arangodb.TaskPlan)
  private:
   inline void set_has_state();
@@ -424,15 +448,21 @@ class TaskPlan : public ::google::protobuf::Message {
   inline void clear_has_persistence_id();
   inline void set_has_timestamp();
   inline void clear_has_timestamp();
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_sync_partner();
+  inline void clear_has_sync_partner();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::std::string* persistence_id_;
   double timestamp_;
+  ::std::string* name_;
+  ::std::string* sync_partner_;
   int state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -1663,6 +1693,146 @@ inline double TaskPlan::timestamp() const {
 inline void TaskPlan::set_timestamp(double value) {
   set_has_timestamp();
   timestamp_ = value;
+}
+
+// required string name = 4;
+inline bool TaskPlan::has_name() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void TaskPlan::set_has_name() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void TaskPlan::clear_has_name() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void TaskPlan::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& TaskPlan::name() const {
+  return *name_;
+}
+inline void TaskPlan::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void TaskPlan::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void TaskPlan::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* TaskPlan::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* TaskPlan::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void TaskPlan::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string sync_partner = 5;
+inline bool TaskPlan::has_sync_partner() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void TaskPlan::set_has_sync_partner() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void TaskPlan::clear_has_sync_partner() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void TaskPlan::clear_sync_partner() {
+  if (sync_partner_ != &::google::protobuf::internal::kEmptyString) {
+    sync_partner_->clear();
+  }
+  clear_has_sync_partner();
+}
+inline const ::std::string& TaskPlan::sync_partner() const {
+  return *sync_partner_;
+}
+inline void TaskPlan::set_sync_partner(const ::std::string& value) {
+  set_has_sync_partner();
+  if (sync_partner_ == &::google::protobuf::internal::kEmptyString) {
+    sync_partner_ = new ::std::string;
+  }
+  sync_partner_->assign(value);
+}
+inline void TaskPlan::set_sync_partner(const char* value) {
+  set_has_sync_partner();
+  if (sync_partner_ == &::google::protobuf::internal::kEmptyString) {
+    sync_partner_ = new ::std::string;
+  }
+  sync_partner_->assign(value);
+}
+inline void TaskPlan::set_sync_partner(const char* value, size_t size) {
+  set_has_sync_partner();
+  if (sync_partner_ == &::google::protobuf::internal::kEmptyString) {
+    sync_partner_ = new ::std::string;
+  }
+  sync_partner_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* TaskPlan::mutable_sync_partner() {
+  set_has_sync_partner();
+  if (sync_partner_ == &::google::protobuf::internal::kEmptyString) {
+    sync_partner_ = new ::std::string;
+  }
+  return sync_partner_;
+}
+inline ::std::string* TaskPlan::release_sync_partner() {
+  clear_has_sync_partner();
+  if (sync_partner_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = sync_partner_;
+    sync_partner_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void TaskPlan::set_allocated_sync_partner(::std::string* sync_partner) {
+  if (sync_partner_ != &::google::protobuf::internal::kEmptyString) {
+    delete sync_partner_;
+  }
+  if (sync_partner) {
+    set_has_sync_partner();
+    sync_partner_ = sync_partner;
+  } else {
+    clear_has_sync_partner();
+    sync_partner_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
 }
 
 // -------------------------------------------------------------------

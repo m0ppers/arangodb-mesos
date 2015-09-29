@@ -61,13 +61,18 @@ enum TaskPlanState {
 // state chances due to some reaction on an offer. The persistence_id is
 // unset, if the entry refers to an ephemeral task (i.e. a coordinator).
 // When the state goes back to TASK_STATE_NEW on a timeout, the 
-// persistence_id and timestamp are cleared.
+// persistence_id and timestamp are cleared. The name starts out as
+// "ArangoDB_AgentX" or "ArangoDB_DBServerX" or "ArangoDB_SecondaryX" or 
+// "ArangoDB_CoordinatorX" where "X" is replaced by a number, the syncPartner
+// contains the name of the current partner for synchronisation.
 
 message TaskPlan {
   required TaskPlanState state = 1 [default = TASK_STATE_NEW];
 
   optional string        persistence_id = 2;
   optional double        timestamp = 3;
+  required string        name = 4;
+  optional string        sync_partner = 5;
 }
 
 message TasksPlan {

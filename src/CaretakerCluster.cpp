@@ -148,154 +148,12 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   Global::state().setTargets(targets);
+  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
+// --SECTION--                                               some static helpers
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void CaretakerCluster::updatePlan () {
-  // This updates the Plan according to what is in the Target, this is
-  // used to scale up coordinators or DBServers
-
-  Targets targets = Global::state().targets();
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
-  int t, p;
-
-  // First the agency, currently, we only support a single agency:
-  t = (int) targets.agents().instances();
-  if (t < 1) {
-    LOG(ERROR)
-    << "ERROR running in cluster mode, need at least one agency";
-
-    exit(EXIT_FAILURE);
-  }
-  if (t > 1) {
-    LOG(INFO)
-    << "INFO currently we support only a single server agency";
-    t = 1;
-    Target* te = targets.mutable_agents();
-    te->set_instances(1);
-  }
-  TasksPlan* tasks = plan.mutable_agents();
-  p = tasks->entries_size();
-  if (t < p) {
-    LOG(INFO)
-    << "INFO reducing number of agents from " << p << " to " << t;
-
-    TasksPlan original;
-    original.CopyFrom(*tasks);
-    
-    tasks->clear_entries();
-
-    for (int i = 0;  i < t;  ++i) {
-      TaskPlan entry = original.entries(i);
-
-      tasks->add_entries()->CopyFrom(entry);
-    }
-  }
-  if (p < t) {
-    LOG(INFO)
-    << "DEBUG creating " << (t - p) << " more agents in plan";
-
-    for (int i = p;  i < t;  ++i) {
-      TaskPlan* task = tasks->add_entries();
-      task->set_state(TASK_STATE_NEW);
-
-      TasksCurrent* agents = current.mutable_agents();
-      agents->add_entries();
-    }
-  }
-  
-  // need at least one DB server
-  t = (int) targets.dbservers().instances();
-
-  if (t < 1) {
-    LOG(ERROR)
-    << "ERROR running in cluster mode, need at least one db-server";
-
-    exit(EXIT_FAILURE);
-  }
-
-  tasks = plan.mutable_dbservers();
-  TasksPlan* tasks2 = plan.mutable_secondaries();
-  p = tasks->entries_size();
-
-  if (t < p) {
-    LOG(INFO)
-    << "INFO refusing to reduce number of db-servers from " << p << " to " << t
-    << " NOT YET IMPLEMENTED.";
-    targets.mutable_dbservers()->set_instances(p);
-  }
-
-  if (p < t) {
-    LOG(INFO)
-    << "DEBUG creating " << (t - p) << " more db-servers in plan";
-
-    for (int i = p;  i < t;  ++i) {
-      TaskPlan* task = tasks->add_entries();
-      task->set_state(TASK_STATE_NEW);
-
-      TasksCurrent* dbservers = current.mutable_dbservers();
-      dbservers->add_entries();
-
-      if (Global::asyncReplication()) {
-        task = tasks2->add_entries();
-        task->set_state(TASK_STATE_NEW);
-
-        TasksCurrent* secondaries = current.mutable_secondaries();
-        secondaries->add_entries();
-      }
-    }
-  }
-
-  // need at least one coordinator
-  t = (int) targets.coordinators().instances();
-
-  if (t < 1) {
-    LOG(ERROR)
-    << "ERROR running in cluster mode, need at least one coordinator";
-
-    exit(EXIT_FAILURE);
-  }
-
-  tasks = plan.mutable_coordinators();
-  p = tasks->entries_size();
-
-  if (t < p) {
-    LOG(INFO)
-    << "INFO reducing the number of coordinators from " << p << " to " << t;
-    TasksPlan original;
-    original.CopyFrom(*tasks);
-    
-    tasks->clear_entries();
-    for (int i = 0;  i < t;  ++i) {
-      TaskPlan entry = original.entries(i);
-      tasks->add_entries()->CopyFrom(entry);
-    }
-  }
-
-  if (p < t) {
-    LOG(INFO)
-    << "DEBUG creating " << (t - p) << " more coordinators in plan";
-
-    for (int i = p;  i < t;  ++i) {
-      TaskPlan* task = tasks->add_entries();
-      task->set_state(TASK_STATE_NEW);
-
-      TasksCurrent* coordinators = current.mutable_coordinators();
-      coordinators->add_entries();
-    }
-  }
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief count the number of planned instances of a certain kind
@@ -333,6 +191,151 @@ static int countRunningInstances (TasksPlan const& plans) {
   }
 
   return runningInstances;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            virtual public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void CaretakerCluster::updatePlan () {
+  // This updates the Plan according to what is in the Target, this is
+  // used to scale up coordinators or DBServers
+
+  Targets targets = Global::state().targets();
+  Plan plan = Global::state().plan();
+  Current current = Global::state().current();
+  int t, p;
+
+  // First the agency, currently, we only support a single agency:
+  t = (int) targets.agents().instances();
+  if (t > 1) {
+    LOG(INFO)
+    << "INFO currently we support only a single server agency";
+    t = 1;
+    Target* te = targets.mutable_agents();
+    te->set_instances(1);
+  }
+  TasksPlan* tasks = plan.mutable_agents();
+  p = countPlannedInstances(plan.agents());
+  if (t < p) {
+    LOG(INFO)
+    << "INFO reducing number of agents from " << p << " to " << t;
+
+    TasksPlan original;
+    original.CopyFrom(*tasks);
+    
+    // FIXME: This does not work at all, we need to mark them as DEAD and
+    // kill them explicitly.
+    tasks->clear_entries();
+
+    for (int i = 0;  i < t;  ++i) {
+      TaskPlan entry = original.entries(i);
+
+      tasks->add_entries()->CopyFrom(entry);
+    }
+  }
+  if (p < t) {
+    LOG(INFO)
+    << "DEBUG creating " << (t - p) << " more agents in plan";
+
+    for (int i = p; i < t; ++i) {
+      TaskPlan* task = tasks->add_entries();
+      task->set_state(TASK_STATE_NEW);
+      std::string name = "Agent" 
+                         + std::to_string(tasks->entries_size());
+      task->set_name(name);
+
+      TasksCurrent* agents = current.mutable_agents();
+      agents->add_entries();
+    }
+  }
+  
+  // need at least one DB server
+  t = (int) targets.dbservers().instances();
+  tasks = plan.mutable_dbservers();
+  TasksPlan* tasks2 = plan.mutable_secondaries();
+  p = countPlannedInstances(plan.dbservers());
+
+  if (t < p) {
+    LOG(INFO)
+    << "INFO refusing to reduce number of db-servers from " << p << " to " << t
+    << " NOT YET IMPLEMENTED.";
+    targets.mutable_dbservers()->set_instances(p);
+  }
+
+  if (p < t) {
+    LOG(INFO)
+    << "DEBUG creating " << (t - p) << " more db-servers in plan";
+
+    for (int i = p;  i < t;  ++i) {
+      TaskPlan* task = tasks->add_entries();
+      task->set_state(TASK_STATE_NEW);
+      std::string name = "DBServer" 
+                         + std::to_string(tasks->entries_size());
+      task->set_name(name);
+
+      TasksCurrent* dbservers = current.mutable_dbservers();
+      dbservers->add_entries();
+
+      if (Global::asyncReplication()) {
+        TaskPlan* task2 = tasks2->add_entries();
+        task2->set_state(TASK_STATE_NEW);
+        std::string name2 = "Secondary"
+                            + std::to_string(tasks2->entries_size());
+        task2->set_name(name2);
+        task->set_sync_partner(name2);
+        task2->set_sync_partner(name);
+
+        TasksCurrent* secondaries = current.mutable_secondaries();
+        secondaries->add_entries();
+      }
+    }
+  }
+
+  // need at least one coordinator
+  t = (int) targets.coordinators().instances();
+  tasks = plan.mutable_coordinators();
+  p = countPlannedInstances(plan.coordinators());
+
+  if (t < p) {
+    LOG(INFO)
+    << "INFO reducing the number of coordinators from " << p << " to " << t;
+    TasksPlan original;
+    original.CopyFrom(*tasks);
+    
+    // FIXME: This does not work at all, we need to mark them as dead!
+    // and then explicitly kill them!
+
+    tasks->clear_entries();
+    for (int i = 0;  i < t;  ++i) {
+      TaskPlan entry = original.entries(i);
+      tasks->add_entries()->CopyFrom(entry);
+    }
+  }
+
+  if (p < t) {
+    LOG(INFO)
+    << "DEBUG creating " << (t - p) << " more coordinators in plan";
+
+    for (int i = p; i < t; ++i) {
+      TaskPlan* task = tasks->add_entries();
+      task->set_state(TASK_STATE_NEW);
+      std::string name = "Coordinator" 
+                         + std::to_string(tasks->entries_size());
+      task->set_name(name);
+
+      TasksCurrent* coordinators = current.mutable_coordinators();
+      coordinators->add_entries();
+    }
+  }
+
+  Global::state().setPlan(plan);
+  Global::state().setCurrent(current);
+  Global::state().save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -389,6 +392,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
+    Global::state().save();
 
     if (offerUsed) {
       return;
@@ -461,6 +465,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
+    Global::state().save();
     if (offerUsed) {
       return;
     }
@@ -488,6 +493,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
       // Save new state:
       Global::state().setPlan(plan);
       Global::state().setCurrent(current);
+      Global::state().save();
       if (offerUsed) {
         return;
       }
@@ -514,6 +520,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // Save new state:
     Global::state().setPlan(plan);
     Global::state().setCurrent(current);
+    Global::state().save();
     return;
   }
 
@@ -522,6 +529,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     LOG(INFO) << "Initiating cluster initialisation procedure...";
     current.set_cluster_complete(true);
     Global::state().setCurrent(current);
+    Global::state().save();
   }
 
   // Nobody wanted this offer, see whether there is a persistent disk

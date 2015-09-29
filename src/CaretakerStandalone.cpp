@@ -91,6 +91,7 @@ CaretakerStandalone::CaretakerStandalone () {
   secondaries->clear_minimal_resources();
 
   Global::state().setTargets(targets);
+  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------
@@ -145,6 +146,7 @@ void CaretakerStandalone::updatePlan () {
 
   Global::state().setPlan(plan);
   Global::state().setCurrent(current);
+  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------

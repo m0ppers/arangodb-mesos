@@ -343,6 +343,7 @@ void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
   << " at master " << master.id();
 
   Global::state().setFrameworkId(frameworkId);
+  Global::state().save();
 
   checkVersion(master.hostname(), master.port());
 
