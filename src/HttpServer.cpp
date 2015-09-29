@@ -51,6 +51,7 @@ using namespace arangodb;
 
 #define GET             0
 #define POST            1
+#define PUT             2
 #define POSTBUFFERSIZE  512
 
 // -----------------------------------------------------------------------------
@@ -109,6 +110,7 @@ namespace {
 class arangodb::HttpServerImpl {
   public:
     string POST_V1_DESTROY (const string&, const string&);
+    string PUT_V1_IGNOREOFFERS (const string&, const string&);
 
     string GET_V1_STATE (const string&);
     string GET_V1_MODE (const string&);
@@ -125,9 +127,6 @@ class arangodb::HttpServerImpl {
 /// @brief POST /v1/destroy.json
 ////////////////////////////////////////////////////////////////////////////////
 
-//static void doDestroy () {
-//}
-
 string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) {
   LOG(INFO) << "Got POST to destroy cluster and framework...";
   Global::manager().destroy();
@@ -139,6 +138,33 @@ string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) 
 
   picojson::object result;
   result["destroy"] = picojson::value(true);
+
+  return picojson::value(result).serialize();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief PUT /v1/ignoreOffers
+////////////////////////////////////////////////////////////////////////////////
+
+string HttpServerImpl::PUT_V1_IGNOREOFFERS (const string& name, const string& body) {
+  bool ignore = false;
+  picojson::value b;
+  std::string err = picojson::parse(b, body);
+  if (err.empty()) {
+    if (b.is<picojson::object>()) {
+      auto& o = b.get<picojson::object>();
+      auto& v = o["ignoreOffers"];
+      if (v.is<bool>()) {
+        ignore = v.get<bool>();
+      }
+    }
+  }
+
+  LOG(INFO) << "Got PUT for ignoreOffers flag, new value " << ignore;
+  Global::setIgnoreOffers(ignore);
+
+  picojson::object result;
+  result["ignoreOffers"] = picojson::value(ignore);
 
   return picojson::value(result).serialize();
 }
@@ -286,6 +312,7 @@ struct ConnectionInfo {
 
   string (HttpServerImpl::*getMethod)(const string&);
   string (HttpServerImpl::*postMethod)(const string&, const string&);
+  string (HttpServerImpl::*putMethod)(const string&, const string&);
 
   string prefix;
   string body;
@@ -381,8 +408,15 @@ static int answerRequest (
         conInfo->postMethod = &HttpServerImpl::POST_V1_DESTROY;
       }
     }
+    else if (0 == strcmp(method, MHD_HTTP_METHOD_PUT)) {
+      conInfo->type = PUT;
 
-    if (conInfo->getMethod == nullptr && conInfo->postMethod == nullptr && conInfo->filename.empty()) {
+      if (0 == strcmp(url, "/v1/ignoreOffers")) {
+        conInfo->putMethod = &HttpServerImpl::PUT_V1_IGNOREOFFERS;
+      }
+    }
+
+    if (conInfo->getMethod == nullptr && conInfo->postMethod == nullptr && conInfo->putMethod == nullptr && conInfo->filename.empty()) {
       return MHD_NO;
     }
 
@@ -428,6 +462,33 @@ static int answerRequest (
     << "handling http request '" << method << " " << url << "'";
 
     const string r = (me->*(conInfo->postMethod))(conInfo->prefix, conInfo->body);
+
+    response = MHD_create_response_from_buffer(
+      r.length(), (void *) r.c_str(),
+      MHD_RESPMEM_MUST_COPY);
+
+    MHD_add_response_header(
+      response, 
+      "Content-Type", 
+      "application/json; charset=utf-8");
+
+    ret = MHD_queue_response(connection, MHD_HTTP_OK, response);
+    MHD_destroy_response(response);
+  }
+
+  // handle PUT
+  else if (conInfo->putMethod != nullptr) {
+    if (*upload_data_size != 0) {
+      conInfo->body += string(upload_data, *upload_data_size);
+      *upload_data_size = 0;
+
+      return MHD_YES;
+    }
+
+    LOG(INFO)
+    << "handling http request '" << method << " " << url << "'";
+
+    const string r = (me->*(conInfo->putMethod))(conInfo->prefix, conInfo->body);
 
     response = MHD_create_response_from_buffer(
       r.length(), (void *) r.c_str(),

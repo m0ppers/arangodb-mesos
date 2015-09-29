@@ -481,6 +481,7 @@ bool ArangoManager::checkTimeouts () {
   auto plan = Global::state().plan();
   auto current = Global::state().current();
 
+  bool activity = false;
   for (auto taskType : types) {
     TasksPlan* tasksPlan;
     TasksCurrent* tasksCurr;
@@ -520,7 +521,7 @@ bool ArangoManager::checkTimeouts () {
           // After a timeout, go back to state TASK_STATE_NEW, because
           // there was no satisfactory answer to our reservation request:
           timeStamp = tp->timestamp();
-          if (timeStamp - now > TryingToReserveTimeout) {
+          if (now - timeStamp > TryingToReserveTimeout) {
             LOG(INFO) << "Timeout " << TryingToReserveTimeout << "s reached "
                       << " for task " << ic->task_info().name()
                       << " in state TASK_STATE_TRYING_TO_RESERVE.";
@@ -528,13 +529,14 @@ bool ArangoManager::checkTimeouts () {
             tp->set_state(TASK_STATE_NEW);
             tp->clear_persistence_id();
             tp->set_timestamp(now);
+            activity = true;
           }
           break;
         case TASK_STATE_TRYING_TO_PERSIST:
           // After a timeout, go back to state TASK_STATE_NEW, because
           // there was no satisfactory answer to our persistence request:
           timeStamp = tp->timestamp();
-          if (timeStamp - now > TryingToPersistTimeout) {
+          if (now - timeStamp > TryingToPersistTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
                       << " for task " << ic->task_info().name()
                       << " in state TASK_STATE_TRYING_TO_PERSIST.";
@@ -542,13 +544,14 @@ bool ArangoManager::checkTimeouts () {
             tp->set_state(TASK_STATE_NEW);
             tp->clear_persistence_id();
             tp->set_timestamp(now);
+            activity = true;
           }
           break;
         case TASK_STATE_TRYING_TO_START:
           // After a timeout, go back to state TASK_STATE_NEW, because
           // there was no satisfactory answer to our start request:
           timeStamp = tp->timestamp();
-          if (timeStamp - now > TryingToStartTimeout) {
+          if (now - timeStamp > TryingToStartTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
                       << " for task " << ic->task_info().name()
                       << " in state TASK_STATE_TRYING_TO_START.";
@@ -556,6 +559,7 @@ bool ArangoManager::checkTimeouts () {
             tp->set_state(TASK_STATE_NEW);
             tp->clear_persistence_id();
             tp->set_timestamp(now);
+            activity = true;
           }
           break;
         case TASK_STATE_RUNNING:
@@ -587,12 +591,13 @@ bool ArangoManager::checkTimeouts () {
           // We need to go back to state TASK_STATE_KILLED to wait for another
           // offer.
           timeStamp = tp->timestamp();
-          if (timeStamp - now > TryingToStartTimeout) {
+          if (now - timeStamp > TryingToStartTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
                       << " for task " << ic->task_info().name()
                       << " in state TASK_STATE_TRYING_TO_RESTART.";
             LOG(INFO) << "Going back to state TASK_STATE_KILL.";
             tp->set_state(TASK_STATE_KILLED);
+            activity = true;
             // Do not change the time stamp here, because we want to
             // notice alternating between KILLED and TRYING_TO_RESTART!
           }
@@ -608,6 +613,10 @@ bool ArangoManager::checkTimeouts () {
           break;
       }
     }
+  }
+  if (activity) {
+    Global::state().setPlan(plan);
+    Global::state().setCurrent(current);
   }
   return true;
 }

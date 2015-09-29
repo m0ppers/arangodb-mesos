@@ -746,7 +746,7 @@ static bool requestReservation (std::string const& upper,
 
   // Now use the scheduler to actually try to make the dynamic reservation:
   LOG(INFO)
-  << "DEBUG makeDynamicReservation: "
+  << "DEBUG requestReservation: "
   << "trying to reserve " << offer.id().value()
   << " with " << resources;
 
