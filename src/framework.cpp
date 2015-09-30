@@ -435,11 +435,11 @@ int main (int argc, char** argv) {
 
   LOG(INFO) << "failover timeout: " << failoverTimeout;
 
-  bool found;
-  mesos::FrameworkID frameworkId= Global::state().frameworkId(found);
-
-  if (found) {
-    framework.mutable_id()->CopyFrom(frameworkId);
+  {
+    auto lease = Global::state().lease();
+    if (lease.state().has_framework_id()) {
+      framework.mutable_id()->CopyFrom(lease.state().framework_id());
+    }
   }
 
   // ...........................................................................

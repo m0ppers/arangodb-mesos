@@ -240,7 +240,8 @@ string HttpServerImpl::GET_V1_HEALTH (const string&) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
-  return Global::state().jsonTargets();
+  auto lease = Global::state().lease();
+  return arangodb::toJson(lease.state().targets());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +249,8 @@ string HttpServerImpl::GET_DEBUG_TARGET (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
-  return Global::state().jsonPlan();
+  auto lease = Global::state().lease();
+  return arangodb::toJson(lease.state().plan());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +258,8 @@ string HttpServerImpl::GET_DEBUG_PLAN (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
-  return Global::state().jsonCurrent();
+  auto lease = Global::state().lease();
+  return arangodb::toJson(lease.state().current());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,13 +267,13 @@ string HttpServerImpl::GET_DEBUG_CURRENT (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::GET_DEBUG_OVERVIEW (const string& name) {
-  ArangoState& state = Global::state();
+  auto lease = Global::state().lease();
 
-  return "{ \"frameworkId\" : \"" + Global::state().frameworkId() + "\""
+  return "{ \"frameworkId\" : \"" + lease.state().framework_id().value() + "\""
        + ", \"frameworkName\" : \"" + Global::frameworkName() + "\""
-       + ", \"target\" : " + state.jsonTargets()
-       + ", \"plan\" : " + state.jsonPlan()
-       + ", \"current\" : " + state.jsonCurrent() + " }";
+       + ", \"target\" : " + arangodb::toJson(lease.state().targets())
+       + ", \"plan\" : " + arangodb::toJson(lease.state().plan())
+       + ", \"current\" : " + arangodb::toJson(lease.state().current()) + " }";
   
 }
 

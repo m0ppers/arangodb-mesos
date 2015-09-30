@@ -29,6 +29,7 @@
 #define CARETAKER_H 1
 
 #include "arangodb.pb.h"
+#include "ArangoState.h"
 
 #include <mesos/resources.hpp>
 
@@ -121,25 +122,21 @@ namespace arangodb {
 /// @brief sets the task id, clears the task info and status
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setTaskId (TaskType, int, mesos::TaskID const&);
+      void setTaskId (ArangoState::Lease&, TaskType, int, mesos::TaskID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task info
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setTaskInfo (TaskType, int, mesos::TaskInfo const&);
+      void setTaskInfo (ArangoState::Lease&, TaskType, int,
+                        mesos::TaskInfo const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the task plan state
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setTaskPlanState (TaskType, int, TaskPlanState const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the task status
-////////////////////////////////////////////////////////////////////////////////
-
-      void setTaskStatus (TaskType, int, mesos::TaskStatus const&);
+      void setTaskPlanState (ArangoState::Lease&, TaskType, int,
+                             TaskPlanState const);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          static protected methods
@@ -152,17 +149,19 @@ namespace arangodb {
 /// type, if doDecline is true, then the offer is immediately declined
 /// if it is not useful for this task type. Returns true if the offer
 /// was put to some use (or declined) and false, if somebody else can
-/// have a go.
+/// have a go. Note that this method has to return true if it changed
+/// the global state (or call lease.changed() explicitly).
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool checkResourceOffer (std::string const& name,
-                               bool persistent,
-                               Target const& target,
-                               TasksPlan* plan,
-                               TasksCurrent* current,
-                               mesos::Offer const& offer,
-                               bool doDecline,
-                               TaskType taskType);
+      bool checkOfferOneType (ArangoState::Lease& lease,
+                              std::string const& name,
+                              bool persistent,
+                              Target const& target,
+                              TasksPlan* plan,
+                              TasksCurrent* current,
+                              mesos::Offer const& offer,
+                              bool doDecline,
+                              TaskType taskType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set a default minimum resource set for a Targetentry

@@ -43,6 +43,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace std;
@@ -55,11 +57,11 @@ using namespace std;
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool bootstrapDBservers () {
+static bool bootstrapDBservers (ArangoState::Lease& lease) {
   string hostname 
-    = Global::state().current().coordinators().entries(0).hostname();
+    = lease.state().current().coordinators().entries(0).hostname();
   uint32_t port
-    = Global::state().current().coordinators().entries(0).ports(0);
+    = lease.state().current().coordinators().entries(0).ports(0);
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/bootstrapDbServers";
   string body = "{\"isRelaunch\":false}";
@@ -80,11 +82,11 @@ static bool bootstrapDBservers () {
 /// @brief upgrades the cluster database
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool upgradeClusterDatabase () {
+static bool upgradeClusterDatabase (ArangoState::Lease& lease) {
   string hostname 
-    = Global::state().current().coordinators().entries(0).hostname();
+    = lease.state().current().coordinators().entries(0).hostname();
   uint32_t port
-    = Global::state().current().coordinators().entries(0).ports(0);
+    = lease.state().current().coordinators().entries(0).ports(0);
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/upgradeClusterDatabase";
   string body = "{\"isRelaunch\":false}";
@@ -105,30 +107,33 @@ static bool upgradeClusterDatabase () {
 /// @brief bootstraps coordinators
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool bootstrapCoordinators () {
+static bool bootstrapCoordinators (ArangoState::Lease& lease) {
   int number
-    = Global::state().current().coordinators().entries_size();
+    = lease.state().current().coordinators().entries_size();
   bool error = false;
   for (int i = 0; i < number; i++) { 
-    string hostname 
-      = Global::state().current().coordinators().entries(i).hostname();
-    uint32_t port
-      = Global::state().current().coordinators().entries(i).ports(0);
-    string url = "http://" + hostname + ":" + to_string(port) +
-                      "/_admin/cluster/bootstrapCoordinator";
-    string body = "{\"isRelaunch\":false}";
-    string result;
-    LOG(INFO) << "doing HTTP POST to " << url;
-    int res = doHTTPPost(url, body, result);
-    if (res != 0) {
-      LOG(WARNING)
-      << "bootstrapCoordinator did not work for " << i 
-      << ", curl error: " << res << ", result:\n"
-      << result;
-      error = true;
-    }
-    else {
-      LOG(INFO) << "bootstrapCoordinator answered:" << result;
+    if (lease.state().plan().coordinators().entries(i).state() 
+        == TASK_STATE_RUNNING) {
+      string hostname 
+        = lease.state().current().coordinators().entries(i).hostname();
+      uint32_t port
+        = lease.state().current().coordinators().entries(i).ports(0);
+      string url = "http://" + hostname + ":" + to_string(port) +
+                        "/_admin/cluster/bootstrapCoordinator";
+      string body = "{\"isRelaunch\":false}";
+      string result;
+      LOG(INFO) << "doing HTTP POST to " << url;
+      int res = doHTTPPost(url, body, result);
+      if (res != 0) {
+        LOG(WARNING)
+        << "bootstrapCoordinator did not work for " << i 
+        << ", curl error: " << res << ", result:\n"
+        << result;
+        error = true;
+      }
+      else {
+        LOG(INFO) << "bootstrapCoordinator answered:" << result;
+      }
     }
   }
   return ! error;
@@ -138,30 +143,27 @@ static bool bootstrapCoordinators () {
 /// @brief initialize the cluster
 ///////////////////////////////////////////////////////////////////////////////
 
-static void initializeCluster() {
-  auto cur = Global::state().current();
-  if (! cur.cluster_bootstrappeddbservers()) {
-    if (! bootstrapDBservers()) {
+static void initializeCluster(ArangoState::Lease& l) {
+  auto cur = l.state().mutable_current();
+  if (! cur->cluster_bootstrappeddbservers()) {
+    if (! bootstrapDBservers(l)) {
       return;
     }
-    cur.set_cluster_bootstrappeddbservers(true);
-    Global::state().setCurrent(cur);
-    Global::state().save();
+    cur->set_cluster_bootstrappeddbservers(true);
+    l.changed();
   }
-  if (! cur.cluster_upgradeddb()) {
-    if (! upgradeClusterDatabase()) {
+  if (! cur->cluster_upgradeddb()) {
+    if (! upgradeClusterDatabase(l)) {
       return;
     }
-    cur.set_cluster_upgradeddb(true);
-    Global::state().setCurrent(cur);
-    Global::state().save();
+    cur->set_cluster_upgradeddb(true);
+    l.changed();
   }
-  if (! cur.cluster_bootstrappedcoordinators()) {
-    if (bootstrapCoordinators()) {
-      cur.set_cluster_bootstrappedcoordinators(true);
-      cur.set_cluster_initialized(true);
-      Global::state().setCurrent(cur);
-      Global::state().save();
+  if (! cur->cluster_bootstrappedcoordinators()) {
+    if (bootstrapCoordinators(l)) {
+      cur->set_cluster_bootstrappedcoordinators(true);
+      cur->set_cluster_initialized(true);
+      l.changed();
       LOG(INFO) << "cluster is ready";
     }
   }
@@ -192,7 +194,8 @@ ArangoManager::ArangoManager ()
 
   _dispatcher = new thread(&ArangoManager::dispatch, this);
 
-  Current current = Global::state().current();
+  auto lease = Global::state().lease(false);
+  Current current = lease.state().current();
 
   fillKnownInstances(TaskType::AGENT, current.agents());
   fillKnownInstances(TaskType::COORDINATOR, current.coordinators());
@@ -225,10 +228,7 @@ void ArangoManager::addOffer (const mesos::Offer& offer) {
 #if 0
   // This is already logged in the scheduler in more concise format.
   {
-    string json;
-    pbjson::pb2json(&offer, json);
-    LOG(INFO)
-    << "OFFER received: " << json;
+    LOG(INFO) << "OFFER received: " << arangodb::toJson(offer);
   }
 #endif
 
@@ -244,8 +244,7 @@ void ArangoManager::removeOffer (const mesos::OfferID& offerId) {
 
   string id = offerId.value();
 
-  LOG(INFO)
-  << "OFFER removed: " << id;
+  LOG(INFO) << "OFFER removed: " << id;
   
   _storedOffers.erase(id);
 }
@@ -267,59 +266,64 @@ void ArangoManager::taskStatusUpdate (const mesos::TaskStatus& status) {
 void ArangoManager::destroy () {
   LOG(INFO) << "destroy() called, killing off everything...";
 
-  // First set the target state to 0 instances:
-  Targets target = Global::state().targets();
-  target.mutable_agents()->set_instances(0);
-  target.mutable_coordinators()->set_instances(0);
-  target.mutable_dbservers()->set_instances(0);
-  target.mutable_secondaries()->set_instances(0);
+  {
+    // First set the target state to 0 instances:
+    auto l = Global::state().lease(true);
+    Targets* target = l.state().mutable_targets();
+    target->mutable_agents()->set_instances(0);
+    target->mutable_coordinators()->set_instances(0);
+    target->mutable_dbservers()->set_instances(0);
+    target->mutable_secondaries()->set_instances(0);
 
-  LOG(INFO) << "The old state with DEAD tasks:CURRENT:\n"
-            << Global::state().jsonCurrent();
+    LOG(INFO) << "The old state with DEAD tasks:CURRENT:\n"
+              << arangodb::toJson(l.state().current());
 
-  // Now set the state of all instances to TASK_STATE_DEAD:
-  std::vector<std::string> ids;
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
-  auto markAllDead = [&] (TasksPlan* entries, TasksCurrent const& currs) 
-                     -> void {
-    for (int i = 0; i < entries->entries_size(); i++) {
-      TaskPlan* entry = entries->mutable_entries(i);
-      if (entry->state() != TASK_STATE_DEAD) {
-        LOG(INFO) << "Planning to kill instance with id '"
-                  << currs.entries(i).task_info().task_id().value()
-                  << "'";
-        ids.push_back(currs.entries(i).task_info().task_id().value());
-        entry->set_state(TASK_STATE_DEAD);
+    // Now set the state of all instances to TASK_STATE_DEAD:
+    std::vector<std::string> ids;
+    Plan* plan = l.state().mutable_plan();
+    Current const& current = l.state().current();
+
+    auto markAllDead = [&] (TasksPlan* entries, TasksCurrent const& currs) 
+                       -> void {
+      for (int i = 0; i < entries->entries_size(); i++) {
+        TaskPlan* entry = entries->mutable_entries(i);
+        if (entry->state() != TASK_STATE_DEAD) {
+          LOG(INFO) << "Planning to kill instance with id '"
+                    << currs.entries(i).task_info().task_id().value()
+                    << "'";
+          ids.push_back(currs.entries(i).task_info().task_id().value());
+          entry->set_state(TASK_STATE_DEAD);
+        }
       }
-    }
-  };
+    };
 
-  markAllDead(plan.mutable_agents(), current.agents());
-  markAllDead(plan.mutable_dbservers(), current.dbservers());
-  markAllDead(plan.mutable_secondaries(), current.secondaries());
-  markAllDead(plan.mutable_coordinators(), current.coordinators());
+    markAllDead(plan->mutable_agents(), current.agents());
+    markAllDead(plan->mutable_dbservers(), current.dbservers());
+    markAllDead(plan->mutable_secondaries(), current.secondaries());
+    markAllDead(plan->mutable_coordinators(), current.coordinators());
 
-  Global::state().setTargets(target);
-  Global::state().setPlan(plan);
-  Global::state().save();
+    LOG(INFO) << "The new state with DEAD tasks:\nPLAN:"
+              << arangodb::toJson(l.state().plan());
 
-  LOG(INFO) << "The new state with DEAD tasks:\nPLAN:"
-            << Global::state().jsonPlan();
-
-  killAllInstances(ids);
+    killAllInstances(ids);
+  }
 
   // During the following time we will get KILL messages, this will keep
   // the status and as a consequences we will destroy all persistent volumes,
   // unreserve all reserved resources and decline the offers:
-  sleep(60);
+  this_thread::sleep_for(chrono::seconds(60));
+
+  string body;
+  {
+    auto l = Global::state().lease();
+    body = "frameworkId=" + l.state().framework_id().value();
+  }
 
   // Now everything should be down, so terminate for good:
   Global::state().destroy();
 
   Global::scheduler().stop();
 
-  string body = "frameworkId=" + Global::state().frameworkId();
   Global::scheduler().postRequest("master/shutdown", body);
 }
 
@@ -328,18 +332,17 @@ void ArangoManager::destroy () {
 ////////////////////////////////////////////////////////////////////////////////
 
 vector<string> ArangoManager::coordinatorEndpoints () {
-  Current current = Global::state().current();
-  //auto const& coordinators = current.coordinators();
+  auto l = Global::state().lease();
+  Current current = l.state().current();
   auto const& coordinators = current.coordinators();
 
   vector<string> endpoints;
 
   for (int i = 0;  i < coordinators.entries_size();  ++i) {
-    //auto const& coordinator = coordinators.entries(i);
-    auto const& coord_res = coordinators.entries(i);
-    if (coord_res.has_hostname() && coord_res.ports_size() > 0) {
-      string endpoint = "http://" + coord_res.hostname() + ":" 
-                        + to_string(coord_res.ports(0));
+    auto const& coordinator = coordinators.entries(i);
+    if (coordinator.has_hostname() && coordinator.ports_size() > 0) {
+      string endpoint = "http://" + coordinator.hostname() + ":" 
+                        + to_string(coordinator.ports(0));
       endpoints.push_back(endpoint);
     }
   }
@@ -352,16 +355,17 @@ vector<string> ArangoManager::coordinatorEndpoints () {
 ////////////////////////////////////////////////////////////////////////////////
 
 vector<string> ArangoManager::dbserverEndpoints () {
-  Current current = Global::state().current();
+  auto l = Global::state().lease();
+  Current current = l.state().current();
   auto const& dbservers = current.dbservers();
 
   vector<string> endpoints;
 
   for (int i = 0; i < dbservers.entries_size();  ++i) {
-    auto const& dbs_res = dbservers.entries(i);
-    if (dbs_res.has_hostname() && dbs_res.ports_size() > 0) {
-      string endpoint = "http://" + dbs_res.hostname() + ":" 
-                        + to_string(dbs_res.ports(0));
+    auto const& dbserver = dbservers.entries(i);
+    if (dbserver.has_hostname() && dbserver.ports_size() > 0) {
+      string endpoint = "http://" + dbserver.hostname() + ":" 
+                        + to_string(dbserver.ports(0));
       endpoints.push_back(endpoint);
     }
   }
@@ -385,7 +389,10 @@ void ArangoManager::dispatch () {
 
   while (! _stopDispatcher) {
     bool found;
-    Global::state().frameworkId(found);
+    {
+      auto l = Global::state().lease();
+      found = l.state().has_framework_id();
+    }
 
     if (! found) {
       this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
@@ -404,14 +411,15 @@ void ArangoManager::dispatch () {
     // apply any timeouts
     bool sleep = checkTimeouts();
 
-    // initialise cluster when it is up:
-    auto cur = Global::state().current();
+    {
+      auto l = Global::state().lease();
+      // initialise cluster when it is up:
+      auto cur = l.state().current();
 
-    if (  cur.cluster_complete() &&
-        ! cur.cluster_initialized()) {
-      LOG(INFO)
-      << "calling initializeCluster()...";
-      initializeCluster();
+      if (  cur.cluster_complete() &&
+          ! cur.cluster_initialized()) {
+        LOG(INFO) << "calling initializeCluster()..."; initializeCluster(l);
+      }
     }
 
     // wait for a little while, if we are idle
@@ -422,26 +430,73 @@ void ArangoManager::dispatch () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fill in TaskStatus
+////////////////////////////////////////////////////////////////////////////////
+
+static void fillTaskStatus (vector<pair<string,string>>& result,
+                            TasksPlan const& plans,
+                            TasksCurrent const& currents) {
+
+  // we have to check the TaskInfo (not TaskStatus!)
+  for (int i = 0;  i < currents.entries_size();  ++i) {
+    TaskPlan const& planEntry = plans.entries(i);
+    TaskCurrent const& entry = currents.entries(i);
+
+    switch (planEntry.state()) {
+      case TASK_STATE_NEW:
+      case TASK_STATE_TRYING_TO_RESERVE:
+      case TASK_STATE_TRYING_TO_PERSIST:
+      case TASK_STATE_TRYING_TO_START:
+      case TASK_STATE_TRYING_TO_RESTART:
+      case TASK_STATE_RUNNING:
+      case TASK_STATE_KILLED:
+      case TASK_STATE_FAILED_OVER:
+        // At this stage we do not distinguish the state, is this sensible?
+        if (entry.has_task_info()) {
+          auto const& info = entry.task_info();
+          string taskId = info.task_id().value();
+          string slaveId = info.slave_id().value();
+          result.push_back(make_pair(taskId, slaveId));
+        }
+
+        break;
+      case TASK_STATE_DEAD:
+        break;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the reconciliation of tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoManager::prepareReconciliation () {
-  vector<mesos::TaskStatus> status = Global::state().knownTaskStatus();
+  auto l = Global::state().lease();
+  vector<pair<string,string>> taskSlaveIds;
+
+  fillTaskStatus(taskSlaveIds, l.state().plan().agents(),
+                               l.state().current().agents());
+  fillTaskStatus(taskSlaveIds, l.state().plan().coordinators(), 
+                               l.state().current().coordinators());
+  fillTaskStatus(taskSlaveIds, l.state().plan().dbservers(),
+                               l.state().current().dbservers());
+  fillTaskStatus(taskSlaveIds, l.state().plan().secondaries(),
+                               l.state().current().secondaries());
+
   auto now = chrono::steady_clock::now();
 
-  for (auto&& taskStatus : status) {
-    const string& taskId = taskStatus.task_id().value();
-
+  for (auto const& taskSlaveId : taskSlaveIds) {
     auto nextReconcile = now;
     auto backoff = chrono::seconds(1);
 
     ReconcileTasks reconcile = {
-      taskStatus,
+      taskSlaveId.first,   // TaskId
+      taskSlaveId.second,  // SlaveId
       nextReconcile,
       backoff
     };
 
-    _reconcilationTasks[taskId] = reconcile;
+    _reconciliationTasks[taskSlaveId.first] = reconcile;
   }
 }
 
@@ -456,23 +511,21 @@ void ArangoManager::reconcileTasks () {
 
   auto now = chrono::steady_clock::now();
 
-  // first, we as implicit reconciliation periodically
+  // first, we ask for implicit reconciliation periodically
   if (_nextImplicitReconciliation >= now) {
-    LOG(INFO)
-    << "DEBUG implicit reconciliation";
+    LOG(INFO) << "DEBUG implicit reconciliation";
 
     Global::scheduler().reconcileTasks();
     _nextImplicitReconciliation = now + _implicitReconciliationIntervall;
   }
 
   // check for unknown tasks
-  for (auto&& task : _reconcilationTasks) {
+  for (auto& task : _reconciliationTasks) {
     if (task.second._nextReconcile > now) {
-      LOG(INFO)
-      << "DEBUG explicit reconciliation for "
-      << task.first;
+      LOG(INFO) << "DEBUG explicit reconciliation for " << task.first;
 
-      Global::scheduler().reconcileTask(task.second._status);
+      Global::scheduler().reconcileTask(task.second._taskId,
+                                        task.second._slaveId);
 
       task.second._backoff *= 2;
 
@@ -501,33 +554,34 @@ static double const TryingToResurrectTimeout = 900;  // Patience before we
 // command line option.
 
 bool ArangoManager::checkTimeouts () {
+  auto l = Global::state().lease();
+
   std::vector<TaskType> types 
     = { TaskType::AGENT, TaskType::PRIMARY_DBSERVER,
         TaskType::SECONDARY_DBSERVER, TaskType::COORDINATOR };
 
-  auto plan = Global::state().plan();
-  auto current = Global::state().current();
+  auto* plan = l.state().mutable_plan();
+  auto* current = l.state().mutable_current();
 
-  bool activity = false;
   for (auto taskType : types) {
     TasksPlan* tasksPlan;
     TasksCurrent* tasksCurr;
     switch (taskType) {
       case TaskType::AGENT:
-        tasksPlan = plan.mutable_agents();
-        tasksCurr = current.mutable_agents();
+        tasksPlan = plan->mutable_agents();
+        tasksCurr = current->mutable_agents();
         break;
       case TaskType::PRIMARY_DBSERVER:
-        tasksPlan = plan.mutable_dbservers();
-        tasksCurr = current.mutable_dbservers();
+        tasksPlan = plan->mutable_dbservers();
+        tasksCurr = current->mutable_dbservers();
         break;
       case TaskType::SECONDARY_DBSERVER:
-        tasksPlan = plan.mutable_secondaries();
-        tasksCurr = current.mutable_secondaries();
+        tasksPlan = plan->mutable_secondaries();
+        tasksCurr = current->mutable_secondaries();
         break;
       case TaskType::COORDINATOR:
-        tasksPlan = plan.mutable_coordinators();
-        tasksCurr = current.mutable_coordinators();
+        tasksPlan = plan->mutable_coordinators();
+        tasksCurr = current->mutable_coordinators();
         break;
       default:  // never happens
         tasksPlan = nullptr;
@@ -556,7 +610,7 @@ bool ArangoManager::checkTimeouts () {
             tp->set_state(TASK_STATE_NEW);
             tp->clear_persistence_id();
             tp->set_timestamp(now);
-            activity = true;
+            l.changed();
           }
           break;
         case TASK_STATE_TRYING_TO_PERSIST:
@@ -571,7 +625,7 @@ bool ArangoManager::checkTimeouts () {
             tp->set_state(TASK_STATE_NEW);
             tp->clear_persistence_id();
             tp->set_timestamp(now);
-            activity = true;
+            l.changed();
           }
           break;
         case TASK_STATE_TRYING_TO_START:
@@ -586,7 +640,7 @@ bool ArangoManager::checkTimeouts () {
             tp->set_state(TASK_STATE_NEW);
             tp->clear_persistence_id();
             tp->set_timestamp(now);
-            activity = true;
+            l.changed();
           }
           break;
         case TASK_STATE_RUNNING:
@@ -621,18 +675,18 @@ bool ArangoManager::checkTimeouts () {
               LOG(INFO) << "Task is an agent, simply reset the timestamp and "
                         << "wait forever.";
               tp->set_timestamp(now);
-              activity = true;
+              l.changed();
             }
             else if (taskType == TaskType::COORDINATOR) {
               LOG(INFO) << "Going back to state TASK_STATE_NEW.";
               tp->set_state(TASK_STATE_NEW);
               tp->clear_persistence_id();
               tp->set_timestamp(now);
-              activity = true;
+              l.changed();
             }
             else if (taskType == TaskType::SECONDARY_DBSERVER) {
               std::string primaryName = tp->sync_partner();
-
+              // ...
             }
           }
           break;
@@ -647,7 +701,7 @@ bool ArangoManager::checkTimeouts () {
                       << " in state TASK_STATE_TRYING_TO_RESTART.";
             LOG(INFO) << "Going back to state TASK_STATE_KILL.";
             tp->set_state(TASK_STATE_KILLED);
-            activity = true;
+            l.changed();
             // Do not change the time stamp here, because we want to
             // notice alternating between KILLED and TRYING_TO_RESTART!
           }
@@ -663,11 +717,6 @@ bool ArangoManager::checkTimeouts () {
           break;
       }
     }
-  }
-  if (activity) {
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-    Global::state().save();
   }
   return true;
 }
@@ -685,20 +734,20 @@ void ArangoManager::applyStatusUpdates () {
     mesos::TaskID taskId = status.task_id();
     string taskIdStr = taskId.value();
 
-    _reconcilationTasks.erase(taskIdStr);
+    _reconciliationTasks.erase(taskIdStr);
 
     std::pair<TaskType, int>& pos = _task2position[taskIdStr];
-
-    caretaker.setTaskStatus(pos.first, pos.second, status);
 
     switch (status.state()) {
       case mesos::TASK_STAGING:
         break;
 
-      case mesos::TASK_RUNNING:
-        caretaker.setTaskPlanState(pos.first, pos.second, TASK_STATE_RUNNING);
+      case mesos::TASK_RUNNING: {
+        auto lease = Global::state().lease(true);
+        caretaker.setTaskPlanState(lease, pos.first, pos.second,
+                                   TASK_STATE_RUNNING);
         break;
-
+      }
       case mesos::TASK_STARTING:
         // do nothing
         break;
@@ -707,9 +756,12 @@ void ArangoManager::applyStatusUpdates () {
       case mesos::TASK_FAILED:   // TERMINAL. The task failed to finish successfully.
       case mesos::TASK_KILLED:   // TERMINAL. The task was killed by the executor.
       case mesos::TASK_LOST:     // TERMINAL. The task failed but can be rescheduled.
-      case mesos::TASK_ERROR:    // TERMINAL. The task failed but can be rescheduled.
-        caretaker.setTaskPlanState(pos.first, pos.second, TASK_STATE_KILLED);
+      case mesos::TASK_ERROR: {  // TERMINAL. The task failed but can be rescheduled.
+        auto lease = Global::state().lease(true);
+        caretaker.setTaskPlanState(lease, pos.first, pos.second,
+                                   TASK_STATE_KILLED);
         break;
+      }
     }
   }
 

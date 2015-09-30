@@ -148,7 +148,8 @@ namespace arangodb {
 /// @brief reconciles a single task
 ////////////////////////////////////////////////////////////////////////////////
 
-      void reconcileTask (const mesos::TaskStatus&);
+      void reconcileTask (std::string const& taskId,
+                          std::string const& slaveId);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Scheduler methods

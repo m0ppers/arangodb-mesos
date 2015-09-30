@@ -51,7 +51,8 @@ namespace arangodb {
 
   class ReconcileTasks {
     public:
-      mesos::TaskStatus _status;
+      std::string _taskId;
+      std::string _slaveId;
       std::chrono::steady_clock::time_point _nextReconcile;
       std::chrono::steady_clock::duration _backoff;
   };
@@ -236,7 +237,7 @@ namespace arangodb {
 /// @brief tasks to reconcile
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::unordered_map<std::string, ReconcileTasks> _reconcilationTasks;
+      std::unordered_map<std::string, ReconcileTasks> _reconciliationTasks;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief positions of tasks

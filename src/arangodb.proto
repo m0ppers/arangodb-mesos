@@ -97,8 +97,7 @@ message Plan {
 // the resources used (ResourceCurrent) and another for the current
 // state of the task. The mesos.TaskInfo describes the task and contains
 // all information needed for Mesos and its docker containerizer to
-// launch the task. The mesos.TaskStatus is the latest status update
-// from Mesos about the task.
+// launch the task.
 
 // The slave_id and offer_id and resources are set whenever an
 // offer is found suitable for usage. For persistent tasks this can
@@ -107,17 +106,17 @@ message Plan {
 // TASK_STATE_NEW, then this information is cleared out. The resources
 // always reflect the resources used to order the latest step, such that
 // the timeouts can use them.
-// task_info is initialized by Caretaker::setTaskId, where essentially only
-// the actual taskID is set and everything else is cleared out. task_status
-// is cleared on that occasion as well. setTaskId is called just before the
-// task is actually started in ArangoManager::startInstance.
-// Just after that Caretaker::setTaskInfo is called, which sets task_info
-// with the return value of the scheduler call, delivering feedback from
-// the system about the starting of this particular task.
-// Later, when status updates come in from the Mesos master, the local 
-// information is updated in the ArangoManager::applyStatusUpdates, it
-// calls Caretaker::setTaskStatus, which in turn sets task_status. Finally,
-// the state is set by calling Caretaker::setInstanceState.
+// task_info is initialized by Caretaker::setTaskId, where essentially
+// only the actual taskID is set and everything else is cleared out.
+// setTaskId is called just before the task is actually started in
+// ArangoManager::startInstance. Just after that Caretaker::setTaskInfo
+// is called, which sets task_info with the return value of the
+// scheduler call, delivering feedback from the system about the
+// starting of this particular task. Later, when status updates come
+// in from the Mesos master, the local information is updated in the
+// ArangoManager::applyStatusUpdates, it calls Caretaker::setTaskStatus,
+// which in turn sets task_status. Finally, the state is set by calling
+// Caretaker::setInstanceState.
 
 message TaskCurrent {
   optional mesos.SlaveID        slave_id = 1;
@@ -127,7 +126,6 @@ message TaskCurrent {
   optional string               hostname = 5;
   optional string               container_path = 6;
   optional mesos.TaskInfo       task_info = 7;
-  optional mesos.TaskStatus     task_status = 8;
 }
 
 message TasksCurrent {

@@ -51,10 +51,11 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 CaretakerCluster::CaretakerCluster () {
-  Targets targets = Global::state().targets();
+  auto lease = Global::state().lease(true);
+  Targets* targets = lease.state().mutable_targets();
 
   // AGENCY
-  Target* agency = targets.mutable_agents();
+  Target* agency = targets->mutable_agents();
   // Will be: agency->set_instances(Global::nrAgents());
   agency->set_instances(1);
   agency->clear_minimal_resources();
@@ -79,7 +80,7 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   // COORDINATOR
-  Target* coordinator = targets.mutable_coordinators();
+  Target* coordinator = targets->mutable_coordinators();
   coordinator->set_instances(Global::nrCoordinators());
   coordinator->clear_minimal_resources();
   coordinator->set_number_ports(1);
@@ -102,7 +103,7 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   // DBSERVER
-  Target* dbserver = targets.mutable_dbservers();
+  Target* dbserver = targets->mutable_dbservers();
   dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
@@ -125,7 +126,7 @@ CaretakerCluster::CaretakerCluster () {
   }
 
   // SECONDARIES
-  Target* secondary = targets.mutable_secondaries();
+  Target* secondary = targets->mutable_secondaries();
   secondary->set_instances(Global::nrDBServers());
   secondary->clear_minimal_resources();
   secondary->set_number_ports(1);
@@ -146,9 +147,6 @@ CaretakerCluster::CaretakerCluster () {
       m->CopyFrom(res);
     }
   }
-
-  Global::state().setTargets(targets);
-  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------
@@ -205,22 +203,24 @@ void CaretakerCluster::updatePlan () {
   // This updates the Plan according to what is in the Target, this is
   // used to scale up coordinators or DBServers
 
-  Targets targets = Global::state().targets();
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
+  auto lease = Global::state().lease(true);
+
+  Targets* targets = lease.state().mutable_targets();
+  Plan* plan = lease.state().mutable_plan();
+  Current* current = lease.state().mutable_current();
   int t, p;
 
   // First the agency, currently, we only support a single agency:
-  t = (int) targets.agents().instances();
+  t = (int) targets->agents().instances();
   if (t > 1) {
     LOG(INFO)
     << "INFO currently we support only a single server agency";
     t = 1;
-    Target* te = targets.mutable_agents();
+    Target* te = targets->mutable_agents();
     te->set_instances(1);
   }
-  TasksPlan* tasks = plan.mutable_agents();
-  p = countPlannedInstances(plan.agents());
+  TasksPlan* tasks = plan->mutable_agents();
+  p = countPlannedInstances(plan->agents());
   if (t < p) {
     LOG(INFO)
     << "INFO reducing number of agents from " << p << " to " << t;
@@ -249,22 +249,22 @@ void CaretakerCluster::updatePlan () {
                          + std::to_string(tasks->entries_size());
       task->set_name(name);
 
-      TasksCurrent* agents = current.mutable_agents();
+      TasksCurrent* agents = current->mutable_agents();
       agents->add_entries();
     }
   }
   
   // need at least one DB server
-  t = (int) targets.dbservers().instances();
-  tasks = plan.mutable_dbservers();
-  TasksPlan* tasks2 = plan.mutable_secondaries();
-  p = countPlannedInstances(plan.dbservers());
+  t = (int) targets->dbservers().instances();
+  tasks = plan->mutable_dbservers();
+  TasksPlan* tasks2 = plan->mutable_secondaries();
+  p = countPlannedInstances(plan->dbservers());
 
   if (t < p) {
     LOG(INFO)
     << "INFO refusing to reduce number of db-servers from " << p << " to " << t
     << " NOT YET IMPLEMENTED.";
-    targets.mutable_dbservers()->set_instances(p);
+    targets->mutable_dbservers()->set_instances(p);
   }
 
   if (p < t) {
@@ -278,7 +278,7 @@ void CaretakerCluster::updatePlan () {
                          + std::to_string(tasks->entries_size());
       task->set_name(name);
 
-      TasksCurrent* dbservers = current.mutable_dbservers();
+      TasksCurrent* dbservers = current->mutable_dbservers();
       dbservers->add_entries();
 
       if (Global::asyncReplication()) {
@@ -290,16 +290,16 @@ void CaretakerCluster::updatePlan () {
         task->set_sync_partner(name2);
         task2->set_sync_partner(name);
 
-        TasksCurrent* secondaries = current.mutable_secondaries();
+        TasksCurrent* secondaries = current->mutable_secondaries();
         secondaries->add_entries();
       }
     }
   }
 
   // need at least one coordinator
-  t = (int) targets.coordinators().instances();
-  tasks = plan.mutable_coordinators();
-  p = countPlannedInstances(plan.coordinators());
+  t = (int) targets->coordinators().instances();
+  tasks = plan->mutable_coordinators();
+  p = countPlannedInstances(plan->coordinators());
 
   if (t < p) {
     LOG(INFO)
@@ -328,14 +328,10 @@ void CaretakerCluster::updatePlan () {
                          + std::to_string(tasks->entries_size());
       task->set_name(name);
 
-      TasksCurrent* coordinators = current.mutable_coordinators();
+      TasksCurrent* coordinators = current->mutable_coordinators();
       coordinators->add_entries();
     }
   }
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-  Global::state().save();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,9 +350,11 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   //   we check whether all secondaries are up, lastly, we check with 
   //   the coordinators. If all is well, we decline politely.
 
-  Targets targets = Global::state().targets();
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
+  auto lease = Global::state().lease();
+
+  Targets* targets = lease.state().mutable_targets();
+  Plan* plan = lease.state().mutable_plan();
+  Current* current = lease.state().mutable_current();
 
   bool offerUsed = false;
 
@@ -375,26 +373,22 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   << "And here the offer:\n" << offerString << "\n";
 #endif
 
-  int plannedInstances = countPlannedInstances(plan.agents());
-  int runningInstances = countRunningInstances(plan.agents());
+  int plannedInstances = countPlannedInstances(plan->agents());
+  int runningInstances = countRunningInstances(plan->agents());
   LOG(INFO)
   << "planned agent instances: " << plannedInstances << ", "
   << "running agent instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new agent:
-    offerUsed = checkResourceOffer("agency", true,
-                                   targets.agents(),
-                                   plan.mutable_agents(),
-                                   current.mutable_agents(),
-                                   offer, ! current.cluster_initialized(),
-                                   TaskType::AGENT);
-
-    // Save new state:
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-    Global::state().save();
+    offerUsed = checkOfferOneType(lease, "agency", true,
+                                  targets->agents(),
+                                  plan->mutable_agents(),
+                                  current->mutable_agents(),
+                                  offer, ! current->cluster_initialized(),
+                                  TaskType::AGENT);
 
     if (offerUsed) {
+      lease.changed();   // save new state
       return;
     }
 
@@ -403,12 +397,12 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // initialized.
   }
 
-  if (! current.cluster_initialized()) {
+  if (! current->cluster_initialized()) {
     // Agency is running, make sure it is initialized:
     std::string agentHost 
-      = Global::state().current().agents().entries(0).hostname();
+      = current->agents().entries(0).hostname();
     uint32_t port 
-      = Global::state().current().agents().entries(0).ports(0);
+      = current->agents().entries(0).ports(0);
     std::string url = "http://" + agentHost + ":" + to_string(port) +
                       "/v2/keys/arango/InitDone";
     std::string body;
@@ -448,25 +442,22 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
   
   // Now look after the DBservers:
-  plannedInstances = countPlannedInstances(plan.dbservers());
-  runningInstances = countRunningInstances(plan.dbservers());
+  plannedInstances = countPlannedInstances(plan->dbservers());
+  runningInstances = countRunningInstances(plan->dbservers());
   LOG(INFO)
   << "planned DBServer instances: " << plannedInstances << ", "
   << "running DBServer instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new DBserver:
-    offerUsed = checkResourceOffer("primary", true,
-                                   targets.dbservers(),
-                                   plan.mutable_dbservers(),
-                                   current.mutable_dbservers(),
-                                   offer, ! current.cluster_initialized(),
-                                   TaskType::PRIMARY_DBSERVER);
+    offerUsed = checkOfferOneType(lease, "primary", true,
+                                  targets->dbservers(),
+                                  plan->mutable_dbservers(),
+                                  current->mutable_dbservers(),
+                                  offer, ! current->cluster_initialized(),
+                                  TaskType::PRIMARY_DBSERVER);
 
-    // Save new state:
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-    Global::state().save();
     if (offerUsed) {
+      lease.changed();  // make sure new state is saved
       return;
     }
     // Otherwise, fall through to give other task types a chance to look
@@ -476,25 +467,22 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   // Now the secondaries, if needed:
   if (Global::asyncReplication()) {
-    plannedInstances = countPlannedInstances(plan.secondaries());
-    runningInstances = countRunningInstances(plan.secondaries());
+    plannedInstances = countPlannedInstances(plan->secondaries());
+    runningInstances = countRunningInstances(plan->secondaries());
     LOG(INFO)
     << "planned secondary DBServer instances: " << plannedInstances << ", "
     << "running secondary DBServer instances: " << runningInstances;
     if (runningInstances < plannedInstances) {
       // Try to use the offer for a new DBserver:
-      offerUsed = checkResourceOffer("secondary", true,
-                                     targets.secondaries(),
-                                     plan.mutable_secondaries(),
-                                     current.mutable_secondaries(),
-                                     offer, ! current.cluster_initialized(),
-                                     TaskType::SECONDARY_DBSERVER);
+      offerUsed = checkOfferOneType(lease, "secondary", true,
+                                    targets->secondaries(),
+                                    plan->mutable_secondaries(),
+                                    current->mutable_secondaries(),
+                                    offer, ! current->cluster_initialized(),
+                                    TaskType::SECONDARY_DBSERVER);
 
-      // Save new state:
-      Global::state().setPlan(plan);
-      Global::state().setCurrent(current);
-      Global::state().save();
       if (offerUsed) {
+        lease.changed();  // make sure new state is saved
         return;
       }
       // Otherwise, fall through to give other task types a chance to look
@@ -504,32 +492,28 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   // Finally, look after the coordinators:
-  plannedInstances = countPlannedInstances(plan.coordinators());
-  runningInstances = countRunningInstances(plan.coordinators());
+  plannedInstances = countPlannedInstances(plan->coordinators());
+  runningInstances = countRunningInstances(plan->coordinators());
   LOG(INFO)
   << "planned coordinator instances: " << plannedInstances << ", "
   << "running coordinator instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
     // Try to use the offer for a new coordinator:
-    checkResourceOffer("coordinator", false,
-                       targets.coordinators(),
-                       plan.mutable_coordinators(),
-                       current.mutable_coordinators(),
-                       offer, true, TaskType::COORDINATOR);
-
-    // Save new state:
-    Global::state().setPlan(plan);
-    Global::state().setCurrent(current);
-    Global::state().save();
+    if (checkOfferOneType(lease, "coordinator", false,
+                          targets->coordinators(),
+                          plan->mutable_coordinators(),
+                          current->mutable_coordinators(),
+                          offer, true, TaskType::COORDINATOR)) {
+      lease.changed();  // make sure that the new state is saved
+    }
     return;
   }
 
-  if (! current.cluster_complete()) {
+  if (! current->cluster_complete()) {
     LOG(INFO) << "Cluster is complete.";
     LOG(INFO) << "Initiating cluster initialisation procedure...";
-    current.set_cluster_complete(true);
-    Global::state().setCurrent(current);
-    Global::state().save();
+    current->set_cluster_complete(true);
+    lease.changed();
   }
 
   // Nobody wanted this offer, see whether there is a persistent disk

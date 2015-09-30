@@ -807,15 +807,6 @@ class TaskCurrent : public ::google::protobuf::Message {
   inline ::mesos::TaskInfo* release_task_info();
   inline void set_allocated_task_info(::mesos::TaskInfo* task_info);
 
-  // optional .mesos.TaskStatus task_status = 8;
-  inline bool has_task_status() const;
-  inline void clear_task_status();
-  static const int kTaskStatusFieldNumber = 8;
-  inline const ::mesos::TaskStatus& task_status() const;
-  inline ::mesos::TaskStatus* mutable_task_status();
-  inline ::mesos::TaskStatus* release_task_status();
-  inline void set_allocated_task_status(::mesos::TaskStatus* task_status);
-
   // @@protoc_insertion_point(class_scope:arangodb.TaskCurrent)
  private:
   inline void set_has_slave_id();
@@ -828,8 +819,6 @@ class TaskCurrent : public ::google::protobuf::Message {
   inline void clear_has_container_path();
   inline void set_has_task_info();
   inline void clear_has_task_info();
-  inline void set_has_task_status();
-  inline void clear_has_task_status();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -840,10 +829,9 @@ class TaskCurrent : public ::google::protobuf::Message {
   ::std::string* hostname_;
   ::std::string* container_path_;
   ::mesos::TaskInfo* task_info_;
-  ::mesos::TaskStatus* task_status_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_arangodb_2eproto();
   friend void protobuf_AssignDesc_arangodb_2eproto();
@@ -2325,44 +2313,6 @@ inline void TaskCurrent::set_allocated_task_info(::mesos::TaskInfo* task_info) {
     set_has_task_info();
   } else {
     clear_has_task_info();
-  }
-}
-
-// optional .mesos.TaskStatus task_status = 8;
-inline bool TaskCurrent::has_task_status() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void TaskCurrent::set_has_task_status() {
-  _has_bits_[0] |= 0x00000080u;
-}
-inline void TaskCurrent::clear_has_task_status() {
-  _has_bits_[0] &= ~0x00000080u;
-}
-inline void TaskCurrent::clear_task_status() {
-  if (task_status_ != NULL) task_status_->::mesos::TaskStatus::Clear();
-  clear_has_task_status();
-}
-inline const ::mesos::TaskStatus& TaskCurrent::task_status() const {
-  return task_status_ != NULL ? *task_status_ : *default_instance_->task_status_;
-}
-inline ::mesos::TaskStatus* TaskCurrent::mutable_task_status() {
-  set_has_task_status();
-  if (task_status_ == NULL) task_status_ = new ::mesos::TaskStatus;
-  return task_status_;
-}
-inline ::mesos::TaskStatus* TaskCurrent::release_task_status() {
-  clear_has_task_status();
-  ::mesos::TaskStatus* temp = task_status_;
-  task_status_ = NULL;
-  return temp;
-}
-inline void TaskCurrent::set_allocated_task_status(::mesos::TaskStatus* task_status) {
-  delete task_status_;
-  task_status_ = task_status;
-  if (task_status) {
-    set_has_task_status();
-  } else {
-    clear_has_task_status();
   }
 }
 

@@ -319,10 +319,13 @@ void ArangoScheduler::reconcileTasks () {
 /// @brief reconciles a single task
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoScheduler::reconcileTask (const mesos::TaskStatus& taskStatus) {
+void ArangoScheduler::reconcileTask (std::string const& taskId,
+                                     std::string const& slaveId) {
   vector<mesos::TaskStatus> status;
-
-  status.push_back(taskStatus);
+  mesos::TaskStatus ts;
+  ts.mutable_task_id()->set_value(taskId);
+  ts.mutable_slave_id()->set_value(slaveId);
+  status.push_back(ts);
 
   _driver->reconcileTasks(status);
 }
@@ -342,8 +345,10 @@ void ArangoScheduler::registered (mesos::SchedulerDriver* driver,
   << "registered with framework-id " << frameworkId.value()
   << " at master " << master.id();
 
-  Global::state().setFrameworkId(frameworkId);
-  Global::state().save();
+  {  // mark in state
+    auto l = Global::state().lease(true);
+    l.state().mutable_framework_id()->CopyFrom(frameworkId);
+  }
 
   checkVersion(master.hostname(), master.port());
 

@@ -50,20 +50,22 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 CaretakerStandalone::CaretakerStandalone () {
-  Targets targets = Global::state().targets();
+  auto lease = Global::state().lease(true);
+
+  Targets* targets = lease.state().mutable_targets();
 
   // AGENCY
-  Target* agency = targets.mutable_agents();
+  Target* agency = targets->mutable_agents();
   agency->set_instances(0);
   agency->clear_minimal_resources();
 
   // COORDINATOR
-  Target* coordinator = targets.mutable_coordinators();
+  Target* coordinator = targets->mutable_coordinators();
   coordinator->set_instances(0);
   coordinator->clear_minimal_resources();
 
   // DBSERVER
-  Target* dbserver = targets.mutable_dbservers();
+  Target* dbserver = targets->mutable_dbservers();
   dbserver->set_instances(Global::nrDBServers());
   dbserver->clear_minimal_resources();
   dbserver->set_number_ports(1);
@@ -86,12 +88,9 @@ CaretakerStandalone::CaretakerStandalone () {
   }
 
   // SECONDARIES
-  Target* secondaries = targets.mutable_secondaries();
+  Target* secondaries = targets->mutable_secondaries();
   secondaries->set_instances(0);
   secondaries->clear_minimal_resources();
-
-  Global::state().setTargets(targets);
-  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------
@@ -103,12 +102,14 @@ CaretakerStandalone::CaretakerStandalone () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CaretakerStandalone::updatePlan () {
-  Targets targets = Global::state().targets();
-  Plan plan = Global::state().plan();
-  Current current = Global::state().current();
+  auto lease = Global::state().lease(true);
+
+  Targets* targets = lease.state().mutable_targets();
+  Plan* plan = lease.state().mutable_plan();
+  Current* current = lease.state().mutable_current();
 
   // need exactly one DB server
-  int t = (int) targets.dbservers().instances();
+  int t = (int) targets->dbservers().instances();
 
   if (t != 1) {
     LOG(ERROR)
@@ -117,7 +118,7 @@ void CaretakerStandalone::updatePlan () {
     exit(EXIT_FAILURE);
   }
 
-  TasksPlan* dbservers = plan.mutable_dbservers();
+  TasksPlan* dbservers = plan->mutable_dbservers();
   int p = dbservers->entries_size();
 
   if (1 < p) {
@@ -141,12 +142,8 @@ void CaretakerStandalone::updatePlan () {
     task->set_state(TASK_STATE_NEW);
     task->set_timestamp(now);
 
-    current.mutable_dbservers()->add_entries();
+    current->mutable_dbservers()->add_entries();
   }
-
-  Global::state().setPlan(plan);
-  Global::state().setCurrent(current);
-  Global::state().save();
 }
 
 // -----------------------------------------------------------------------------

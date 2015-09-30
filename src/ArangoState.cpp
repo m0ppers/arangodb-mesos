@@ -28,6 +28,7 @@
 #include "ArangoState.h"
 
 #include "Global.h"
+#include "utils.h"
 
 #include "pbjson.hpp"
 
@@ -39,54 +40,6 @@
 using namespace arangodb;
 using namespace mesos::internal::state;
 using namespace std;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fill in TaskStatus
-////////////////////////////////////////////////////////////////////////////////
-
-void fillTaskStatus (vector<mesos::TaskStatus>& result,
-                     TasksPlan const& plans,
-                     TasksCurrent const& currents) {
-
-  // we have to check the TaskInfo (not TaskStatus!)
-  for (int i = 0;  i < currents.entries_size();  ++i) {
-    TaskPlan const& planEntry = plans.entries(i);
-    TaskCurrent const& entry = currents.entries(i);
-
-    switch (planEntry.state()) {
-      case TASK_STATE_NEW:
-      case TASK_STATE_TRYING_TO_RESERVE:
-      case TASK_STATE_TRYING_TO_PERSIST:
-      case TASK_STATE_TRYING_TO_START:
-      case TASK_STATE_TRYING_TO_RESTART:
-      case TASK_STATE_RUNNING:
-      case TASK_STATE_KILLED:
-      case TASK_STATE_FAILED_OVER:
-      case TASK_STATE_DEAD:
-        // At this stage we do not distinguish the state, is this sensible?
-        if (entry.has_task_info()) {
-          auto const& info = entry.task_info();
-
-          mesos::TaskStatus status;
-          status.mutable_task_id()->CopyFrom(info.task_id());
-
-          if (info.has_slave_id()) {
-            status.mutable_slave_id()->CopyFrom(info.slave_id());
-          }
-
-          status.set_state(mesos::TaskState::TASK_RUNNING);
-
-          result.push_back(status);
-        }
-
-        break;
-    }
-  }
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class ArangoState
@@ -104,7 +57,8 @@ ArangoState::ArangoState (const string& name, const string& zk)
   : _name(name),
     _zk(zk),
     _storage(nullptr),
-    _stateStore(nullptr) {
+    _stateStore(nullptr),
+    _isLeased(false) {
 }
 
 // -----------------------------------------------------------------------------
@@ -186,6 +140,7 @@ void ArangoState::init () {
 
 void ArangoState::load () {
   lock_guard<mutex> lock(_lock);
+  assert(! _isLeased);
 
   Variable variable = _stateStore->fetch("state_"+_name).get();
   string value = variable.value();
@@ -216,10 +171,7 @@ void ArangoState::load () {
 
   }
 
-  string json;
-  pbjson::pb2json(&_state, json);
-  
-  LOG(INFO) << "current state: " << json;
+  LOG(INFO) << "current state: " << arangodb::toJson(_state);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,167 +186,6 @@ void ArangoState::destroy () {
   r.await();  // Wait until state is actually expunged
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief framework id
-////////////////////////////////////////////////////////////////////////////////
-
-string ArangoState::frameworkId () {
-  bool found;
-  mesos::FrameworkID id = frameworkId(found);
-
-  if (found) {
-    return id.value();
-  }
-
-  return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief framework id
-////////////////////////////////////////////////////////////////////////////////
-
-mesos::FrameworkID ArangoState::frameworkId (bool& found) {
-  lock_guard<mutex> lock(_lock);
-
-  found = _state.has_framework_id();
-
-  if (found) {
-    return _state.framework_id();
-  }
-  else {
-    return mesos::FrameworkID();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the framework id
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoState::setFrameworkId (const mesos::FrameworkID& id) {
-  lock_guard<mutex> lock(_lock);
-
-  _state.mutable_framework_id()->CopyFrom(id);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the target
-////////////////////////////////////////////////////////////////////////////////
-
-Targets ArangoState::targets () {
-  lock_guard<mutex> lock(_lock);
-
-  return _state.targets();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the target
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoState::setTargets (const Targets& targets) {
-  lock_guard<mutex> lock(_lock);
-
-  _state.mutable_targets()->CopyFrom(targets);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief target as json string
-////////////////////////////////////////////////////////////////////////////////
-
-string ArangoState::jsonTargets () {
-  lock_guard<mutex> lock(_lock);
-
-  string result;
-  pbjson::pb2json(&_state.targets(), result);
-  
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the plan
-////////////////////////////////////////////////////////////////////////////////
-
-Plan ArangoState::plan () {
-  lock_guard<mutex> lock(_lock);
-
-  return _state.plan();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the plan
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoState::setPlan (const Plan& plan) {
-  lock_guard<mutex> lock(_lock);
-
-  _state.mutable_plan()->CopyFrom(plan);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief plan as json string
-////////////////////////////////////////////////////////////////////////////////
-
-string ArangoState::jsonPlan () {
-  lock_guard<mutex> lock(_lock);
-
-  string result;
-  pbjson::pb2json(&_state.plan(), result);
-  
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current
-////////////////////////////////////////////////////////////////////////////////
-
-Current ArangoState::current () {
-  lock_guard<mutex> lock(_lock);
-  return _state.current();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the current
-////////////////////////////////////////////////////////////////////////////////
-
-void ArangoState::setCurrent (const Current& current) {
-  lock_guard<mutex> lock(_lock);
-
-  _state.mutable_current()->CopyFrom(current);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current as json string
-////////////////////////////////////////////////////////////////////////////////
-
-string ArangoState::jsonCurrent () {
-  lock_guard<mutex> lock(_lock);
-
-  string result;
-  pbjson::pb2json(&_state.current(), result);
-  
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all known TaskStatus
-////////////////////////////////////////////////////////////////////////////////
-
-vector<mesos::TaskStatus> ArangoState::knownTaskStatus () {
-  lock_guard<mutex> lock(_lock);
-
-  vector<mesos::TaskStatus> result;
-
-  fillTaskStatus(result, _state.plan().agents(),
-                         _state.current().agents());
-  fillTaskStatus(result, _state.plan().coordinators(), 
-                         _state.current().coordinators());
-  fillTaskStatus(result, _state.plan().dbservers(),
-                         _state.current().dbservers());
-  fillTaskStatus(result, _state.plan().secondaries(),
-                         _state.current().secondaries());
-
-  return result;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -404,8 +195,17 @@ vector<mesos::TaskStatus> ArangoState::knownTaskStatus () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoState::save () {
+  lock_guard<mutex> lock(_lock);
+  assert(_isLeased);
+
   string value;
   _state.SerializeToString(&value);
+
+#if 0
+  string json;
+  pbjson::pb2json(&_state, json);
+  LOG(INFO) << "State saved: " << json << "\n";
+#endif
 
   Variable variable = _stateStore->fetch("state_"+_name).get();
   variable = variable.mutate(value);
