@@ -409,7 +409,7 @@ static mesos::Resources suitablePersistent (string const& name,
     LOG(INFO) 
     << "DEBUG suitablePersistent(" << name << "): "
     << "offer " << offer.id().value() << " [" << offer.resources()
-    << "] does not have enough persistent disk resources"
+    << "] does not have enough persistent disk resources "
     << minimumDisk
     << "\noffer: " << offerString;
     return mesos::Resources();  // indicates failure
@@ -975,7 +975,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // ...........................................................................
 
   if ((Global::ignoreOffers() & 2) == 2) {
-    LOG(INFO) << "Declining offer because of 0x2 flag.";
+    LOG(INFO) << "Ignoring offer because of 0x2 flag.";
     return notInterested(offer, doDecline);
   }
 
@@ -1014,7 +1014,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
       switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE:
           if ((Global::ignoreOffers() & 4) == 4) {
-            LOG(INFO) << "Declining offer because of 0x4 flag.";
+            LOG(INFO) << "Ignoring offer because of 0x4 flag.";
             return notInterested(offer, doDecline);
           }
           return requestPersistent(upper, offer, target, task, taskCur, 
@@ -1022,7 +1022,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
 
         case TASK_STATE_TRYING_TO_PERSIST:
           if ((Global::ignoreOffers() & 8) == 8) {
-            LOG(INFO) << "Declining offer because of 0x8 flag.";
+            LOG(INFO) << "Ignoring offer because of 0x8 flag.";
             return notInterested(offer, doDecline);
           }
           return requestStartPersistent(lease, upper, offer, target, task,
@@ -1031,7 +1031,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
           if ((Global::ignoreOffers() & 0x10) == 0x10) {
-            LOG(INFO) << "Declining offer because of 0x10 flag.";
+            LOG(INFO) << "Ignoring offer because of 0x10 flag.";
             return notInterested(offer, doDecline);
           }
           if (taskType == TaskType::COORDINATOR) {
@@ -1135,7 +1135,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
 
   if (! persistent) {
     if ((Global::ignoreOffers() & 0x20) == 0x20) {
-      LOG(INFO) << "Declining offer because of 0x20 flag.";
+      LOG(INFO) << "Ignoring offer because of 0x20 flag.";
       return notInterested(offer, doDecline);
     }
     return requestStartEphemeral(lease, offer, target, task, taskCur, 
@@ -1147,7 +1147,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // ...........................................................................
 
   if ((Global::ignoreOffers() & 0x40) == 0x40) {
-    LOG(INFO) << "Declining offer because of 0x40 flag.";
+    LOG(INFO) << "Ignoring offer because of 0x40 flag.";
     return notInterested(offer, doDecline);
   }
   return requestReservation(upper, offer, target, task, taskCur, doDecline,
