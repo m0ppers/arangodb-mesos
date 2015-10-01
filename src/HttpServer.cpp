@@ -147,24 +147,24 @@ string HttpServerImpl::POST_V1_DESTROY (const string& name, const string& body) 
 ////////////////////////////////////////////////////////////////////////////////
 
 string HttpServerImpl::PUT_V1_IGNOREOFFERS (const string& name, const string& body) {
-  bool ignore = false;
+  int ignore = 0;
   picojson::value b;
   std::string err = picojson::parse(b, body);
   if (err.empty()) {
     if (b.is<picojson::object>()) {
       auto& o = b.get<picojson::object>();
       auto& v = o["ignoreOffers"];
-      if (v.is<bool>()) {
-        ignore = v.get<bool>();
+      if (v.is<double>()) {
+        ignore = static_cast<int>(v.get<double>());
       }
     }
   }
 
-  LOG(INFO) << "Got PUT for ignoreOffers flag, new value " << ignore;
+  LOG(INFO) << "Got PUT for ignoreOffers flags, new value " << ignore;
   Global::setIgnoreOffers(ignore);
 
   picojson::object result;
-  result["ignoreOffers"] = picojson::value(ignore);
+  result["ignoreOffers"] = picojson::value(static_cast<double>(ignore));
 
   return picojson::value(result).serialize();
 }

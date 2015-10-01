@@ -974,6 +974,11 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // we do
   // ...........................................................................
 
+  if ((Global::ignoreOffers() & 2) == 2) {
+    LOG(INFO) << "Declining offer because of 0x2 flag.";
+    return notInterested(offer, doDecline);
+  }
+
   if (! isSuitableOffer(target, offer, false)) {
     return notInterested(offer, doDecline);
   }
@@ -1008,15 +1013,27 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
     if (taskCur->slave_id().value() == offerSlaveId) {
       switch (task->state()) {
         case TASK_STATE_TRYING_TO_RESERVE:
+          if ((Global::ignoreOffers() & 4) == 4) {
+            LOG(INFO) << "Declining offer because of 0x4 flag.";
+            return notInterested(offer, doDecline);
+          }
           return requestPersistent(upper, offer, target, task, taskCur, 
                                    doDecline, taskType, i);
 
         case TASK_STATE_TRYING_TO_PERSIST:
+          if ((Global::ignoreOffers() & 8) == 8) {
+            LOG(INFO) << "Declining offer because of 0x8 flag.";
+            return notInterested(offer, doDecline);
+          }
           return requestStartPersistent(lease, upper, offer, target, task,
                                         taskCur, doDecline, taskType, i);
 
         case TASK_STATE_KILLED:
         case TASK_STATE_FAILED_OVER:
+          if ((Global::ignoreOffers() & 0x10) == 0x10) {
+            LOG(INFO) << "Declining offer because of 0x10 flag.";
+            return notInterested(offer, doDecline);
+          }
           if (taskType == TaskType::COORDINATOR) {
             return requestRestartEphemeral(lease, upper, offer, target, task,
                                            taskCur, taskType, i);
@@ -1117,6 +1134,10 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   TaskCurrent* taskCur = current->mutable_entries(required);
 
   if (! persistent) {
+    if ((Global::ignoreOffers() & 0x20) == 0x20) {
+      LOG(INFO) << "Declining offer because of 0x20 flag.";
+      return notInterested(offer, doDecline);
+    }
     return requestStartEphemeral(lease, offer, target, task, taskCur, 
                                  taskType, required);
   }
@@ -1125,6 +1146,10 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // make a reservation, if we need a persistent volume
   // ...........................................................................
 
+  if ((Global::ignoreOffers() & 0x40) == 0x40) {
+    LOG(INFO) << "Declining offer because of 0x40 flag.";
+    return notInterested(offer, doDecline);
+  }
   return requestReservation(upper, offer, target, task, taskCur, doDecline,
                             taskType, required);
 }

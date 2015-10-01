@@ -1,0 +1,9 @@
+Bits in the ignoreOffers int value and their meaning:
+
+0x01    - ignore all offers when set
+0x02    - ignore offers in Caretaker::checkOfferOneType
+0x04    - ignore offers when in state TASK_STATE_TRYING_TO_RESERVE
+0x08    - ignore offers when in state TASK_STATE_TRYING_TO_PERSIST
+0x10    - ignore offers when in TASK_STATE_KILLED or TASK_STATE_FAILED_OVER
+0x20    - ignore offers when in TASK_STATE_NEW for coordinators
+0x40    - ignore offers when in TASK_STATE_NEW for persistent tasks

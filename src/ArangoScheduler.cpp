@@ -387,8 +387,8 @@ void ArangoScheduler::resourceOffers (mesos::SchedulerDriver* driver,
     << "DEBUG offer received " << offer.id().value()
     << " with " << offer.resources();
 
-    if (Global::ignoreOffers() ) {
-      LOG(INFO) << "Ignoring/declining this offer since the ignoreOffers flag is set.";
+    if (Global::ignoreOffers() & 1) {
+      LOG(INFO) << "Ignoring/declining all offers since the ignoreOffers flag 1 is set.";
       declineOffer(offer.id());
     }
     else {
