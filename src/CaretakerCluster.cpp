@@ -509,7 +509,10 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     return;
   }
 
-  if (! current->cluster_complete()) {
+  // plannedInstances is 0 if and only if we have shut down the cluster,
+  // if this happened before the cluster was complete, there would be 
+  // chaos.
+  if (plannedInstances > 0 && ! current->cluster_complete()) {
     LOG(INFO) << "Cluster is complete.";
     LOG(INFO) << "Initiating cluster initialisation procedure...";
     current->set_cluster_complete(true);
