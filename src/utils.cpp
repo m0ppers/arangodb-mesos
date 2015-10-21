@@ -263,7 +263,7 @@ size_t arangodb::numberPorts (mesos::Offer const& offer,
            // has_role() should always be true. Should, for whatever reason,
            // no role be set in the offer, we do not count this range!
         const auto& ranges = resource.ranges();
-        
+
         for (int j = 0; j < ranges.range_size(); ++j) {
           const auto& range = ranges.range(j);
 
@@ -329,20 +329,48 @@ mesos::Resources arangodb::filterIsDefaultRole (const mesos::Resources& resource
 /// @brief do a GET request using libcurl
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, 
+static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb,
                                   void *userp) {
   size_t realsize = size * nmemb;
   std::string* mem = static_cast<std::string*>(userp);
- 
+
   mem->append((char*) contents, realsize);
 
   return realsize;
 }
 
+struct ReadInput {
+  std::string const* input;
+  size_t pos;
+
+  ReadInput (std::string const* i) : input(i), pos(0) {
+  }
+};
+
+static size_t ReadMemoryCallback(void* contents, size_t size, size_t nmemb,
+                                 void* userp) {
+  size_t realsize = size * nmemb;
+  auto input = static_cast<ReadInput*>(userp);
+  size_t available = input->input->size() - input->pos;
+  if (available == 0) {
+    return 0;
+  }
+  if (realsize >= available) {
+    memcpy(contents, input->input->c_str() + input->pos, available);
+    input->pos += available;
+    return available;
+  }
+  else {
+    memcpy(contents, input->input->c_str() + input->pos, realsize);
+    input->pos += realsize;
+    return realsize;
+  }
+}
+
 int arangodb::doHTTPGet (std::string url, std::string& resultBody) {
   CURL *curl;
   CURLcode res;
- 
+
   curl = curl_easy_init();
 
   resultBody.clear();
@@ -380,7 +408,7 @@ int arangodb::doHTTPPost (std::string url, std::string const& body,
                                            std::string& resultBody) {
   CURL *curl;
   CURLcode res;
- 
+
   curl = curl_easy_init();
 
   if (curl) {
@@ -401,6 +429,55 @@ int arangodb::doHTTPPost (std::string url, std::string const& body,
       << "cannot connect to " << url << ", curl error: " << res;
     }
     curl_easy_cleanup(curl);
+    return res;
+  }
+  else {
+    return -1;  // indicate that curl did not properly initialize
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a PUT request using libcurl, a return value of 0 means
+/// OK, the input body is in body, in the end, the body of the result is
+/// in resultBody. If libcurl did not initialise properly, -1 is returned.
+/// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
+/// is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+int arangodb::doHTTPPut (std::string url, std::string const& body,
+                                          std::string& resultBody) {
+  CURL *curl;
+  CURLcode res;
+
+  curl = curl_easy_init();
+
+  if (curl) {
+    resultBody.clear();
+
+    struct curl_slist *headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/x-www-form-urlencoded");
+
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_READFUNCTION, ReadMemoryCallback);
+    ReadInput input(&body);
+    curl_easy_setopt(curl, CURLOPT_READDATA, &input);
+    curl_easy_setopt(curl, CURLOPT_INFILESIZE_LARGE, body.size());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &resultBody);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_UPLOAD, 1);
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+      LOG(WARNING)
+      << "cannot connect to " << url << ", curl error: " << res;
+    }
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+
     return res;
   }
   else {

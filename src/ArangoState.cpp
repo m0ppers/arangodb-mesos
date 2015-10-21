@@ -186,6 +186,18 @@ void ArangoState::destroy () {
   r.await();  // Wait until state is actually expunged
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the URL of our own agency
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ArangoState::getAgencyURL (ArangoState::Lease& lease) {
+  auto agents = lease.state().current().agents();
+  std::string hostname = agents.entries(0).hostname();
+  uint32_t port = agents.entries(0).ports(0);
+  return "http://" + hostname + ":" + std::to_string(port) + "/v2/keys/arango";
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

@@ -686,7 +686,64 @@ bool ArangoManager::checkTimeouts () {
             }
             else if (taskType == TaskType::SECONDARY_DBSERVER) {
               std::string primaryName = tp->sync_partner();
-              // ...
+              // Give up on this one:
+              tp->set_state(TASK_STATE_DEAD);
+              tp->set_timestamp(now);
+              tp->clear_persistence_id();
+              tp->clear_sync_partner();
+              ic->clear_slave_id();
+              ic->clear_offer_id();
+              ic->clear_resources();
+              ic->clear_ports();
+              ic->clear_hostname();
+              ic->clear_container_path();
+              ic->clear_task_info();
+
+              // Now create a new secondary:
+              TaskPlan* tpnew = tasksPlan->add_entries();
+              tpnew->set_state(TASK_STATE_NEW);
+              std::string name = "Secondary"
+                                 + std::to_string(tasksPlan->entries_size());
+              tpnew->set_name(name);
+              tpnew->set_sync_partner(primaryName);
+              tpnew->set_timestamp(now);
+
+              tasksCurr->add_entries();
+
+              // Find the corresponding primary and change its sync partner
+              // to the new one:
+              TasksPlan* tasksPlanPrimary = plan->mutable_dbservers();
+              for (int i = 0; i < tasksPlanPrimary->entries_size(); i++) {
+                TaskPlan* tpprim = tasksPlanPrimary->mutable_entries(i);
+                if (tpprim->name() == primaryName) {
+                  tpprim->set_sync_partner(name);
+                  break;
+                }
+              }
+
+              // Still needed: Tell the agency about this change and
+              // configure the new server there:
+              std::string agencyURL = Global::state().getAgencyURL (l);
+              std::string resultBody;
+              // We try to reconfigure until the agency has answered...
+              while (true) {
+                int res = arangodb::doHTTPPut(agencyURL + "/Plan/DBServers/"
+                                              + primaryName,
+                                              "value=%22"+name+"%22",
+                                              resultBody);
+                if (res == 0) {
+                  LOG(INFO) << "Answer via curl:\n" << resultBody;
+                  break;
+                }
+                LOG(ERROR) << "Problems with reconfiguring agency (secondary "
+                           << "of primary " << primaryName << " from "
+                           << tp->name() << " to new " << tpnew->name()
+                           << "\nlibcurl error code: " << res
+                           << " retrying...";
+                this_thread::sleep_for(chrono::seconds(2));
+              }
+
+              l.changed();
             }
           }
           break;

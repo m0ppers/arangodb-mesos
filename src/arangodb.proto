@@ -63,8 +63,9 @@ enum TaskPlanState {
 // When the state goes back to TASK_STATE_NEW on a timeout, the 
 // persistence_id and timestamp are cleared. The name starts out as
 // "ArangoDB_AgentX" or "ArangoDB_DBServerX" or "ArangoDB_SecondaryX" or 
-// "ArangoDB_CoordinatorX" where "X" is replaced by a number, the syncPartner
-// contains the name of the current partner for synchronisation.
+// "ArangoDB_CoordinatorX" where "X" is replaced by a number,
+// the sync_partner contains the name of the current partner for
+// synchronisation.
 
 message TaskPlan {
   required TaskPlanState state = 1 [default = TASK_STATE_NEW];

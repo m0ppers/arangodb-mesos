@@ -189,6 +189,17 @@ namespace arangodb {
   int doHTTPPost (std::string url, std::string const& body,
                                    std::string& resultBody);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a PUT request using libcurl, a return value of 0 means
+/// OK, the input body is in body, in the end, the body of the result is
+/// in resultBody. If libcurl did not initialise properly, -1 is returned.
+/// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
+/// is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+  int doHTTPPut (std::string url, std::string const& body,
+                                  std::string& resultBody);
+
 }
 
 #endif

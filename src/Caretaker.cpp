@@ -1310,6 +1310,9 @@ void Caretaker::setTaskPlanState (ArangoState::Lease& lease,
   // Do not overwrite a TASK_STATE_DEAD, because we do not want zombies:
   if (tp->state() != TASK_STATE_DEAD) {
     tp->set_state(taskPlanState);
+    double now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+    tp->set_timestamp(now);
     lease.changed();   // make sure state will be persisted later
   }
 }
