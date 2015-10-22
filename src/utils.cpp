@@ -367,7 +367,8 @@ static size_t ReadMemoryCallback(void* contents, size_t size, size_t nmemb,
   }
 }
 
-int arangodb::doHTTPGet (std::string url, std::string& resultBody) {
+int arangodb::doHTTPGet (std::string url, std::string& resultBody,
+                         long& httpCode) {
   CURL *curl;
   CURLcode res;
 
@@ -388,6 +389,10 @@ int arangodb::doHTTPGet (std::string url, std::string& resultBody) {
       LOG(WARNING)
       << "cannot connect to " << url << ", curl error: " << res;
     }
+    else {
+      httpCode = 0;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    }
     curl_easy_cleanup(curl);
     return res;
   }
@@ -402,10 +407,12 @@ int arangodb::doHTTPGet (std::string url, std::string& resultBody) {
 /// in resultBody. If libcurl did not initialise properly, -1 is returned.
 /// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
 /// is returned.
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
 ////////////////////////////////////////////////////////////////////////////////
 
 int arangodb::doHTTPPost (std::string url, std::string const& body,
-                                           std::string& resultBody) {
+                                           std::string& resultBody,
+                                           long& httpCode) {
   CURL *curl;
   CURLcode res;
 
@@ -428,6 +435,10 @@ int arangodb::doHTTPPost (std::string url, std::string const& body,
       LOG(WARNING)
       << "cannot connect to " << url << ", curl error: " << res;
     }
+    else {
+      httpCode = 0;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    }
     curl_easy_cleanup(curl);
     return res;
   }
@@ -442,10 +453,12 @@ int arangodb::doHTTPPost (std::string url, std::string const& body,
 /// in resultBody. If libcurl did not initialise properly, -1 is returned.
 /// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
 /// is returned.
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
 ////////////////////////////////////////////////////////////////////////////////
 
 int arangodb::doHTTPPut (std::string url, std::string const& body,
-                                          std::string& resultBody) {
+                                          std::string& resultBody,
+                                          long& httpCode) {
   CURL *curl;
   CURLcode res;
 
@@ -475,9 +488,56 @@ int arangodb::doHTTPPut (std::string url, std::string const& body,
       LOG(WARNING)
       << "cannot connect to " << url << ", curl error: " << res;
     }
+    else {
+      httpCode = 0;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    }
     curl_easy_cleanup(curl);
     curl_slist_free_all(headers);
 
+    return res;
+  }
+  else {
+    return -1;  // indicate that curl did not properly initialize
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a DELETE request using libcurl, a return value of 0 means OK, the
+/// body of the result is in resultBody. If libcurl did not initialise 
+/// properly, -1 is returned and resultBody is empty, otherwise, a positive
+/// libcurl error code (see man 3 libcurl-errors) is returned. 
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
+////////////////////////////////////////////////////////////////////////////////
+
+int arangodb::doHTTPDelete (std::string url, std::string& resultBody,
+                            long& httpCode) {
+  CURL *curl;
+  CURLcode res;
+
+  curl = curl_easy_init();
+
+  resultBody.clear();
+
+  if (curl) {
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*) &resultBody);
+    curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+    res = curl_easy_perform(curl);
+
+    if (res != CURLE_OK) {
+      LOG(WARNING)
+      << "cannot connect to " << url << ", curl error: " << res;
+    }
+    else {
+      httpCode = 0;
+      curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+    }
+    curl_easy_cleanup(curl);
     return res;
   }
   else {

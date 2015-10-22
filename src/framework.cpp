@@ -271,6 +271,12 @@ int main (int argc, char** argv) {
             "run secondaries only on agents with DBservers",
             "false");
 
+  string secondarySameServer;
+  flags.add(&secondarySameServer,
+            "secondary_same_server",
+            "allow to run a secondary on same agent as its primary",
+            "false");
+
   // address of master and zookeeper
   string master;
   flags.add(&master,
@@ -372,6 +378,14 @@ int main (int argc, char** argv) {
   }
   else {
     Global::setSecondariesWithDBservers(false);
+  }
+
+  if (secondarySameServer == "yes" || secondarySameServer == "true" ||
+      secondarySameServer == "y") {
+    Global::setSecondarySameServer(true);
+  }
+  else {
+    Global::setSecondarySameServer(false);
   }
 
 

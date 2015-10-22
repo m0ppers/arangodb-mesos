@@ -159,6 +159,12 @@ static string VOLUME_PATH = "/tmp";
 
 static bool SECONDARIES_WITH_DBSERVERS = false;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief secondary on same agent
+////////////////////////////////////////////////////////////////////////////////
+
+static bool SECONDARY_SAME_SERVER = false;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
@@ -502,6 +508,22 @@ bool Global::secondariesWithDBservers () {
 
 void Global::setSecondariesWithDBservers (bool f) {
   SECONDARIES_WITH_DBSERVERS = f;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief secondary on same agent
+////////////////////////////////////////////////////////////////////////////////
+
+bool Global::secondarySameServer () {
+  return SECONDARY_SAME_SERVER;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief secondary on same agent
+////////////////////////////////////////////////////////////////////////////////
+
+void Global::setSecondarySameServer (bool f) {
+  SECONDARY_SAME_SERVER = f;
 }
 
 // -----------------------------------------------------------------------------

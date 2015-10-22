@@ -406,8 +406,9 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     std::string url = "http://" + agentHost + ":" + to_string(port) +
                       "/v2/keys/arango/InitDone";
     std::string body;
-    int res = doHTTPGet(url, body);
-    if (res == 0) {
+    long httpCode = 0;
+    int res = doHTTPGet(url, body, httpCode);
+    if (res == 0 && httpCode == 200) {
       // Quickly check the JSON result:
       picojson::value s;
       std::string err = picojson::parse(s, body);
@@ -430,10 +431,11 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
         }
       }
     }
-    if (res != 0) {
+    if (res != 0 || httpCode != 200) {
       // Ignore the offer, since the agency is not yet ready:
       LOG(INFO)
-      << "agency is not yet properly initialized, decline offer.";
+      << "agency is not yet properly initialized, decline offer, result: "
+      << res << ", HTTP result code: " << httpCode;
       Global::scheduler().declineOffer(offer.id());
       return;
     }

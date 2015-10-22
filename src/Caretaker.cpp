@@ -1086,16 +1086,18 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // do not put a secondary on the same slave than its primary
   // ...........................................................................
 
-  if (name == "secondary") {
-    Current globalCurrent = lease.state().current();
-    TaskCurrent const& primaryResEntry
-      = globalCurrent.dbservers().entries(required);
+  if (! Global::secondarySameServer()) {
+    if (name == "secondary") {
+      Current globalCurrent = lease.state().current();
+      TaskCurrent const& primaryResEntry
+        = globalCurrent.dbservers().entries(required);
 
-    if (primaryResEntry.has_slave_id() &&
-        offer.slave_id().value() == primaryResEntry.slave_id().value()) {
-      // we decline this offer, there will be another one
-      LOG(INFO) << "secondary not on same slave as its primary";
-      return notInterested(offer, doDecline);
+      if (primaryResEntry.has_slave_id() &&
+          offer.slave_id().value() == primaryResEntry.slave_id().value()) {
+        // we decline this offer, there will be another one
+        LOG(INFO) << "secondary not on same slave as its primary";
+        return notInterested(offer, doDecline);
+      }
     }
   }
 

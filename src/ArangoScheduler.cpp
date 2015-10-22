@@ -55,9 +55,10 @@ using namespace arangodb;
 
 static void checkVersion (string hostname, int port) {
   std::string body;
+  long httpCode = 0;
   int res = doHTTPGet("http://" + hostname + ":" + to_string(port) 
-                      + "/state.json", body);
-  if (res == 0) {
+                      + "/state.json", body, httpCode);
+  if (res == 0 && httpCode == 200) {
     picojson::value s;
     std::string err = picojson::parse(s, body);
 
@@ -112,7 +113,8 @@ static void checkVersion (string hostname, int port) {
   }
   else {
     LOG(WARNING)
-    << "could not get version from master";
+    << "could not get version from master, curl error: "
+    << res << ", HTTP result code: " << httpCode;
   }
 }
 
@@ -289,10 +291,12 @@ string ArangoScheduler::postRequest (const string& command,
 
   string result;
 
-  int res = doHTTPPost(url, body, result);
+  long httpCode = 0;
+  int res = doHTTPPost(url, body, result, httpCode);
   if (res != 0) {
     LOG(WARNING)
-    << "could not perform postRequest, error: " << res;
+    << "could not perform postRequest, error: " << res
+    << ", HTTP result code: " << httpCode;
   }
 
   return result;

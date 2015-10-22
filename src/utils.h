@@ -173,10 +173,11 @@ namespace arangodb {
 /// @brief do a GET request using libcurl, a return value of 0 means OK, the
 /// body of the result is in resultBody. If libcurl did not initialise 
 /// properly, -1 is returned and resultBody is empty, otherwise, a positive
-/// libcurl error code (see man 3 libcurl-errors) is returned.
+/// libcurl error code (see man 3 libcurl-errors) is returned. 
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
 ////////////////////////////////////////////////////////////////////////////////
 
-  int doHTTPGet (std::string url, std::string& resultBody);
+  int doHTTPGet (std::string url, std::string& resultBody, long& httpCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a POST request using libcurl, a return value of 0 means
@@ -184,10 +185,12 @@ namespace arangodb {
 /// in resultBody. If libcurl did not initialise properly, -1 is returned.
 /// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
 /// is returned.
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
 ////////////////////////////////////////////////////////////////////////////////
 
   int doHTTPPost (std::string url, std::string const& body,
-                                   std::string& resultBody);
+                                   std::string& resultBody,
+                                   long& httpCode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do a PUT request using libcurl, a return value of 0 means
@@ -195,10 +198,22 @@ namespace arangodb {
 /// in resultBody. If libcurl did not initialise properly, -1 is returned.
 /// Otherwise, a positive libcurl error code (see man 3 libcurl-errors)
 /// is returned.
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
 ////////////////////////////////////////////////////////////////////////////////
 
   int doHTTPPut (std::string url, std::string const& body,
-                                  std::string& resultBody);
+                                  std::string& resultBody,
+                                  long& httpCode);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief do a DELETE request using libcurl, a return value of 0 means OK, the
+/// body of the result is in resultBody. If libcurl did not initialise 
+/// properly, -1 is returned and resultBody is empty, otherwise, a positive
+/// libcurl error code (see man 3 libcurl-errors) is returned. 
+/// If the result is 0, then httpCode is set to the resulting HTTP code.
+////////////////////////////////////////////////////////////////////////////////
+
+  int doHTTPDelete (std::string url, std::string& resultBody, long& httpCode);
 
 }
 
