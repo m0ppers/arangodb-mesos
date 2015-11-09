@@ -950,6 +950,46 @@ Caretaker::~Caretaker () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief isPartnerOnThisSlave, checks, whether the partner of a given
+/// secondary dbserver happens to be on a certain slave
+////////////////////////////////////////////////////////////////////////////////
+
+static bool isPartnerOnThisSlave (ArangoState::Lease& lease,
+                                  int secondaryPosition,
+                                  std::string slaveId) {
+
+  Plan const& plan = lease.state().plan();
+  TasksPlan const& secondaries = plan.secondaries();
+
+  // Find id of partner of this secondary:
+  std::string partner;
+  TaskPlan const& tp = secondaries.entries(secondaryPosition);
+  if (tp.has_sync_partner()) {
+    partner = tp.sync_partner();
+  }
+  // Find the actual partner among the primaries:
+  TasksPlan const& dbservers = plan.dbservers();
+  int j;
+  for (j = 0; j < dbservers.entries_size(); j++) {
+    if (dbservers.entries(j).name() == partner) {
+      break;
+    }
+  }
+  if (j < dbservers.entries_size()) {
+    // Found him:
+    Current const& current = lease.state().current();
+    TaskCurrent const& primaryResEntry
+      = current.dbservers().entries(j);
+
+    if (primaryResEntry.has_slave_id() &&
+        slaveId == primaryResEntry.slave_id().value()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if an offer fits, returns true if the offer was put to some
 /// use (or declined) and false, if somebody else can have a go.
 ////////////////////////////////////////////////////////////////////////////////
@@ -998,16 +1038,15 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // ignore the offer.
   // ...........................................................................
 
-  int required = -1;
   string const& offerSlaveId = offer.slave_id().value();
+  std::vector<int> required;
 
-  for (int i = p-1; i >= 0; --i) {  // backwards to prefer earlier ones in
-                                    // the required variable
+  for (int i = 0; i < p; ++i) {
     TaskPlan* task = tasks->mutable_entries(i);
     TaskCurrent* taskCur = current->mutable_entries(i);
 
     if (task->state() == TASK_STATE_NEW) {
-      required = i;
+      required.push_back(i);
       continue;
     }
 
@@ -1047,7 +1086,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
         case TASK_STATE_RUNNING:
           // This is a corner case: There is a resource offer for "our" slave
           // we are running, so presumably we are not interested. However,
-          // there is a change (is there?) that we are actually dead but have
+          // there is a chance (is there?) that we are actually dead but have
           // not yet received this information. In that case, the offer might
           // contain "our" resources and thus the resources must not fall
           // through and be destroyed. Therefore, we check whether our
@@ -1078,9 +1117,58 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // check if we need an offer
   // ...........................................................................
 
-  if (required == -1) {
+  if (required.size() == 0) {
     LOG(INFO) << "nothing required";
     return notInterested(offer, doDecline);
+  }
+
+  // ...........................................................................
+  // now decide for whom to use the offer:
+  // ...........................................................................
+  int decision = required[0];   // this is the default
+  if (required.size() == 2) {
+    // Here we have to be a bit cleverer: We must not make it so that the
+    // last instance requiring a task would be forced to run on the same
+    // slave as its primary.
+    if (! Global::secondarySameServer() && name == "secondary") {
+      // To this end we take the set of slave ids of all primaries and
+      // subtract the set of slave ids of secondaries and the proposed
+      // new one. If only one remains and that happens to be the
+      // slave the partner of required[1] lives on, then required[0]
+      // is a bad choice:
+      std::unordered_set<std::string> s_ids;
+      Current const& current = lease.state().current();
+      TasksCurrent const& dbservers = current.dbservers();
+      for (int j = 0; j < dbservers.entries_size(); j++) {
+        TaskCurrent const& tc = dbservers.entries(j);
+        if (tc.has_slave_id()) {
+          s_ids.insert(tc.slave_id().value());
+        }
+      }
+      TasksCurrent const& secondaries = current.secondaries();
+      for (int j = 0; j < secondaries.entries_size(); j++) {
+        TaskCurrent const& tc = secondaries.entries(j);
+        if (tc.has_slave_id()) {
+          std::string id = tc.slave_id().value();
+          auto it = s_ids.find(id);
+          if (it != s_ids.end()) {
+            s_ids.erase(it);
+          }
+        }
+      }
+      auto it = s_ids.find(offer.slave_id().value());
+      if (it != s_ids.end()) {
+        s_ids.erase(it);
+      }
+      if (s_ids.size() == 1) {
+        std::string id = *s_ids.begin();
+        if (isPartnerOnThisSlave(lease, required[1], id)) {
+          // Oops, we must not take required[0] otherwise required[1]
+          // would get stuck!
+          decision = required[1];
+        }
+      }
+    }
   }
 
   // ...........................................................................
@@ -1088,18 +1176,11 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // instructed to do so.
   // ...........................................................................
 
-  if (! Global::secondarySameServer()) {
-    if (name == "secondary") {
-      Current globalCurrent = lease.state().current();
-      TaskCurrent const& primaryResEntry
-        = globalCurrent.dbservers().entries(required);
-
-      if (primaryResEntry.has_slave_id() &&
-          offer.slave_id().value() == primaryResEntry.slave_id().value()) {
-        // we decline this offer, there will be another one
-        LOG(INFO) << "secondary not on same slave as its primary";
-        return notInterested(offer, doDecline);
-      }
+  if (! Global::secondarySameServer() && name == "secondary") {
+    if (isPartnerOnThisSlave(lease, decision, offer.slave_id().value())) {
+      // we decline this offer, there will be another one
+      LOG(INFO) << "secondary not on same slave as its primary";
+      return notInterested(offer, doDecline);
     }
   }
 
@@ -1156,8 +1237,8 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   // try to start directly, if we do not need a reservation
   // ...........................................................................
 
-  TaskPlan* task = tasks->mutable_entries(required);
-  TaskCurrent* taskCur = current->mutable_entries(required);
+  TaskPlan* task = tasks->mutable_entries(decision);
+  TaskCurrent* taskCur = current->mutable_entries(decision);
 
   if (! persistent) {
     if ((Global::ignoreOffers() & 0x20) == 0x20) {
@@ -1165,7 +1246,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
       return notInterested(offer, doDecline);
     }
     return requestStartEphemeral(lease, offer, target, task, taskCur, 
-                                 taskType, required);
+                                 taskType, decision);
   }
 
   // ...........................................................................
@@ -1177,7 +1258,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
     return notInterested(offer, doDecline);
   }
   return requestReservation(upper, offer, target, task, taskCur, doDecline,
-                            taskType, required);
+                            taskType, decision);
 }
 
 // -----------------------------------------------------------------------------

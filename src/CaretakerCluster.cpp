@@ -375,10 +375,10 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
 
   int plannedInstances = countPlannedInstances(plan->agents());
   int runningInstances = countRunningInstances(plan->agents());
-  LOG(INFO)
-  << "planned agent instances: " << plannedInstances << ", "
-  << "running agent instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
+    LOG(INFO)
+    << "planned agent instances: " << plannedInstances << ", "
+    << "running agent instances: " << runningInstances;
     // Try to use the offer for a new agent:
     offerUsed = checkOfferOneType(lease, "agency", true,
                                   targets->agents(),
@@ -397,8 +397,10 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     // initialized.
   }
 
-  if (! current->cluster_initialized()) {
+  if (! current->cluster_initialized() &&
+      lease.state().targets().agents.instances() > 0) {
     // Agency is running, make sure it is initialized:
+    LOG(INFO) << "Testing agency...";
     std::string agentHost 
       = current->agents().entries(0).hostname();
     uint32_t port 
@@ -446,10 +448,10 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // Now look after the DBservers:
   plannedInstances = countPlannedInstances(plan->dbservers());
   runningInstances = countRunningInstances(plan->dbservers());
-  LOG(INFO)
-  << "planned DBServer instances: " << plannedInstances << ", "
-  << "running DBServer instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
+    LOG(INFO)
+    << "planned DBServer instances: " << plannedInstances << ", "
+    << "running DBServer instances: " << runningInstances;
     // Try to use the offer for a new DBserver:
     offerUsed = checkOfferOneType(lease, "primary", true,
                                   targets->dbservers(),
@@ -471,10 +473,10 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   if (Global::asyncReplication()) {
     plannedInstances = countPlannedInstances(plan->secondaries());
     runningInstances = countRunningInstances(plan->secondaries());
-    LOG(INFO)
-    << "planned secondary DBServer instances: " << plannedInstances << ", "
-    << "running secondary DBServer instances: " << runningInstances;
     if (runningInstances < plannedInstances) {
+      LOG(INFO)
+      << "planned secondary DBServer instances: " << plannedInstances << ", "
+      << "running secondary DBServer instances: " << runningInstances;
       // Try to use the offer for a new DBserver:
       offerUsed = checkOfferOneType(lease, "secondary", true,
                                     targets->secondaries(),
@@ -496,16 +498,17 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   // Finally, look after the coordinators:
   plannedInstances = countPlannedInstances(plan->coordinators());
   runningInstances = countRunningInstances(plan->coordinators());
-  LOG(INFO)
-  << "planned coordinator instances: " << plannedInstances << ", "
-  << "running coordinator instances: " << runningInstances;
   if (runningInstances < plannedInstances) {
+    LOG(INFO)
+    << "planned coordinator instances: " << plannedInstances << ", "
+    << "running coordinator instances: " << runningInstances;
     // Try to use the offer for a new coordinator:
     if (checkOfferOneType(lease, "coordinator", false,
                           targets->coordinators(),
                           plan->mutable_coordinators(),
                           current->mutable_coordinators(),
-                          offer, true, TaskType::COORDINATOR)) {
+                          offer, ! current->cluster_initialized(),
+                          TaskType::COORDINATOR)) {
       lease.changed();  // make sure that the new state is saved
     }
     return;

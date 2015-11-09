@@ -57,11 +57,15 @@ using namespace std;
 /// @brief bootstraps a dbserver
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool bootstrapDBservers (ArangoState::Lease& lease) {
-  string hostname 
-    = lease.state().current().coordinators().entries(0).hostname();
-  uint32_t port
-    = lease.state().current().coordinators().entries(0).ports(0);
+static bool bootstrapDBservers () {
+  string hostname;
+  uint32_t port;
+  {
+    auto lease = Global::state().lease();
+    hostname = lease.state().current().coordinators().entries(0).hostname();
+    port = lease.state().current().coordinators().entries(0).ports(0);
+  }
+
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/bootstrapDbServers";
   string body = "{\"isRelaunch\":false}";
@@ -83,11 +87,14 @@ static bool bootstrapDBservers (ArangoState::Lease& lease) {
 /// @brief upgrades the cluster database
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool upgradeClusterDatabase (ArangoState::Lease& lease) {
-  string hostname 
-    = lease.state().current().coordinators().entries(0).hostname();
-  uint32_t port
-    = lease.state().current().coordinators().entries(0).ports(0);
+static bool upgradeClusterDatabase () {
+  string hostname;
+  uint32_t port;
+  {
+    auto lease = Global::state().lease();
+    hostname = lease.state().current().coordinators().entries(0).hostname();
+    port = lease.state().current().coordinators().entries(0).ports(0);
+  }
   string url = "http://" + hostname + ":" + to_string(port) +
                     "/_admin/cluster/upgradeClusterDatabase";
   string body = "{\"isRelaunch\":false}";
@@ -109,34 +116,43 @@ static bool upgradeClusterDatabase (ArangoState::Lease& lease) {
 /// @brief bootstraps coordinators
 ///////////////////////////////////////////////////////////////////////////////
 
-static bool bootstrapCoordinators (ArangoState::Lease& lease) {
-  int number
-    = lease.state().current().coordinators().entries_size();
+static bool bootstrapCoordinators () {
+  vector<string> urls;
+  int number;
+  {
+    auto lease = Global::state().lease();
+    number = lease.state().current().coordinators().entries_size();
+    for (int i = 0; i < number; i++) {
+      if (lease.state().plan().coordinators().entries(i).state() 
+          == TASK_STATE_RUNNING) {
+        string hostname 
+          = lease.state().current().coordinators().entries(i).hostname();
+        uint32_t port
+          = lease.state().current().coordinators().entries(i).ports(0);
+        string url = "http://" + hostname + ":" + to_string(port) +
+                          "/_admin/cluster/bootstrapCoordinator";
+        urls.push_back(url);
+      }
+    }
+  }
+
   bool error = false;
-  for (int i = 0; i < number; i++) { 
-    if (lease.state().plan().coordinators().entries(i).state() 
-        == TASK_STATE_RUNNING) {
-      string hostname 
-        = lease.state().current().coordinators().entries(i).hostname();
-      uint32_t port
-        = lease.state().current().coordinators().entries(i).ports(0);
-      string url = "http://" + hostname + ":" + to_string(port) +
-                        "/_admin/cluster/bootstrapCoordinator";
-      string body = "{\"isRelaunch\":false}";
-      string result;
-      LOG(INFO) << "doing HTTP POST to " << url;
-      long httpCode = 0;
-      int res = doHTTPPost(url, body, result, httpCode);
-      if (res != 0 || httpCode != 200) {
-        LOG(WARNING)
-        << "bootstrapCoordinator did not work for " << i 
-        << ", curl error: " << res << ", result:\n"
-        << result << ", HTTP result code: " << httpCode;
-        error = true;
-      }
-      else {
-        LOG(INFO) << "bootstrapCoordinator answered:" << result;
-      }
+  for (size_t i = 0; i < urls.size(); i++) {
+    string url = urls[i];
+    string body = "{\"isRelaunch\":false}";
+    string result;
+    LOG(INFO) << "doing HTTP POST to " << url;
+    long httpCode = 0;
+    int res = doHTTPPost(url, body, result, httpCode);
+    if (res != 0 || httpCode != 200) {
+      LOG(WARNING)
+      << "bootstrapCoordinator did not work for " << i 
+      << ", curl error: " << res << ", result:\n"
+      << result << ", HTTP result code: " << httpCode;
+      error = true;
+    }
+    else {
+      LOG(INFO) << "bootstrapCoordinator answered:" << result;
     }
   }
   return ! error;
@@ -146,29 +162,70 @@ static bool bootstrapCoordinators (ArangoState::Lease& lease) {
 /// @brief initialize the cluster
 ///////////////////////////////////////////////////////////////////////////////
 
-static void initializeCluster(ArangoState::Lease& l) {
-  auto cur = l.state().mutable_current();
-  if (! cur->cluster_bootstrappeddbservers()) {
-    if (! bootstrapDBservers(l)) {
+static void initializeCluster() {
+  bool workToDo = false;   // This is to quickly get the lease, then decide
+                           // and then work whilst not having the lease
+
+  { 
+    auto l = Global::state().lease();
+    auto cur = l.state().mutable_current();
+    if (! cur->cluster_bootstrappeddbservers()) {
+      workToDo = true;
+    }
+  }
+
+  if (workToDo) {
+    if (! bootstrapDBservers()) {
       return;
     }
+    auto l = Global::state().lease();
+    auto cur = l.state().mutable_current();
     cur->set_cluster_bootstrappeddbservers(true);
     l.changed();
   }
-  if (! cur->cluster_upgradeddb()) {
-    if (! upgradeClusterDatabase(l)) {
+
+  // When the bootstrap of the DBservers is done, look into cluster databases:
+  workToDo = false;
+
+  {
+    auto l = Global::state().lease();
+    auto cur = l.state().mutable_current();
+    if (! cur->cluster_upgradeddb()) {
+      workToDo = true;
+    }
+  }
+
+  if (workToDo) {
+    if (! upgradeClusterDatabase()) {
       return;
     }
+    auto l = Global::state().lease();
+    auto cur = l.state().mutable_current();
     cur->set_cluster_upgradeddb(true);
     l.changed();
   }
-  if (! cur->cluster_bootstrappedcoordinators()) {
-    if (bootstrapCoordinators(l)) {
-      cur->set_cluster_bootstrappedcoordinators(true);
-      cur->set_cluster_initialized(true);
-      l.changed();
-      LOG(INFO) << "cluster is ready";
+
+  // Finally, we need to look after the coordinators:
+  workToDo = false;
+  {
+    auto l = Global::state().lease();
+    auto cur = l.state().mutable_current();
+    if (! cur->cluster_bootstrappedcoordinators()) {
+      workToDo = true;
     }
+  }
+
+  if (workToDo) {
+    if (! bootstrapCoordinators()) {
+      return;
+    }
+
+    auto l = Global::state().lease();
+    auto cur = l.state().mutable_current();
+    cur->set_cluster_bootstrappedcoordinators(true);
+    cur->set_cluster_initialized(true);
+    l.changed();
+    LOG(INFO) << "cluster is ready";
   }
 }
 
@@ -415,13 +472,20 @@ void ArangoManager::dispatch () {
     bool sleep = checkTimeouts();
 
     {
-      auto l = Global::state().lease();
-      // initialise cluster when it is up:
-      auto cur = l.state().current();
+      bool workToDo = false;
+      {
+        auto l = Global::state().lease();
+        // initialise cluster when it is up:
+        auto cur = l.state().current();
 
-      if (  cur.cluster_complete() &&
-          ! cur.cluster_initialized()) {
-        LOG(INFO) << "calling initializeCluster()..."; initializeCluster(l);
+        if (  cur.cluster_complete() &&
+            ! cur.cluster_initialized()) {
+          workToDo = true;
+        }
+      }
+      if (workToDo) {
+        LOG(INFO) << "calling initializeCluster()...";
+        initializeCluster();
       }
     }
 
