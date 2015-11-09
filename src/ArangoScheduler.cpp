@@ -210,9 +210,6 @@ void ArangoScheduler::destroyPersistent (const mesos::Offer& offer,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoScheduler::declineOffer (const mesos::OfferID& offerId) const {
-  LOG(INFO)
-  << "DEBUG declining offer " << offerId.value();
-
   _driver->declineOffer(offerId);
 }
 

@@ -341,7 +341,7 @@ void ArangoManager::destroy () {
     // Now set the state of all instances to TASK_STATE_DEAD:
     std::vector<std::string> ids;
     Plan* plan = l.state().mutable_plan();
-    Current const& current = l.state().current();
+    Current* current = l.state().mutable_current();
 
     auto markAllDead = [&] (TasksPlan* entries, TasksCurrent const& currs) 
                        -> void {
@@ -357,10 +357,12 @@ void ArangoManager::destroy () {
       }
     };
 
-    markAllDead(plan->mutable_agents(), current.agents());
-    markAllDead(plan->mutable_dbservers(), current.dbservers());
-    markAllDead(plan->mutable_secondaries(), current.secondaries());
-    markAllDead(plan->mutable_coordinators(), current.coordinators());
+    markAllDead(plan->mutable_agents(), current->agents());
+    markAllDead(plan->mutable_dbservers(), current->dbservers());
+    markAllDead(plan->mutable_secondaries(), current->secondaries());
+    markAllDead(plan->mutable_coordinators(), current->coordinators());
+    current->set_cluster_initialized(true);  // Such that we release reserved
+                                             // resources
 
     LOG(INFO) << "The new state with DEAD tasks:\nPLAN:"
               << arangodb::toJson(l.state().plan());
@@ -371,7 +373,7 @@ void ArangoManager::destroy () {
   // During the following time we will get KILL messages, this will keep
   // the status and as a consequences we will destroy all persistent volumes,
   // unreserve all reserved resources and decline the offers:
-  this_thread::sleep_for(chrono::seconds(60));
+  this_thread::sleep_for(chrono::seconds(30));
 
   string body;
   {

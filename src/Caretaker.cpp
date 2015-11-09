@@ -431,6 +431,7 @@ static mesos::Resources suitablePersistent (string const& name,
 
 static bool notInterested (mesos::Offer const& offer, bool doDecline) {
   if (doDecline) {
+    LOG(INFO) << "Declining offer " << offer.id().value();
     Global::scheduler().declineOffer(offer.id());
     return true;
   }

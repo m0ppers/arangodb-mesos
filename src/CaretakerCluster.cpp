@@ -398,7 +398,7 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   if (! current->cluster_initialized() &&
-      lease.state().targets().agents.instances() > 0) {
+      lease.state().targets().agents().instances() > 0) {
     // Agency is running, make sure it is initialized:
     LOG(INFO) << "Testing agency...";
     std::string agentHost 
@@ -436,7 +436,8 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
     if (res != 0 || httpCode != 200) {
       // Ignore the offer, since the agency is not yet ready:
       LOG(INFO)
-      << "agency is not yet properly initialized, decline offer, result: "
+      << "agency is not yet properly initialized, decline offer "
+      << offer.id().value() << ", result: "
       << res << ", HTTP result code: " << httpCode;
       Global::scheduler().declineOffer(offer.id());
       return;
@@ -563,6 +564,9 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
   }
 
   // All is good, simply decline offer:
+  if (! current->cluster_initialized()) {
+    LOG(INFO) << "Declining offer " << offer.id().value();
+  }
   Global::scheduler().declineOffer(offer.id());
 }
 
