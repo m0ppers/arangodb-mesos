@@ -375,17 +375,21 @@ int main (int argc, char** argv) {
   if (secondariesWithDBservers == "yes" || secondariesWithDBservers == "true" ||
       secondariesWithDBservers == "y") {
     Global::setSecondariesWithDBservers(true);
+    LOG(INFO) << "SecondariesWithDBservers: true";
   }
   else {
     Global::setSecondariesWithDBservers(false);
+    LOG(INFO) << "SecondariesWithDBservers: false";
   }
 
   if (secondarySameServer == "yes" || secondarySameServer == "true" ||
       secondarySameServer == "y") {
     Global::setSecondarySameServer(true);
+    LOG(INFO) << "SecondarySameServer: true";
   }
   else {
     Global::setSecondarySameServer(false);
+    LOG(INFO) << "SecondarySameServer: false";
   }
 
 
