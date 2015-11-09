@@ -387,9 +387,11 @@ void ArangoScheduler::disconnected (mesos::SchedulerDriver* driver) {
 void ArangoScheduler::resourceOffers (mesos::SchedulerDriver* driver,
                                       const vector<mesos::Offer>& offers) {
   for (auto& offer : offers) {
+#if 0
     LOG(INFO)
     << "DEBUG offer received " << offer.id().value()
     << " with " << offer.resources();
+#endif
 
     if (Global::ignoreOffers() & 1) {
       LOG(INFO) << "Ignoring/declining all offers since the ignoreOffers flag 1 is set.";
