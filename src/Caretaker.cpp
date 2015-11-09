@@ -111,6 +111,7 @@ static bool isSuitableOffer (Target const& target,
 
   if (withRole) {
     mesos::Resources defaultRole = arangodb::filterIsDefaultRole(found.get());
+    defaultRole = arangodb::filterNoRoundingError(defaultRole);
     if (! defaultRole.empty()) {
       pbjson::pb2json(&offer, offerString);
        
@@ -1083,7 +1084,8 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   }
 
   // ...........................................................................
-  // do not put a secondary on the same slave than its primary
+  // do not put a secondary on the same slave than its primary unless 
+  // instructed to do so.
   // ...........................................................................
 
   if (! Global::secondarySameServer()) {
@@ -1127,6 +1129,28 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
       return notInterested(offer, doDecline);
     }
   }
+  if (Global::secondariesWithDBservers() && name == "coordinator") {
+    Current globalCurrent = lease.state().current();
+    TasksCurrent const& primaryResEntries = globalCurrent.dbservers();
+
+    int found = -1;
+
+    for (int i = 0; i < primaryResEntries.entries_size(); i++) {
+      if (primaryResEntries.entries(i).has_slave_id() &&
+          offer.slave_id().value()
+          == primaryResEntries.entries(i).slave_id().value()) {
+        found = i;
+        break;
+      }
+    }
+
+    if (found == -1) {
+      // we decline this offer, there will be another one
+      LOG(INFO) << "coordinator not alone on a slave";
+      return notInterested(offer, doDecline);
+    }
+  }
+
 
   // ...........................................................................
   // try to start directly, if we do not need a reservation
