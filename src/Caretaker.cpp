@@ -566,6 +566,7 @@ static void startArangoDBTask (ArangoState::Lease& lease,
   mesos::ContainerInfo::DockerInfo* docker = container.mutable_docker();
   docker->set_image("arangodb/arangodb-mesos:devel");
   docker->set_network(mesos::ContainerInfo::DockerInfo::BRIDGE);
+  docker->set_force_pull_image(true);
 
   // port mapping
   mesos::ContainerInfo::DockerInfo::PortMapping* mapping = docker->add_port_mappings();
