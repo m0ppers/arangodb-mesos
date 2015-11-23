@@ -82,7 +82,7 @@ static int  IGNORE_OFFERS = 0;
 /// @brief minimal resources for an agent, mesos string specification
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string MINRESOURCESAGENT = "mem:512(*); cpus:0.2(*); disk:512(*)";
+static std::string MINRESOURCESAGENT = "mem:512(*); cpus:0.25(*); disk:512(*)";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimal resources for a DBServer, mesos string specification

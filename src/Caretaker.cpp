@@ -1439,7 +1439,7 @@ void Caretaker::setStandardMinimum (Target* te, int size) {
   m->set_role("*");
   m->set_name("cpus");
   m->set_type(mesos::Value::SCALAR);
-  m->mutable_scalar()->set_value(size == 0 ? 0.2 : 1);
+  m->mutable_scalar()->set_value(size == 0 ? 0.25 : 1);
 
   m = te->add_minimal_resources();
   m->set_role("*");

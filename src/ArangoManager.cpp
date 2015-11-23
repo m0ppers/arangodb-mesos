@@ -493,7 +493,16 @@ void ArangoManager::dispatch () {
 
     // wait for a little while, if we are idle
     if (sleep) {
-      this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+      this_thread::sleep_for(chrono::seconds(2));
+      {
+        lock_guard<mutex> lock(_lock);
+        if (! _storedOffers.empty()) {
+          sleep = false;
+        }
+      }
+      if (sleep) {
+        this_thread::sleep_for(chrono::seconds(SLEEP_SEC));
+      }
     }
   }
 }
