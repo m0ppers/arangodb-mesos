@@ -1188,7 +1188,7 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
 
   // ...........................................................................
   // do not put a secondary on a slave that we have not yet used at all for a
-  // primary
+  // primary, if the user asks us
   // ...........................................................................
 
   if (Global::secondariesWithDBservers() && name == "secondary") {
@@ -1212,7 +1212,13 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
       return notInterested(offer, doDecline);
     }
   }
-  if (Global::secondariesWithDBservers() && name == "coordinator") {
+
+  // ...........................................................................
+  // do not put a coordinator on a slave that we have not yet used at all for a
+  // primary, if the user asks us
+  // ...........................................................................
+
+  if (Global::coordinatorsWithDBservers() && name == "coordinator") {
     Current globalCurrent = lease.state().current();
     TasksCurrent const& primaryResEntries = globalCurrent.dbservers();
 

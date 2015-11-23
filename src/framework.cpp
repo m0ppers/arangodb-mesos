@@ -131,6 +131,8 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "  ARANGODB_VOLUME_PATH overrides '--volume_path'\n"
        << "  ARANGODB_SECONDARIES_WITH_DBSERVERS\n"
        << "                       overrides '--secondaries_with_dbservers'\n"
+       << "  ARANGODB_COORDINATORS_WITH_DBSERVERS\n"
+       << "                       overrides '--coordinators_with_dbservers'\n"
        << "  MESOS_MASTER         overrides '--master'\n"
        << "\n"
        << "  MESOS_AUTHENTICATE   enable authentication\n"
@@ -271,6 +273,12 @@ int main (int argc, char** argv) {
             "run secondaries only on agents with DBservers",
             "false");
 
+  string coordinatorsWithDBservers;
+  flags.add(&coordinatorsWithDBservers,
+            "coordinators_with_dbservers",
+            "run coordinators only on agents with DBservers",
+            "false");
+
   string secondarySameServer;
   flags.add(&secondarySameServer,
             "secondary_same_server",
@@ -337,6 +345,7 @@ int main (int argc, char** argv) {
   updateFromEnv("ARANGODB_VOLUME_PATH", volumePath);
   updateFromEnv("ARANGODB_RESET_STATE", resetState);
   updateFromEnv("ARANGODB_SECONDARIES_WITH_DBSERVERS", secondariesWithDBservers);
+  updateFromEnv("ARANGODB_COORDINATORS_WITH_DBSERVERS", coordinatorsWithDBservers);
 
   updateFromEnv("MESOS_MASTER", master);
   updateFromEnv("ARANGODB_ZK", zk);
@@ -380,6 +389,16 @@ int main (int argc, char** argv) {
   else {
     Global::setSecondariesWithDBservers(false);
     LOG(INFO) << "SecondariesWithDBservers: false";
+  }
+
+  if (coordinatorsWithDBservers == "yes" || coordinatorsWithDBservers == "true" ||
+      coordinatorsWithDBservers == "y") {
+    Global::setCoordinatorsWithDBservers(true);
+    LOG(INFO) << "CoordinatorsWithDBservers: true";
+  }
+  else {
+    Global::setCoordinatorsWithDBservers(false);
+    LOG(INFO) << "CoordinatorsWithDBservers: false";
   }
 
   if (secondarySameServer == "yes" || secondarySameServer == "true" ||
