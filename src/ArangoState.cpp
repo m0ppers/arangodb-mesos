@@ -191,11 +191,29 @@ void ArangoState::destroy () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ArangoState::getAgencyURL (ArangoState::Lease& lease) {
-  auto agents = lease.state().current().agents();
+  auto const& agents = lease.state().current().agents();
   std::string hostname = agents.entries(0).hostname();
   uint32_t port = agents.entries(0).ports(0);
   return "http://" + hostname + ":" + std::to_string(port) + "/v2/keys/arango";
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the URL of some coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ArangoState::getCoordinatorURL (ArangoState::Lease& lease) {
+  auto const& coordinators = lease.state().current().coordinators();
+  auto nr = coordinators.entries_size();
+  long now = chrono::duration_cast<chrono::seconds>(
+      chrono::steady_clock::now().time_since_epoch()).count();
+  std::default_random_engine generator(now);
+  std::uniform_int_distribution<int> distribution(0, nr-1);
+  int which = distribution(generator);  // generates number of a coordinator
+  std::string hostname = coordinators.entries(which).hostname();
+  uint32_t port = coordinators.entries(which).ports(0);
+  return "http://" + hostname + ":" + std::to_string(port);
+}
+
 
 
 // -----------------------------------------------------------------------------

@@ -669,7 +669,8 @@ bool ArangoManager::checkTimeouts () {
           break;
         case TASK_STATE_TRYING_TO_RESERVE:
           // After a timeout, go back to state TASK_STATE_NEW, because
-          // there was no satisfactory answer to our reservation request:
+          // there was no satisfactory answer to our reservation request.
+          // Resources will be freed automatically.
           timeStamp = tp->timestamp();
           if (now - timeStamp > TryingToReserveTimeout) {
             LOG(INFO) << "Timeout " << TryingToReserveTimeout << "s reached "
@@ -684,7 +685,8 @@ bool ArangoManager::checkTimeouts () {
           break;
         case TASK_STATE_TRYING_TO_PERSIST:
           // After a timeout, go back to state TASK_STATE_NEW, because
-          // there was no satisfactory answer to our persistence request:
+          // there was no satisfactory answer to our persistence request.
+          // Resources will be freed automatically.
           timeStamp = tp->timestamp();
           if (now - timeStamp > TryingToPersistTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
@@ -699,7 +701,8 @@ bool ArangoManager::checkTimeouts () {
           break;
         case TASK_STATE_TRYING_TO_START:
           // After a timeout, go back to state TASK_STATE_NEW, because
-          // there was no satisfactory answer to our start request:
+          // there was no satisfactory answer to our start request.
+          // Resources will be freed automatically.
           timeStamp = tp->timestamp();
           if (now - timeStamp > TryingToStartTimeout) {
             LOG(INFO) << "Timeout " << TryingToPersistTimeout << "s reached "
@@ -715,6 +718,16 @@ bool ArangoManager::checkTimeouts () {
         case TASK_STATE_RUNNING:
           // Run forever here, no timeout.
           break;
+        case TASK_STATE_FAILED_OVER:
+          // This task has been replaced by its failover partner, now we
+          // finally lose patience to wait for a restart and give up on the
+          // task. This can only happen to a primary DBserver that has been
+          // interchanged with its secondary and is now a secondary.
+          // We want to get rid of this task and replace it with a new one.
+          // This is exactly what we would have done if this server was a
+          // secondary that has failed in the first place. Therefore we
+          // fall through here and let the case for TASK_STATE_KILLED
+          // take care of the rest.
         case TASK_STATE_KILLED:
           // After some time being killed, we have to take action and
           // engage in some automatic failover procedure:
@@ -732,6 +745,8 @@ bool ArangoManager::checkTimeouts () {
             }
             else if (taskType == TaskType::COORDINATOR) {
               // simply go back to TASK_STATE_NEW to start another one
+              // There were no reservations and persistent volumes,
+              // so Mesos will clean up behind ourselves.
               LOG(INFO) << "Going back to state TASK_STATE_NEW.";
               tp->set_state(TASK_STATE_NEW);
               tp->clear_persistence_id();
@@ -780,10 +795,9 @@ bool ArangoManager::checkTimeouts () {
 
               // Still needed: Tell the agency about this change and
               // configure the new server there:
-              std::string agencyURL = Global::state().getAgencyURL (l);
+              std::string coordinatorURL = Global::state().getCoordinatorURL(l);
               std::string resultBody;
 
-              bool haveLock = false;
               // We try to reconfigure until the agency has answered...
               while (true) {
                 long httpCode = 0;
@@ -799,108 +813,19 @@ bool ArangoManager::checkTimeouts () {
                   this_thread::sleep_for(chrono::seconds(2));
                 };
 
-                // We need to acquire the lock for the plan:
-                if (! haveLock) {
-                  res = arangodb::doHTTPPut(agencyURL + 
-                      "/Plan/Lock?prevValue=%22UNLOCKED%22&ttl=60",
-                                            "value=%22WRITE%22",
-                                            resultBody, httpCode);
-                  if (res == 0 && httpCode == 404) {
-                    // No value there, so try again:
-                    res = arangodb::doHTTPPut(agencyURL + 
-                         "/Plan/Lock?prevExist=false&ttl=60",
-                                              "value=%22WRITE%22",
-                                              resultBody, httpCode);
-                  }
-                  if (res != 0 || (httpCode != 200 && httpCode != 201)) {
-                    logError("could not acquire /Plan/Lock, retrying");
-                    continue;
-                  }
-                  haveLock = true;
-                }
+                std::string body 
+                  =   R"({"primary":")" + primaryName + R"(",)"
+                    + R"({"oldSecondary":")" + tp->name() + R"(","
+                    + R"({"newSecondary":")" + tpnew->name() + R"("})";
+              
+                res = arangodb::doHTTPPut(coordinatorURL +
+                      "/_admin/cluster/replaceSecondary",
+                      body, resultBody, httpCode);
 
-                res = arangodb::doHTTPGet(agencyURL + "/Plan/Version",
-                                          resultBody, httpCode);
                 if (res != 0 || httpCode != 200) {
-                  logError("cannot read /Plan/Version");
+                  logError(resultBody);
                   continue;
                 }
-                picojson::value v;
-                std::string err = picojson::parse(v, resultBody);
-                if (! err.empty()) {
-                  logError("cannot parse /Plan/Version: " + resultBody);
-                  continue;
-                }
-                bool ok = false;
-                if (v.is<picojson::object>()) {
-                  auto& o = v.get<picojson::object>();
-                  auto& n = o["node"];
-                  if (n.is<picojson::object>()) {
-                    auto& oo = n.get<picojson::object>();
-                    auto& val = oo["value"];
-                    if (val.is<std::string>()) {
-                      resultBody = val.get<std::string>();
-                      ok = true;
-                    }
-                  }
-                }
-                if (! ok) {
-                  logError("JSON does not contain a string at .node.value: "
-                           + resultBody);
-                  continue;
-                }
-                // Now the resultBody should be a string with an integer
-                // in and quotes around it:
-                if (resultBody.size() < 2 || resultBody[0] != '\"' ||
-                    resultBody[resultBody.size()-1] != '\"') {
-                  logError("cannot parse /Plan/Version, is not a number in quotes");
-                  continue;
-                }
-                std::string numberPart
-                    = resultBody.substr(1, resultBody.size()-2);
-                uint64_t version = 0;
-                try {
-                  version = std::stoul(numberPart);
-                }
-                catch (...) {
-                  LOG(ERROR) << "Exception raised while parsing: " 
-                             << numberPart;
-                }
-                if (version == 0) {
-                  logError("cannot parse /Plan/Version, found 0");
-                  continue;
-                }
-
-                // Now do the actual modification:
-                res = arangodb::doHTTPPut(agencyURL + "/Plan/DBServers/"
-                                          + primaryName,
-                                          "value=%22"+name+"%22",
-                                          resultBody, httpCode);
-                if (res != 0 || httpCode != 200) {
-                  logError("actual PUT request failed");
-                  continue;
-                }
-
-                // And finally, increase the version number:
-                res = arangodb::doHTTPPut(agencyURL+"/Plan/Version?prevValue="+
-                                          "%22" + numberPart + "%22",
-                                          "value=%22" + to_string(version+1) +
-                                          "%22",
-                                          resultBody, httpCode);
-                if (res != 0 || httpCode != 200) {
-                  logError("actual PUT request failed");
-                  continue;
-                }
-
-                // Finally, release the lock:
-                res = arangodb::doHTTPPut(agencyURL + "/Plan/Lock",
-                                          "value=%22UNLOCKED%22",
-                                          resultBody, httpCode);
-                if (res != 0 || httpCode != 200) {
-                  logError("could not release /Plan/Lock, retrying");
-                  continue;
-                }
-
                 // All OK, let's get out of here:
                 break;
               }
@@ -928,12 +853,12 @@ bool ArangoManager::checkTimeouts () {
 
                 // Find the corresponding secondary:
                 TasksPlan* tasksPlanSecondary = plan->mutable_secondaries();
-                TaskPlan* tpsecond;
+                TaskPlan* tpoldsecond;
                 bool found = false;
                 int j;
                 for (j = 0; j < tasksPlanSecondary->entries_size(); j++) {
-                  tpsecond = tasksPlanSecondary->mutable_entries(j);
-                  if (tpsecond->name() == secondaryName) {
+                  tpoldsecond = tasksPlanSecondary->mutable_entries(j);
+                  if (tpoldsecond->name() == secondaryName) {
                     found = true;
                     break;
                   }
@@ -948,8 +873,8 @@ bool ArangoManager::checkTimeouts () {
                   // Now interchange the information on primary[i] and
                   // secondary[j]:
                   TaskPlan dummy;
-                  dummy.CopyFrom(*tpsecond);
-                  tpsecond->CopyFrom(*tp);
+                  dummy.CopyFrom(*tpoldsecond);
+                  tpoldsecond->CopyFrom(*tp);
                   tp->CopyFrom(dummy);
                   TaskCurrent dummy2;
                   TaskCurrent* tpsecondcur
@@ -958,28 +883,39 @@ bool ArangoManager::checkTimeouts () {
                   tpsecondcur->CopyFrom(*ic);
                   ic->CopyFrom(dummy2);
                   
-                  tp->set_timestamp(now);
-                  tpsecond->set_timestamp(now);
+                  // Now the two are switched in the state, also switch the
+                  // pointers into the state:
+                  TaskPlan* tpnewprimary = tpoldsecond;
+                  TaskPlan* tpnewsecondary = tp;
 
-                  // Now update _task2position:
+                  tpnewprimary->set_timestamp(now);
+                  tpnewsecondary->set_timestamp(now);
+
+                  // Set the new state of the failed task to 
+                  // TASK_STATE_FAILED_OVER:
+                  tpnewsecondary->set_state(TASK_STATE_FAILED_OVER);
+
+                  // Now update _task2position (note that ic and tpsecondcur
+                  // have been interchanged by now!):
                   _task2position[ic->task_info().task_id().value()] 
                       = std::make_pair(TaskType::PRIMARY_DBSERVER, i);
                   _task2position[tpsecondcur->task_info().task_id().value()]
                       = std::make_pair(TaskType::SECONDARY_DBSERVER, j);
 
                   // Still needed: Tell the agency about this change.
-                  std::string agencyURL = Global::state().getAgencyURL (l);
+                  std::string coordinatorURL 
+                      = Global::state().getCoordinatorURL(l);
                   std::string resultBody;
 
                   // We try to reconfigure until the agency has answered...
-                  bool haveLock = false;
                   while (true) {
                     long httpCode = 0;
                     int res = 0;
                     auto logError = [&] (std::string msg) -> void {
                       LOG(ERROR) << "Problems with reconfiguring agency "
-                                 << "(switching primary " << tpsecond->name()
-                                 << " and secondary " << tp->name()
+                                 << "(switching primary " 
+                                 << tpnewsecondary->name()
+                                 << " and secondary " << tpnewprimary->name()
                                  << ")\n" << msg
                                  << ", libcurl error code: " << res
                                  << ", HTTP result code: " << httpCode
@@ -987,118 +923,18 @@ bool ArangoManager::checkTimeouts () {
                       this_thread::sleep_for(chrono::seconds(2));
                     };
 
-                    // We need to acquire the lock for the plan:
-                    if (! haveLock) {
-                      res = arangodb::doHTTPPut(agencyURL + 
-                          "/Plan/Lock?prevValue=%22UNLOCKED%22&ttl=60",
-                                                "value=%22WRITE%22",
-                                                resultBody, httpCode);
-                      if (res == 0 && httpCode == 404) {
-                        // No value there, so try again:
-                        res = arangodb::doHTTPPut(agencyURL + 
-                             "/Plan/Lock?prevExist=false&ttl=60",
-                                                  "value=%22WRITE%22",
-                                                  resultBody, httpCode);
-                      }
-                      if (res != 0 || (httpCode != 200 && httpCode != 201)) {
-                        logError("could not acquire /Plan/Lock, retrying");
-                        continue;
-                      }
-                      haveLock = true;
-                    }
+                    std::string body 
+                      =   R"({"primary":")" + tpnewsecondary->name() + R"(",)"
+                        + R"({"secondary":")" + tpnewprimary->name() + R"("})";
+                  
+                    res = arangodb::doHTTPPut(coordinatorURL +
+                          "/_admin/cluster/swapPrimaryAndSecondary",
+                          body, resultBody, httpCode);
 
-                    // Now get the old version:
-                    res = arangodb::doHTTPGet(agencyURL + "/Plan/Version",
-                                              resultBody, httpCode);
                     if (res != 0 || httpCode != 200) {
-                      logError("cannot read /Plan/Version");
+                      logError(resultBody);
                       continue;
                     }
-                    picojson::value v;
-                    std::string err = picojson::parse(v, resultBody);
-                    if (! err.empty()) {
-                      logError("cannot parse /Plan/Version: " + resultBody);
-                      continue;
-                    }
-                    bool ok = false;
-                    if (v.is<picojson::object>()) {
-                      auto& o = v.get<picojson::object>();
-                      auto& n = o["node"];
-                      if (n.is<picojson::object>()) {
-                        auto& oo = n.get<picojson::object>();
-                        auto& val = oo["value"];
-                        if (val.is<std::string>()) {
-                          resultBody = val.get<std::string>();
-                          ok = true;
-                        }
-                      }
-                    }
-                    if (! ok) {
-                      logError("JSON does not contain a string at .node.value: "
-                               + resultBody);
-                      continue;
-                    }
-                    // Now the resultBody should be a string with an integer
-                    // in and quotes around it:
-                    if (resultBody.size() < 2 || resultBody[0] != '\"' ||
-                        resultBody[resultBody.size()-1] != '\"') {
-                      logError("cannot parse /Plan/Version, is not a number in quotes");
-                      continue;
-                    }
-                    std::string numberPart
-                        = resultBody.substr(1, resultBody.size()-2);
-                    uint64_t version = 0;
-                    try {
-                      version = std::stoul(numberPart);
-                    }
-                    catch (...) {
-                      LOG(ERROR) << "Exception raised while parsing: " 
-                                 << numberPart;
-                    }
-                    if (version == 0) {
-                      logError("cannot parse /Plan/Version, found 0");
-                      continue;
-                    }
-
-                    // Now do the actual modification:
-                    res = arangodb::doHTTPDelete(agencyURL + "/Plan/DBServers/"
-                                              + tpsecond->name(),
-                                              resultBody, httpCode);
-                    if (res != 0 || httpCode != 200) {
-                      logError("actual DELETE request failed");
-                      continue;
-                    }
-
-                    res = arangodb::doHTTPPut(agencyURL + "/Plan/DBServers/"
-                                              + tp->name(),
-                                              "value=%22" +
-                                              tpsecond->name()+"%22",
-                                              resultBody, httpCode);
-                    if (res != 0 || (httpCode != 200 && httpCode != 201)) {
-                      logError("actual PUT request failed");
-                      continue;
-                    }
-
-                    // Increase the version number:
-                    res = arangodb::doHTTPPut(agencyURL+"/Plan/Version?prevValue="+
-                                              "%22" + numberPart + "%22",
-                                              "value=%22" + to_string(version+1) +
-                                              "%22",
-                                              resultBody, httpCode);
-                    if (res != 0 || httpCode != 200) {
-                      logError("actual PUT request for version inc failed");
-                      continue;
-                    }
-
-                    // Finally, release the lock:
-                    res = arangodb::doHTTPPut(agencyURL + "/Plan/Lock",
-                                              "value=%22UNLOCKED%22",
-                                              resultBody, httpCode);
-                    if (res != 0 || httpCode != 200) {
-                      logError("could not release /Plan/Lock, retrying");
-                      continue;
-                    }
-
                     // All OK, let's get out of here:
                     break;
                   }
@@ -1106,8 +942,8 @@ bool ArangoManager::checkTimeouts () {
                   l.changed();
 
                   LOG(INFO) << "Successfully reconfigured agency "
-                            << "(switching primary " << tpsecond->name()
-                            << " and secondary " << tp->name() << ")";
+                            << "(switching primary " << tpnewsecondary->name()
+                            << " and secondary " << tpnewprimary->name() << ")";
                 }
               }
             }
@@ -1129,12 +965,6 @@ bool ArangoManager::checkTimeouts () {
             // Do not change the time stamp here, because we want to
             // notice alternating between KILLED and TRYING_TO_RESTART!
           }
-          break;
-        case TASK_STATE_FAILED_OVER:
-          // This task has been replaced by its failover partner, now we
-          // finally lose patience to wait for a restart and give up on the
-          // task. We free all resources and go back to TASK_STATE_NEW
-          // ...
           break;
         case TASK_STATE_DEAD:
           // This task is no longer used. Do nothing.
