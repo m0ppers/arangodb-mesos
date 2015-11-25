@@ -77,13 +77,15 @@ static bool isSuitableOffer (Target const& target,
                              bool withRole) {
   // Note that we do not care whether or not ports are reserved for us
   // or are role "*".
+  std::string offerString;
   if (! checkPorts(target.number_ports(), offer, "")) {
+    pbjson::pb2json(&offer, offerString);
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
     << "offer " << offer.id().value() << " does not have " 
     << target.number_ports() << " ports"
-    << (withRole ? " for Role" + Global::role() : " for any role");
-
+    << (withRole ? " for Role" + Global::role() : " for any role")
+    << "\noffer: " << offerString;
     return false;
   }
 
@@ -96,7 +98,6 @@ static bool isSuitableOffer (Target const& target,
   minimum = minimum.flatten(Global::role());
 
   Option<mesos::Resources> found = offered.find(minimum);
-  std::string offerString;
   if (! found.isSome()) {
     pbjson::pb2json(&offer, offerString);
      

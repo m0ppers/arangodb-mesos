@@ -824,8 +824,8 @@ bool ArangoManager::checkTimeouts () {
 
                 std::string body 
                   =   R"({"primary":")" + primaryName + R"(",)"
-                    + R"({"oldSecondary":")" + tp->name() + R"(","
-                    + R"({"newSecondary":")" + tpnew->name() + R"("})";
+                    + R"("oldSecondary":")" + tp->name() + R"(",)"
+                    + R"("newSecondary":")" + tpnew->name() + R"("})";
               
                 res = arangodb::doHTTPPut(coordinatorURL +
                       "/_admin/cluster/replaceSecondary",
@@ -934,7 +934,7 @@ bool ArangoManager::checkTimeouts () {
 
                     std::string body 
                       =   R"({"primary":")" + tpnewsecondary->name() + R"(",)"
-                        + R"({"secondary":")" + tpnewprimary->name() + R"("})";
+                        + R"("secondary":")" + tpnewprimary->name() + R"("})";
                   
                     res = arangodb::doHTTPPut(coordinatorURL +
                           "/_admin/cluster/swapPrimaryAndSecondary",
