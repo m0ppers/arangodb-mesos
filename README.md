@@ -242,6 +242,13 @@ precedence.
     a good distribution but not always. Note that if you have only
     one DBServer, then you must set this option to "false".
 
+  - `ARANGODB_COORDINATORS_WITH_DBSERVERS`, overriding `--coordinators_with_dbservers`:
+
+    If this boolean value is set to "true", then the coordinators
+    will only be started on nodes, where there is already another
+    primary server, but not its own master. This is often sensible for
+    a good distribution but not always. Note that if you have only
+    one DBServer, then you must set this option to "false".
 
 The HTTP/REST API
 -----------------
