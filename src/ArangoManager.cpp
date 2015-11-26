@@ -631,6 +631,18 @@ static double const TryingToResurrectTimeout = 900;  // Patience before we
 // Note that the failover timeout can be configured by the user via a
 // command line option.
 
+// For debugging purposes:
+#if 0
+static double const TryingToReserveTimeout = 30;  // seconds
+static double const TryingToPersistTimeout = 30;
+static double const TryingToStartTimeout   = 30; // docker pull might take
+static double const TryingToRestartTimeout = 30;
+static double const FailoverTimeout        = 30;
+static double const TryingToResurrectTimeout = 30;  // Patience before we
+                                                    // give up on a persistent
+                                                    // task.
+#endif
+
 bool ArangoManager::checkTimeouts () {
   auto l = Global::state().lease();
 
@@ -862,12 +874,12 @@ bool ArangoManager::checkTimeouts () {
 
                 // Find the corresponding secondary:
                 TasksPlan* tasksPlanSecondary = plan->mutable_secondaries();
-                TaskPlan* tpoldsecond;
+                TaskPlan* tpsecond;
                 bool found = false;
                 int j;
                 for (j = 0; j < tasksPlanSecondary->entries_size(); j++) {
-                  tpoldsecond = tasksPlanSecondary->mutable_entries(j);
-                  if (tpoldsecond->name() == secondaryName) {
+                  tpsecond = tasksPlanSecondary->mutable_entries(j);
+                  if (tpsecond->name() == secondaryName) {
                     found = true;
                     break;
                   }
@@ -882,8 +894,8 @@ bool ArangoManager::checkTimeouts () {
                   // Now interchange the information on primary[i] and
                   // secondary[j]:
                   TaskPlan dummy;
-                  dummy.CopyFrom(*tpoldsecond);
-                  tpoldsecond->CopyFrom(*tp);
+                  dummy.CopyFrom(*tpsecond);
+                  tpsecond->CopyFrom(*tp);
                   tp->CopyFrom(dummy);
                   TaskCurrent dummy2;
                   TaskCurrent* tpsecondcur
@@ -892,17 +904,12 @@ bool ArangoManager::checkTimeouts () {
                   tpsecondcur->CopyFrom(*ic);
                   ic->CopyFrom(dummy2);
                   
-                  // Now the two are switched in the state, also switch the
-                  // pointers into the state:
-                  TaskPlan* tpnewprimary = tpoldsecond;
-                  TaskPlan* tpnewsecondary = tp;
-
-                  tpnewprimary->set_timestamp(now);
-                  tpnewsecondary->set_timestamp(now);
+                  tp->set_timestamp(now);
+                  tpsecond->set_timestamp(now);
 
                   // Set the new state of the failed task to 
                   // TASK_STATE_FAILED_OVER:
-                  tpnewsecondary->set_state(TASK_STATE_FAILED_OVER);
+                  tpsecond->set_state(TASK_STATE_FAILED_OVER);
 
                   // Now update _task2position (note that ic and tpsecondcur
                   // have been interchanged by now!):
@@ -923,8 +930,8 @@ bool ArangoManager::checkTimeouts () {
                     auto logError = [&] (std::string msg) -> void {
                       LOG(ERROR) << "Problems with reconfiguring agency "
                                  << "(switching primary " 
-                                 << tpnewsecondary->name()
-                                 << " and secondary " << tpnewprimary->name()
+                                 << tpsecond->name()
+                                 << " and secondary " << tp->name()
                                  << ")\n" << msg
                                  << ", libcurl error code: " << res
                                  << ", HTTP result code: " << httpCode
@@ -933,8 +940,8 @@ bool ArangoManager::checkTimeouts () {
                     };
 
                     std::string body 
-                      =   R"({"primary":")" + tpnewsecondary->name() + R"(",)"
-                        + R"("secondary":")" + tpnewprimary->name() + R"("})";
+                      =   R"({"primary":")" + tpsecond->name() + R"(",)"
+                        + R"("secondary":")" + tp->name() + R"("})";
                   
                     res = arangodb::doHTTPPut(coordinatorURL +
                           "/_admin/cluster/swapPrimaryAndSecondary",
@@ -951,8 +958,8 @@ bool ArangoManager::checkTimeouts () {
                   l.changed();
 
                   LOG(INFO) << "Successfully reconfigured agency "
-                            << "(switching primary " << tpnewsecondary->name()
-                            << " and secondary " << tpnewprimary->name() << ")";
+                            << "(switching primary " << tpsecond->name()
+                            << " and secondary " << tp->name() << ")";
                 }
               }
             }
