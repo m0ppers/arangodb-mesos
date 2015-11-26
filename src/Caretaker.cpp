@@ -78,7 +78,8 @@ static bool isSuitableOffer (Target const& target,
   // Note that we do not care whether or not ports are reserved for us
   // or are role "*".
   std::string offerString;
-  if (! checkPorts(target.number_ports(), offer, "")) {
+  if (! checkPorts(target.number_ports(), offer,
+                   withRole ? Global::role() : "" )) {
     pbjson::pb2json(&offer, offerString);
     LOG(INFO) 
     << "DEBUG isSuitableOffer: "
@@ -326,6 +327,11 @@ static mesos::Resources resourcesForRequestReservation (
       = arangodb::intersectResources(offered, minimum);
   mesos::Resources defaultPart = minimum - roleSpecificPart;
   defaultPart = defaultPart.flatten(Global::role(), Global::principal());
+
+  // Now add a port reservation:
+  mesos::Resources ports = findFreePorts(offer, 1);
+  ports = ports.flatten(Global::role(), Global::principal());
+  defaultPart += ports;
 
   // TODO(fc) check if we could use additional resources
 
@@ -850,10 +856,6 @@ static bool requestRestartPersistent (ArangoState::Lease& lease,
                                       TaskType taskType,
                                       int pos) {
 
-  if (! isSuitableOffer(target, offer, false)) {
-    return notInterested(offer, doDecline);
-  }
-
   string persistenceId = task->persistence_id();
   string containerPath;
 
@@ -871,6 +873,23 @@ static bool requestRestartPersistent (ArangoState::Lease& lease,
     taskCur->mutable_offer_id()->CopyFrom(offer.id());
     taskCur->mutable_resources()->CopyFrom(resources);
     taskCur->set_container_path(containerPath);
+
+    taskCur->clear_ports();
+
+    for (auto& res : resources) {
+      if (res.name() == "ports" && res.type() == mesos::Value::RANGES) {
+        auto const& ranges = res.ranges();
+        for (int r = 0; r < ranges.range_size(); r++) {
+          for (uint64_t i = ranges.range(r).begin();
+               i <= ranges.range(r).end(); i++) {
+            taskCur->add_ports(i);
+          }
+        }
+      }
+    }
+
+    LOG(INFO) << "Trying to restart with resources:\n"
+              << resources;
 
     startArangoDBTask(lease, taskType, pos, *task, *taskCur);
 
@@ -1012,18 +1031,15 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
   }
           
   // ...........................................................................
-  // check that the minimal resources are satisfied, here we ignore roles, if
-  // we are after a persistent volume, since we can always reserve more
-  // resources for our role dynamically. If we are after ephemeral resources,
-  // we do
+  // check that the minimal resources are satisfied, here we ignore
+  // roles, even if we are after a persistent volume, since we can
+  // always reserve more resources for our role dynamically. If we are
+  // after ephemeral resources, we do not have to look for the role
+  // either.
   // ...........................................................................
 
   if ((Global::ignoreOffers() & 2) == 2) {
     LOG(INFO) << "Ignoring offer because of 0x2 flag.";
-    return notInterested(offer, doDecline);
-  }
-
-  if (! isSuitableOffer(target, offer, false)) {
     return notInterested(offer, doDecline);
   }
 
@@ -1103,6 +1119,8 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
               // OK, it seems that our resources have been offered to us,
               // this only leaves the conclusion that we are in fact dead.
               // Decline the offer for now, it will come back later.
+              // We have to pretend having used the offer, though, otherwise
+              // any persistent volumes would get destroyed!
               LOG(INFO) << "Have been offered our own resources, conclusion: "
                         << "WE ARE IN FACT DEAD. Declining offer for now.";
               return notInterested(offer, true);
@@ -1122,6 +1140,13 @@ bool Caretaker::checkOfferOneType (ArangoState::Lease& lease,
 
   if (required.size() == 0) {
     LOG(INFO) << "nothing required";
+    return notInterested(offer, doDecline);
+  }
+
+  // ...........................................................................
+  // check whether the offer is suitable:
+  // ...........................................................................
+  if (! isSuitableOffer(target, offer, false)) {
     return notInterested(offer, doDecline);
   }
 

@@ -512,7 +512,6 @@ void CaretakerCluster::checkOffer (const mesos::Offer& offer) {
                           TaskType::COORDINATOR)) {
       lease.changed();  // make sure that the new state is saved
     }
-    return;
   }
 
   // plannedInstances is 0 if and only if we have shut down the cluster,
