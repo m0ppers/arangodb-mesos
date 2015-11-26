@@ -1,3 +1,9 @@
+Use
+  POST $WEBUI/v1/ignoreOffers 
+with a body of
+  { "ignoreOffers": 16 }
+to set from the outside.
+
 Bits in the ignoreOffers int value and their meaning:
 
 0x01    - ignore all offers when set
