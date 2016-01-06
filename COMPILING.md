@@ -2,7 +2,7 @@
 
 On the host
 
-    host> docker run -it ubuntu:14.04
+    host> docker run -it ubuntu:15.10
 
 Inside the container: Follow the instruction on
 [System Requirements](http://mesos.apache.org/gettingstarted/)
@@ -16,9 +16,8 @@ and clone mesos
 
     container> mkdir /home
     container> cd /home
-    container> git clone -b reservation https://github.com/mpark/mesos.git
+    container> git clone https://github.com/mesos/mesos.git
     container> cd mesos
-    container> git checkout 56cc41be9b18d3a15f1814327d01506742153305
 
 Follow the instructions
 [Building Mesos](http://mesos.apache.org/gettingstarted/)
@@ -28,12 +27,12 @@ and also install Mesos.
 
 Inside the container: Install the requirements.
 
-    container> apt-get install libprotobuf-dev libboost-dev libgoogle-glog-dev libmicrohttpd-dev 
+    container> apt-get install libboost-dev libgoogle-glog-dev libmicrohttpd-dev 
 
 Checkout and compile:
 
     container> cd /home
-    container> git clone https://github.com/fceller/arangodb-mesos.git
+    container> git clone https://github.com/arangodb/arangodb-mesos.git
     container> cd arangodb-mesos
     container> autoreconf
     container> ./configure
