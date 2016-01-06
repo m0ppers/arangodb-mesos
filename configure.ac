@@ -112,27 +112,6 @@ LDFLAGS="${LDFLAGS} ${PTHREAD_CFLAGS}"
 LIBS="${LIBS} ${PTHREAD_LIBS} "
 
 dnl ----------------------------------------------------------------------------
-dnl protobuf
-dnl ----------------------------------------------------------------------------
-
-AC_LANG(C++)
-
-AC_CHECK_HEADERS(google/protobuf/stubs/common.h, [PROTOBUF=yes], [PROTOBUF=no])
-AC_MSG_CHECKING([PROTOBUF])
-
-if test "x$PROTOBUF" = "xno";  then
-  AC_MSG_ERROR([Please install 'libprotobuf-dev'])
-else
-  AC_MSG_RESULT([found])
-fi
-
-AC_CHECK_TOOL([PROTOCOMPILER], [protoc], [], [])
-
-if test "x$PROTOCOMPILER" = "x";  then
-  AC_MSG_ERROR([Please install 'protobuf-compiler'])
-fi
-
-dnl ----------------------------------------------------------------------------
 dnl glog
 dnl ----------------------------------------------------------------------------
 
@@ -181,11 +160,12 @@ dnl ----------------------------------------------------------------------------
 AC_LANG(C++)
 
 topdir="${ac_pwd}"
-MESOS_CPPFLAGS="-I${topdir}/mesos/include -I${topdir}/mesos/src -I${topdir}/mesos/build/include -I${topdir}/mesos/build/src -I${topdir}/mesos/3rdparty/libprocess/3rdparty/stout/include -I${topdir}/mesos/3rdparty/libprocess/include -I${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/include -I${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/generated"
+MESOS_CPPFLAGS="-I${topdir}/mesos/include -I${topdir}/mesos/src -I${topdir}/mesos/build/include -I${topdir}/mesos/build/src -I${topdir}/mesos/3rdparty/libprocess/3rdparty/stout/include -I${topdir}/mesos/3rdparty/libprocess/include -I${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/include -I${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/generated -I${topdir}/mesos/build/3rdparty/libprocess/3rdparty/protobuf-2.5.0/src"
 
 MESOS_LIBS="-L${topdir}/mesos/build/src/.libs -lmesos_no_3rdparty"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/libprocess/.libs/ -lprocess"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/libprocess/3rdparty/libev-4.15/.libs -lev"
+MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/libprocess/3rdparty/protobuf-2.5.0/src/.libs -lprotobuf"
 MESOS_LIBS="${MESOS_LIBS} ${topdir}/mesos/build/3rdparty/leveldb/libleveldb.a"
 MESOS_LIBS="${MESOS_LIBS} -L${topdir}/mesos/build/3rdparty/zookeeper-3.4.5/src/c/.libs -lzookeeper_mt"
 MESOS_LIBS="${MESOS_LIBS} -lprotobuf -lglog -lapr-1 -lsvn_delta-1 -lsvn_subr-1 -lcurl -lsasl2 -lz -ldl"
