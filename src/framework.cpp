@@ -133,6 +133,7 @@ static void usage (const string& argv0, const flags::FlagsBase& flags) {
        << "                       overrides '--secondaries_with_dbservers'\n"
        << "  ARANGODB_COORDINATORS_WITH_DBSERVERS\n"
        << "                       overrides '--coordinators_with_dbservers'\n"
+       << "  ARANGODB_IMAGE       overrides '--image'\n"
        << "  MESOS_MASTER         overrides '--master'\n"
        << "\n"
        << "  MESOS_AUTHENTICATE   enable authentication\n"
@@ -284,6 +285,12 @@ int main (int argc, char** argv) {
             "secondary_same_server",
             "allow to run a secondary on same agent as its primary",
             "false");
+  
+  string image;
+  flags.add(&image,
+            "image",
+            "docker image to use on the agent",
+            "");
 
   // address of master and zookeeper
   string master;
@@ -346,6 +353,7 @@ int main (int argc, char** argv) {
   updateFromEnv("ARANGODB_RESET_STATE", resetState);
   updateFromEnv("ARANGODB_SECONDARIES_WITH_DBSERVERS", secondariesWithDBservers);
   updateFromEnv("ARANGODB_COORDINATORS_WITH_DBSERVERS", coordinatorsWithDBservers);
+  updateFromEnv("ARANGODB_IMAGE", image);
 
   updateFromEnv("MESOS_MASTER", master);
   updateFromEnv("ARANGODB_ZK", zk);
@@ -356,7 +364,15 @@ int main (int argc, char** argv) {
     exit(EXIT_FAILURE);
   }
 
+  if (image.empty()) {
+    cerr << "Missing image, please provide an arangodb image to run on the agents via '--image' or set 'ARANGODB_IMAGE'" << endl;
+    usage(argv[0], flags);
+    exit(EXIT_FAILURE);
+  }
+
   logging::initialize(argv[0], flags, true); // Catch signals.
+
+  Global::setImage(image);
 
   if (mode == "standalone") {
     Global::setMode(OperationMode::STANDALONE);
