@@ -36,6 +36,7 @@
 #include <state/zookeeper.hpp>
 
 #include <boost/regex.hpp>
+#include <random>
 
 using namespace arangodb;
 using namespace mesos::internal::state;
